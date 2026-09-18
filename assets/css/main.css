@@ -1214,7 +1214,7 @@ section,
 }
 
 .courses .trainer .trainer-profile .trainer-link {
-  padding-left: 10px;
+  padding-left: 0;
   font-weight: 600;
   font-size: 16px;
   color: color-mix(in srgb, var(--default-color), transparent 20%);
@@ -1249,7 +1249,7 @@ section,
 }
 
 .trainers-index .member .member-content {
-  padding: 0 20px 30px 20px;
+  padding: 30px 20px;
 }
 
 .trainers-index .member h4 {
