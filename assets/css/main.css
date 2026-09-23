@@ -2252,3 +2252,61 @@ section,
 .index-page #explore {
   padding: 60px 0;
 }
+
+/* Student testimonials */
+.student-testimonials .section-title {
+  padding-bottom: 20px;
+}
+
+.student-quote {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: 32px;
+  border: 1px solid color-mix(in srgb, var(--heading-color), transparent 85%);
+  border-radius: 16px;
+  background: var(--surface-color);
+}
+
+.student-quote .quote-icon {
+  font-size: 40px;
+  color: var(--accent-color);
+  line-height: 1;
+  margin-bottom: 20px;
+}
+
+.student-quote blockquote {
+  flex: 1;
+  font-size: 17px;
+  line-height: 1.8;
+  margin: 0 0 24px;
+}
+
+.student-quote figcaption {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.student-quote .student-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-color), transparent 85%);
+  color: var(--heading-color);
+  font-weight: 700;
+}
+
+.student-quote figcaption strong,
+.student-quote figcaption div span {
+  display: block;
+}
+
+.student-quote figcaption div span {
+  font-size: 13px;
+  margin-top: 4px;
+}
