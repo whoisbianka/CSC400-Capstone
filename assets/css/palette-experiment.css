@@ -113,3 +113,8 @@
 .why-us .icon-box:hover i {
   color: #0B132B;
 }
+
+/* Match the chatbot return button to the landing page orange controls. */
+.chatbot-page .about .content .read-more {
+  color: #0B132B;
+}
