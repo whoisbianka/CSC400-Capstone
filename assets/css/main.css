@@ -818,7 +818,7 @@ section,
   color: var(--default-color);
   background-color: var(--background-color);
   padding: 60px 0;
-  scroll-margin-top: 900px;
+  scroll-margin-top: var(--header-offset, 90px);
   overflow: clip;
 }
 
@@ -826,7 +826,7 @@ section,
 
   section,
   .section {
-    scroll-margin-top: 66px;
+    scroll-margin-top: var(--header-offset, 90px);
   }
 }
 
@@ -2246,4 +2246,9 @@ section,
 --------------------------------------------------------------*/
 .starter-section {
   /* Add your styles here */
+}
+
+/* Keep the landing page major categories distinct from adjacent sections. */
+.index-page #explore {
+  padding: 60px 0;
 }

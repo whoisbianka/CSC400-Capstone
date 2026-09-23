@@ -22,6 +22,34 @@
   document.addEventListener('scroll', toggleScrolled);
   window.addEventListener('load', toggleScrolled);
 
+  // Match anchor spacing to the sticky header, including when its text wraps.
+  const landingHeader = document.querySelector('.index-page #header');
+  if (landingHeader) {
+    const updateHeaderOffset = () => {
+      document.documentElement.style.setProperty('--header-offset', `${landingHeader.offsetHeight + 16}px`);
+    };
+    updateHeaderOffset();
+    new ResizeObserver(updateHeaderOffset).observe(landingHeader);
+
+    const sectionLinks = document.querySelectorAll('#navmenu a[href^="#"]');
+    const updateActiveSection = () => {
+      let current = sectionLinks[0];
+      sectionLinks.forEach(link => {
+        const section = document.querySelector(link.hash);
+        if (section && section.getBoundingClientRect().top <= landingHeader.offsetHeight + 32) {
+          current = link;
+        }
+      });
+      sectionLinks.forEach(link => {
+        link.classList.toggle('active', link === current);
+        if (link === current) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      });
+    };
+    document.addEventListener('scroll', updateActiveSection, { passive: true });
+    window.addEventListener('load', updateActiveSection);
+  }
+
   /**
    * Mobile nav toggle
    */
