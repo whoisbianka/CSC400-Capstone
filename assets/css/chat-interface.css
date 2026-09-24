@@ -71,3 +71,13 @@ footer { border-top:1px solid #dce1e6; max-width:1152px; margin:auto; padding:24
 #finish-answers { background: var(--orange); color: var(--navy); border: 0; padding: 12px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
 #send-message { flex-shrink: 0; }
 @media (max-width: 480px) { .input-row { flex-wrap: wrap; } #send-message { width: 100%; } }
+
+/* Navigation shared by the chat, profile, and settings pages. */
+.site-header { flex-wrap: wrap; }
+.page-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.page-nav a { display: inline-block; padding: 10px 16px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 650; }
+.page-nav a:hover { background: #e4e8ec; }
+.page-nav a[aria-current="page"] { background: var(--navy); color: #fff; }
+.account-placeholder { max-width: 800px; margin: 48px auto 80px; padding: 48px; background: #fff; border: 1px solid #dce1e6; border-radius: 24px; }
+.account-placeholder > p { color: var(--slate); line-height: 1.7; }
+@media (max-width: 600px) { .page-nav { width: 100%; } .page-nav a { flex: 1; text-align: center; } .account-placeholder { padding: 28px; margin-top: 24px; } }
