@@ -1,0 +1,29 @@
+.major-details-page .brand-name { color: #0B132B; font-weight: 800; font-size: clamp(18px, 3vw, 26px); }
+.major-details-page a { color: #0B132B; }
+.major-details-page a:hover { text-decoration: underline; }
+.major-details-page a:focus-visible { outline: 3px solid #FF7A00; outline-offset: 5px; }
+.detail-intro { padding: 64px 0; }
+.detail-intro h1 { font-size: clamp(32px, 5vw, 52px); font-weight: 800; max-width: 950px; }
+.detail-intro p { color: #E2E8F0; max-width: 680px; line-height: 1.7; }
+.eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: 12px; font-weight: 700; }
+.preview-label { display: inline-block; border: 1px solid #4E5D6C; padding: 6px 14px; border-radius: 30px; color: #E2E8F0; font-size: 13px; }
+.detail-nav { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px 0; border-bottom: 1px solid #dce1e6; font-weight: 600; }
+.detail-section { padding: 44px 0 16px; }
+.detail-section-heading { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 20px; }
+.detail-section-heading h2 { font-size: 28px; font-weight: 700; }
+.section-number { background: #fff0e3; color: #0B132B; padding: 10px; border-radius: 12px; font-weight: 700; }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 20px; }
+.detail-card { border: 1px solid #dce1e6; border-radius: 16px; padding: 28px; background: #fff; overflow-wrap: anywhere; }
+.placeholder-card { background: #f2f4f6; }
+.detail-card h3 { font-size: 20px; margin: 14px 0; font-weight: 700; }
+.detail-card p { line-height: 1.7; }
+.detail-tag { color: #4E5D6C; text-transform: uppercase; font-size: 11px; letter-spacing: .1em; font-weight: 700; }
+.field-preview { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.field-preview span { background: #fff; border: 1px solid #dce1e6; border-radius: 8px; padding: 8px 14px; font-size: 13px; }
+.detail-next { margin: 48px 0; padding: 28px; border-left: 4px solid #FF7A00; background: #f2f4f6; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; }
+.detail-next h2 { font-size: 24px; }
+.detail-next p { margin: 0; }
+.detail-button { display: inline-block; padding: 12px 20px; background: #FF7A00; color: #0B132B; border-radius: 30px; font-weight: 700; }
+.detail-footer { border-top: 1px solid #dce1e6; padding: 24px 0; font-size: 14px; }
+.major-details-page .header .logo { order: 0; }
+.major-details-page [hidden] { display: none !important; }
