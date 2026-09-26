@@ -3,6 +3,8 @@
   const container = document.getElementById('auth-component');
   const signOut = document.getElementById('auth-sign-out');
   const retry = document.getElementById('auth-retry');
+  const userButton = document.getElementById('auth-user-button');
+  const description = document.getElementById('auth-description');
   const profileUrl = new URL('profile.html', window.location.href).href;
   let mounted = null;
 
@@ -63,12 +65,20 @@
         // A pending session still needs Clerk's sign-in UI to complete session tasks.
         const next = clerk.session?.status === 'active' ? 'profile' : 'sign-in';
         if (mounted === next) return;
-        if (mounted === 'profile') clerk.unmountUserProfile(container);
+        if (mounted === 'profile') {
+          clerk.unmountUserProfile(container);
+          clerk.unmountUserButton(userButton);
+        }
         if (mounted === 'sign-in') clerk.unmountSignIn(container);
         container.replaceChildren();
         signOut.hidden = next !== 'profile';
+        userButton.hidden = next !== 'profile';
+        description.textContent = next === 'profile'
+          ? 'Manage your profile and account security.'
+          : 'Sign in or create an account to manage your profile and account security.';
         if (next === 'profile') {
           clerk.mountUserProfile(container, { routing: 'hash' });
+          clerk.mountUserButton(userButton, { userProfileMode: 'navigation', userProfileUrl: profileUrl });
         } else {
           clerk.mountSignIn(container, {
             routing: 'hash',

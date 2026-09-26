@@ -16,7 +16,7 @@
     #auth-component .cl-rootBox, #auth-component .cl-cardBox { max-width:100%; }
     .account-actions { display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin:24px 0; }
     .account-actions button { border:1px solid currentColor; border-radius:10px; padding:10px 16px; background:transparent; color:inherit; cursor:pointer; }
-    .account-actions [hidden] { display:none; }
+    .account-actions [hidden], #auth-user-button[hidden] { display:none; }
   </style>
 
 </head>
@@ -30,11 +30,11 @@
 </aside>
 <button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
 <main class="app-main">
-  <header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>Profile</strong></div><nav class="global-nav" aria-label="Global navigation"><a href="explore.html">Explore</a><a href="profile.html" aria-current="page">Profile</a><a href="settings.html">Settings</a></nav></header>
+  <header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>Profile</strong></div><nav class="global-nav" aria-label="Global navigation"><a href="explore.html">Explore</a><a href="profile.html" aria-current="page">Profile</a><a href="settings.html">Settings</a></nav><div id="auth-user-button" aria-label="Your account" hidden></div></header>
   <div class="page-workspace"><section class="workspace-page" aria-labelledby="page-title">
     <p class="eyebrow">Your account</p>
     <h1 id="page-title">Profile</h1>
-    <p>Sign in or create an account to manage your profile and account security.</p>
+    <p id="auth-description">Sign in or create an account to manage your profile and account security.</p>
     <p id="auth-status" role="status" aria-live="polite">Loading your account…</p>
     <noscript><p>Enable JavaScript to sign in. You can still browse the college explorer.</p></noscript>
     <div id="auth-component"></div>
