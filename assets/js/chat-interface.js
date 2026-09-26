@@ -34,7 +34,7 @@
   function progress() {
     $('answer-progress').max = questions.length;
     $('answer-progress').value = count();
-    $('review-answers').hidden = !count();
+    $('progress-label').textContent = `${count()} of ${questions.length} questions answered`;
   }
   function bubble(text, user = false) {
     const item = node('article', ''); item.className = 'message ' + (user ? 'user' : 'assistant');
@@ -95,34 +95,29 @@
   function activate(nextMode) {
     mode = nextMode;
     $('ask-mode').setAttribute('aria-pressed', String(mode === 'ask'));
-    $('guided-mode').setAttribute('aria-pressed', String(mode === 'guided'));
     $('guided-progress').hidden = mode !== 'guided';
-    $('query-starters').hidden = mode !== 'ask';
     $('major-results').hidden = true;
     $('chat-feedback').textContent = '';
     $('connection-note').textContent = mode === 'ask'
       ? (window.programCatalog.isDemo() ? 'Demo data only · Colleges, programs, and tuition figures are fictional. Matching uses keywords and filters, not a live chatbot.' : 'Program catalog loaded · Keyword and filter search preview.')
       : storageAvailable ? 'Optional sample questions · Answers saved in this browser tab for this session, not to your account.' : 'Optional sample questions · Answers stay on this page only; browser storage is unavailable.';
-    $('restart-answers').textContent = mode === 'ask' ? 'Clear conversation' : 'Restart questionnaire';
   }
   function showAsk(focus = false) {
     if (mode === 'guided' && current !== null && !$('chat-form').hidden) guidedDraft = {index:current, editing, text:$('chat-message').value};
     activate('ask'); current = null;
-    $('answer-review').hidden = true; $('chat-form').hidden = false;
+    $('answer-review').hidden = true; $('chat-form').hidden = false; $('query-starters').hidden = false;
     $('messages').replaceChildren();
     queryMessages.forEach(message => message.result ? renderResults(message.result) : bubble(message.text, message.user));
     $('answer-label').textContent = 'Ask about majors, colleges, or careers';
     $('chat-message').placeholder = 'What would you like to know?';
     $('chat-message').value = queryDraft;
-    $('send-message').textContent = 'Send';
-    $('send-message').disabled = !queryDraft.trim();
     if (focus) $('chat-message').focus();
   }
   function startGuided() {
     if (mode === 'ask') queryDraft = $('chat-message').value;
     if (guidedDraft) {
       const draft = guidedDraft; showQuestion(draft.index, draft.editing, true);
-      $('chat-message').value = draft.text; $('send-message').disabled = !draft.text.trim();
+      $('chat-message').value = draft.text;
     } else {
       const next = questions.findIndex(q => !answers[q.id]);
       if (next === -1) review(); else showQuestion(next, false, true);
@@ -132,21 +127,19 @@
     activate('guided');
     $('chat-message').placeholder = 'Type your answer here…';
     current = index; editing = isEdit;
-    $('answer-review').hidden = true; $('chat-form').hidden = false;
+    $('answer-review').hidden = true; $('chat-form').hidden = false; $('query-starters').hidden = false;
     transcript(); bubble(`${isEdit ? 'Edit answer' : 'Question'} ${index + 1} of ${questions.length}: ${questions[index].text}`);
     $('answer-label').textContent = questions[index].text;
     $('chat-message').value = answers[questions[index].id] || '';
-    $('send-message').textContent = isEdit ? 'Save changes' : 'Save & continue';
-    $('send-message').disabled = !$('chat-message').value.trim();
     progress();
-    const scrollArea = $('conversation-body') || $('messages');
+    const scrollArea = document.querySelector('.chat-workspace');
     scrollArea.scrollTop = scrollArea.scrollHeight;
     if (focus) $('chat-message').focus();
   }
   function review(focus = true) {
     if (mode === 'ask') queryDraft = $('chat-message').value;
     activate('guided');
-    current = null; $('chat-form').hidden = true; $('answer-review').hidden = false;
+    current = null; $('chat-form').hidden = true; $('query-starters').hidden = true; $('answer-review').hidden = false;
     transcript(); $('review-list').replaceChildren();
     questions.forEach((q, index) => {
       if (!answers[q.id]) return;
@@ -156,10 +149,9 @@
       edit.addEventListener('click', () => showQuestion(index, true, true));
       item.append(node('h4', q.text), node('p', answers[q.id]), edit); $('review-list').append(item);
     });
-    $('finish-answers').textContent = count() === questions.length ? 'Find my major' : 'Continue questions';
+    $('finish-answers').textContent = count() === questions.length ? 'Finish review' : 'Continue questions';
     progress(); if (focus) $('review-title').focus();
   }
-  $('chat-message').addEventListener('input', () => { $('send-message').disabled = !$('chat-message').value.trim(); });
   $('chat-message').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if ($('chat-message').value.trim()) $('chat-form').requestSubmit(); }
   });
@@ -172,8 +164,9 @@
       result.demo = window.programCatalog.isDemo();
       if (!result.demo) result.message = result.rows.length ? `${result.rows.length} matching programs found.` : 'No matching programs found. Try another major or broaden your filters.';
       queryMessages.push({result}); renderResults(result);
-      queryDraft = ''; $('chat-message').value = ''; $('send-message').disabled = true;
-      $('conversation-body').scrollTop = $('conversation-body').scrollHeight;
+      queryDraft = ''; $('chat-message').value = '';
+      const scrollArea = document.querySelector('.chat-workspace');
+      scrollArea.scrollTop = scrollArea.scrollHeight;
       $('chat-message').focus(); return;
     }
     if (current === null) return;
@@ -183,35 +176,28 @@
     const next = questions.findIndex(q => !answers[q.id]);
     if (editing || next === -1) review(); else showQuestion(next, false, true);
   });
-  $('review-answers').addEventListener('click', () => review());
   $('finish-answers').addEventListener('click', () => {
     const next = questions.findIndex(q => !answers[q.id]);
     if (next !== -1) return showQuestion(next, false, true);
     $('major-results').hidden = false; $('results-title').focus();
   });
-  $('restart-answers').addEventListener('click', () => {
-    if (mode === 'ask') {
-      if (queryMessages.length && !window.confirm('Clear this conversation?')) return;
-      queryMessages.length = 0; queryDraft = ''; showAsk(true); return;
-    }
-    if (count() && !window.confirm('Clear your saved answers and start again?')) return;
-    answers = {}; guidedDraft = null; save(); $('chat-feedback').textContent = 'Previous answers cleared.'; showQuestion(0, false, true);
-  });
   save();
   $('ask-mode').addEventListener('click', () => { if (mode !== 'ask') showAsk(true); });
-  $('guided-mode').addEventListener('click', () => { if (mode !== 'guided') startGuided(); });
   function refreshSuggestions() {
     if (mode === 'ask') $('connection-note').textContent = window.programCatalog.isDemo() ? 'Demo data only · Colleges, programs, and tuition figures are fictional.' : 'Program catalog loaded · Keyword and filter search preview.';
     const container = $('query-starters'); container.replaceChildren();
-    const suggestions = window.programCatalog.suggestions();
+    const suggestions = ['Not sure where to start', 'I like building things', ...window.programCatalog.suggestions().slice(0, 2)];
     suggestions.forEach(prompt => {
       const button = node('button', prompt); button.type = 'button';
-      button.addEventListener('click', () => { $('chat-message').value = prompt; $('send-message').disabled = false; $('chat-message').focus(); });
+      button.addEventListener('click', () => { $('chat-message').value = prompt; $('chat-message').focus(); });
       container.append(button);
     });
     if (!suggestions.length) container.append(node('p', 'Suggested questions will appear when program data is available.'));
   }
   window.addEventListener('program-catalog-updated', refreshSuggestions);
   refreshSuggestions();
-  progress(); showAsk();
+  progress();
+  if (new URLSearchParams(location.search).get('mode') === 'guided') {
+    startGuided();
+  } else showAsk();
 })();

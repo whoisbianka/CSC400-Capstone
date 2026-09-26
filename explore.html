@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Explore | Degree Path Explorer</title>
+  <link rel="icon" href="assets/img/favicon.png">
+  <link rel="stylesheet" href="assets/css/chat-interface.css">
+  <link rel="stylesheet" href="assets/css/chat-shell.css">
+  <link rel="stylesheet" href="assets/css/chat-warm-theme.css">
+  <script src="assets/js/chat-shell.js" defer></script>
+  <script src="assets/data/demo-programs.js" defer></script>
+  <script src="assets/js/program-catalog.js" defer></script>
+  <script src="assets/js/explore.js" defer></script>
+</head>
+<body class="chat-app">
+<a class="skip-link" href="#page-title">Skip to content</a>
+<aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
+  <a class="app-brand" href="index.html"><span class="brand-icon" aria-hidden="true">D</span><span>Degree Path Explorer</span></a>
+  <p class="sidebar-label">Your workspace</p>
+  <nav aria-label="Workspace navigation"><a href="index.html" class="sidebar-link">Chat</a><a href="program-details.html" class="sidebar-link">Major details</a></nav>
+  <a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
+</aside>
+<button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
+<main class="app-main">
+  <header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>Explore</strong></div><nav class="global-nav" aria-label="Global navigation"><a href="explore.html" aria-current="page">Explore</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav></header>
+  <div class="page-workspace"><section class="workspace-page" aria-labelledby="page-title">
+    <p class="eyebrow">Explore your possibilities</p>
+    <h1 id="page-title">Majors &amp; colleges</h1>
+    <p>Compare programs and find a path that interests you.</p>
+    <a class="primary-link" href="index.html?mode=guided" target="_blank" rel="noopener noreferrer" aria-label="Find my major (opens in a new tab)">Find my major ↗</a>
+    <div class="tbl-wrap-outer">
+      <label for="tbl-search">Search majors or colleges</label>
+      <input class="tbl-search" id="tbl-search" type="search" placeholder="Search majors, colleges, locations…">
+      <div class="tbl-filters" id="tbl-filters" role="group" aria-label="Filter by study format"></div>
+      <p class="tbl-count" id="tbl-count" role="status"></p>
+      <div class="tbl-scroll" role="region" aria-label="Programs table, scroll for more columns" tabindex="0">
+        <table><caption class="sr-only">Compare majors and colleges</caption><thead><tr id="tbl-head"></tr></thead><tbody id="tbl-body"></tbody></table>
+      </div>
+      <p class="small-note" id="catalog-note"></p>
+    </div>
+    <noscript>Enable JavaScript to search and compare programs.</noscript>
+  </section></div>
+</main>
+</body>
+</html>

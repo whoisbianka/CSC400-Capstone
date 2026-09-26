@@ -17,33 +17,23 @@
 
 <body class="chat-app">
 <a class="skip-link" href="#chat-message">Skip to your message</a>
-<aside class="app-sidebar" id="app-sidebar" aria-label="Chat navigation">
-<a class="app-brand" href="index.html"><span class="brand-icon" aria-hidden="true">D</span><span>Degree Path Explorer<br></span></a>
-
-
-
-<!--Sidebar-->
-<button class="new-conversation" id="restart-answers" type="button"><span aria-hidden="true">＋</span> Start over</button>
-<p class="sidebar-label">Your workspace</p>
-<nav aria-label="Main navigation"><a href="index.html" class="sidebar-link" aria-current="page"><span aria-hidden="true">◉</span> Chat</a><a href="program-details.html" class="sidebar-link"><span aria-hidden="true">▤</span> Major Details</a></nav>
-
-<div class="sidebar-session"><p class="sidebar-label">Current session</p><a href="#chat" class="session-link">Ask about majors <span aria-hidden="true">↗</span></a>
-  
-<a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
+<aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
+  <a class="app-brand" href="index.html"><span class="brand-icon" aria-hidden="true">D</span><span>Degree Path Explorer</span></a>
+  <p class="sidebar-label">Your workspace</p>
+  <nav aria-label="Workspace navigation"><a href="index.html" class="sidebar-link" aria-current="page">Chat</a><a href="program-details.html" class="sidebar-link">Major details</a></nav>
+  <a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
 </aside>
 
 <button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
 <main class="app-main" id="chat">
-<header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button>
-  <strong>Degree Path Assistant</strong><span class="preview-pill">Preview</span></div>
-  <a href="settings.html" class="topbar-settings" aria-label="Settings" title="Settings">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.7 2.2-2 .9-2.2-.5-2 3.4 1.5 1.7v2.6L2.1 15l2 3.4 2.2-.5 2 .9L9 21h4l.7-2.2 2-.9 2.2.5 2-3.4-1.5-1.7v-2.6L19.9 9l-2-3.4-2.2.5-2-.9L13 3z"/><circle cx="11" cy="12" r="3"/></svg><span>Settings</span></a></header>
+<header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>Degree Path Assistant</strong></div><nav class="global-nav" aria-label="Global navigation"><a href="explore.html">Explore</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav></header>
 
 
+<div class="chat-workspace">
 <div class="conversation-body" id="conversation-body">
 <section class="chat-welcome" aria-labelledby="chat-title"><span class="welcome-symbol" aria-hidden="true"><!--logo should go here--></span><h1 id="chat-title">Don't stress. Just chat!</h1><p>Your next chapter doesn't need to be figured out.<br>Ask about majors, colleges, and careers—or complete our free questionnaire!</p></section>
-<div class="chat-modes" role="group" aria-label="Chat mode"><button id="ask-mode" type="button" aria-pressed="true">Ask a question</button><button id="guided-mode" type="button" aria-pressed="false">Find my major</button></div>
-<div id="query-starters" class="query-starters" aria-label="Suggested questions from available programs"></div>
+<div class="chat-modes" role="group" aria-label="Chat mode"><button id="ask-mode" type="button" aria-pressed="true">Ask a question</button><a id="guided-mode" href="index.html?mode=guided" target="_blank" rel="noopener noreferrer" aria-label="Find my major (opens in a new tab)">Find my major</a></div>
+
 
 <!-- Code for the find your major guided questionnaire -->
 <div class="question-progress" id="guided-progress" hidden><p id="progress-label" aria-live="polite"></p><progress id="answer-progress" max="5" value="0" aria-label="Questions answered"></progress></div>
@@ -56,13 +46,15 @@
 
 
 <div class="composer-dock">
+<div id="query-starters" class="query-starters" aria-label="Suggested prompts"></div>
 <form id="chat-form" class="composer"><label for="chat-message" id="answer-label">Your answer</label>
-          <div class="input-row"><textarea id="chat-message" rows="2" maxlength="2000" placeholder="Type your answer here…" aria-describedby="connection-note keyboard-note" required></textarea><button id="send-message" type="submit" disabled>Save &amp; continue</button></div><p id="keyboard-note">Enter to continue · Shift + Enter for a new line</p></form>
+          <div class="input-row"><textarea id="chat-message" rows="2" maxlength="2000" placeholder="Type your answer here…" aria-describedby="connection-note keyboard-note" required></textarea></div><p id="keyboard-note">Enter to continue · Shift + Enter for a new line</p></form>
 
 <p id="chat-feedback" class="chat-feedback" role="status"></p>
 <p class="connection-note" id="connection-note">Demo data only · All colleges, programs, and tuition figures shown are fictional test fixtures.</p>
 <noscript>Enable JavaScript to answer the guided questions.</noscript>
 
+</div>
 </div>
 </main>
 </body>

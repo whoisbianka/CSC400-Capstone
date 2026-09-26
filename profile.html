@@ -6,17 +6,28 @@
   <title>Profile | Degree Path Explorer</title>
   <link rel="icon" href="assets/img/favicon.png">
   <link rel="stylesheet" href="assets/css/chat-interface.css">
+  <link rel="stylesheet" href="assets/css/chat-shell.css">
+  <link rel="stylesheet" href="assets/css/chat-warm-theme.css">
+  <script src="assets/js/chat-shell.js" defer></script>
+
 </head>
-<body>
-  <header class="site-header"><a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">D</span>Degree Path Explorer</a><nav class="page-nav" aria-label="Main navigation"><a href="index.html">Chat</a><a href="profile.html" aria-current="page">Profile</a><a href="settings.html">Settings</a></nav></header>
-  <main>
-    <section class="account-placeholder" aria-labelledby="page-title">
-      <p class="eyebrow">Coming soon</p>
-      <h1 id="page-title">Profile</h1>
-      <p>Your profile will live here. Profile details and saved information are coming soon.</p>
-      <a class="primary-link" href="index.html#chat">Back to the conversation →</a>
-    </section>
-  </main>
-  <footer>Degree Path Explorer <span>A conversation toward your next step.</span></footer>
+<body class="chat-app">
+<a class="skip-link" href="#page-title">Skip to content</a>
+<aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
+  <a class="app-brand" href="index.html"><span class="brand-icon" aria-hidden="true">D</span><span>Degree Path Explorer</span></a>
+  <p class="sidebar-label">Your workspace</p>
+  <nav aria-label="Workspace navigation"><a href="index.html" class="sidebar-link">Chat</a><a href="program-details.html" class="sidebar-link">Major details</a></nav>
+  <a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
+</aside>
+<button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
+<main class="app-main">
+  <header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>Profile</strong></div><nav class="global-nav" aria-label="Global navigation"><a href="explore.html">Explore</a><a href="profile.html" aria-current="page">Profile</a><a href="settings.html">Settings</a></nav></header>
+  <div class="page-workspace"><section class="workspace-page" aria-labelledby="page-title">
+    <p class="eyebrow">Coming soon</p>
+    <h1 id="page-title">Profile</h1>
+    <p>Your profile will live here. Profile details and saved information are coming soon.</p>
+    <a class="primary-link" href="index.html">Back to the conversation →</a>
+  </section></div>
+</main>
 </body>
 </html>
