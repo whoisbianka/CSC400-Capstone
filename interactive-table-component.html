@@ -1,0 +1,157 @@
+<!--
+  DROP-IN INTERACTIVE TABLE COMPONENT
+  ------------------------------------
+  A searchable, filterable, sortable table. Copy the <style>, the HTML block,
+  and the <script> into your own page. To reuse it:
+    1. Replace the DATA array with your own rows (any shape you like).
+    2. Update CATEGORIES to match a field you want to use as a filter facet.
+    3. Update COLUMNS to match your row's fields.
+    4. Call renderTable() once on load — everything else wires itself up.
+-->
+
+<style>
+  .tbl-wrap-outer{ --tbl-bg:#fff; --tbl-border:#E4DFFA; --tbl-ink:#201B3D;
+    --tbl-soft:#655D8E; --tbl-accent:#FF5A5F; --tbl-accent-2:#2EC4B6;
+    font-family:'Inter',system-ui,sans-serif; color:var(--tbl-ink); max-width:900px; }
+  .tbl-search{
+    width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--tbl-border);
+    background:var(--tbl-bg); color:var(--tbl-ink); font:inherit; font-size:15px; margin-bottom:10px;
+    box-sizing:border-box;
+  }
+  .tbl-search:focus{ outline:2px solid var(--tbl-accent); outline-offset:1px; }
+  .tbl-filters{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
+  .tbl-chip{
+    border:1.5px solid var(--tbl-border); background:var(--tbl-bg); color:var(--tbl-soft);
+    padding:6px 12px; border-radius:999px; font-size:12.5px; font:inherit; font-weight:600; cursor:pointer;
+  }
+  .tbl-chip.on{ background:var(--tbl-accent-2); border-color:var(--tbl-accent-2); color:#0F2E2A; }
+  .tbl-count{ font-size:12.5px; color:var(--tbl-soft); margin:-2px 0 12px; }
+  .tbl-scroll{ overflow-x:auto; border:1px solid var(--tbl-border); border-radius:14px; }
+  .tbl-scroll table{ width:100%; border-collapse:collapse; font-size:13.5px; min-width:640px; }
+  .tbl-scroll thead th{
+    position:sticky; top:0; background:var(--tbl-bg); text-align:left; padding:11px 12px;
+    border-bottom:1.5px solid var(--tbl-border); cursor:pointer; user-select:none;
+    white-space:nowrap; font-weight:700;
+  }
+  .tbl-scroll thead th .tbl-arrow{ opacity:.4; font-size:11px; margin-left:3px; }
+  .tbl-scroll thead th.sorted .tbl-arrow{ opacity:1; }
+  .tbl-scroll tbody td{ padding:10px 12px; border-bottom:1px solid var(--tbl-border); }
+  .tbl-scroll tbody tr:hover{ background:rgba(255,90,95,.06); }
+  .tbl-scroll tbody tr:last-child td{ border-bottom:none; }
+  .tbl-empty td{ text-align:center; padding:24px; color:var(--tbl-soft); }
+</style>
+
+<div class="tbl-wrap-outer">
+  <input class="tbl-search" id="tbl-search" type="text" placeholder="Search…">
+  <div class="tbl-filters" id="tbl-filters"></div>
+  <p class="tbl-count" id="tbl-count"></p>
+  <div class="tbl-scroll">
+    <table id="tbl-table">
+      <thead><tr id="tbl-head"></tr></thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  // 1) YOUR DATA — any array of flat objects.
+  const DATA = [
+    {college:"Georgia Institute of Technology", location:"Atlanta, GA", major:"Computer Science", field:"Technology", degree:"BS", size:"Large", cost:"$$"},
+    {college:"MIT", location:"Cambridge, MA", major:"Biology", field:"Science", degree:"BS", size:"Medium", cost:"$$$$"},
+    {college:"Purdue University", location:"West Lafayette, IN", major:"Mechanical Engineering", field:"Engineering", degree:"BS", size:"Large", cost:"$$"},
+    {college:"University of Michigan (Ross)", location:"Ann Arbor, MI", major:"Business Administration", field:"Business", degree:"BBA", size:"Large", cost:"$$$"}
+    // ...add as many rows as you like
+  ];
+
+  // 2) COLUMNS — [dataKey, displayLabel]. Add a `rank` map below for any
+  //    column that should sort by a custom order instead of alphabetically.
+  const COLUMNS = [
+    ['college','College'], ['location','Location'], ['major','Major'],
+    ['field','Field'], ['degree','Degree'], ['size','Size'], ['cost','Cost']
+  ];
+
+  // Optional custom sort order for specific columns (else sorts alphabetically)
+  const RANKS = {
+    size: {"Small":0,"Medium":1,"Large":2},
+    cost: {"$":0,"$$":1,"$$$":2,"$$$$":3}
+  };
+
+  // 3) FILTER FACET — which column's distinct values become the chip filters.
+  const FILTER_KEY = 'field';
+  const FILTER_VALUES = [...new Set(DATA.map(r => r[FILTER_KEY]))];
+
+  // ---- internal state ----
+  let activeFilters = new Set(FILTER_VALUES);
+  let sortKey = COLUMNS[0][0];
+  let sortDir = 1;
+
+  const searchEl = document.getElementById('tbl-search');
+  const filtersEl = document.getElementById('tbl-filters');
+  const headEl = document.getElementById('tbl-head');
+  const bodyEl = document.getElementById('tbl-body');
+  const countEl = document.getElementById('tbl-count');
+
+  function buildHead(){
+    headEl.innerHTML = COLUMNS.map(([key,label]) =>
+      `<th data-key="${key}">${label}<span class="tbl-arrow">▲</span></th>`
+    ).join('');
+    headEl.querySelectorAll('th').forEach(th => {
+      th.onclick = () => {
+        const key = th.dataset.key;
+        if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+        render();
+      };
+    });
+  }
+
+  function buildFilters(){
+    filtersEl.innerHTML = FILTER_VALUES.map(v =>
+      `<button class="tbl-chip on" data-val="${v}">${v}</button>`
+    ).join('');
+    filtersEl.querySelectorAll('.tbl-chip').forEach(chip => {
+      chip.onclick = () => {
+        const v = chip.dataset.val;
+        if (activeFilters.has(v) && activeFilters.size > 1) { activeFilters.delete(v); chip.classList.remove('on'); }
+        else if (!activeFilters.has(v)) { activeFilters.add(v); chip.classList.add('on'); }
+        render();
+      };
+    });
+  }
+
+  function render(){
+    const term = searchEl.value.trim().toLowerCase();
+    let rows = DATA.filter(r => activeFilters.has(r[FILTER_KEY]));
+    if (term) {
+      rows = rows.filter(r =>
+        COLUMNS.some(([key]) => String(r[key]).toLowerCase().includes(term))
+      );
+    }
+    rows.sort((a,b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if (RANKS[sortKey]) { av = RANKS[sortKey][av]; bv = RANKS[sortKey][bv]; }
+      if (av < bv) return -1 * sortDir;
+      if (av > bv) return 1 * sortDir;
+      return 0;
+    });
+
+    bodyEl.innerHTML = rows.length
+      ? rows.map(r => `<tr>${COLUMNS.map(([key]) => `<td>${r[key]}</td>`).join('')}</tr>`).join('')
+      : `<tr class="tbl-empty"><td colspan="${COLUMNS.length}">No results match your search or filters.</td></tr>`;
+
+    countEl.textContent = `${rows.length} result${rows.length === 1 ? '' : 's'}`;
+
+    headEl.querySelectorAll('th').forEach(th => {
+      th.classList.toggle('sorted', th.dataset.key === sortKey);
+      th.querySelector('.tbl-arrow').textContent = th.dataset.key === sortKey ? (sortDir === 1 ? '▲' : '▼') : '▲';
+    });
+  }
+
+  searchEl.oninput = render;
+  buildHead();
+  buildFilters();
+  render();
+
+})();
+</script>
