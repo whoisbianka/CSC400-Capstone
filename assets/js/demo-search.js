@@ -25,7 +25,6 @@
         '|'
       );
     const locations = states.filter(state => contains(text, state));
-    // Avoid matching Virginia inside West Virginia.
     const locationsExact = locations.filter(
       state => !locations.some(other => other !== state && other.includes(state))
     );
@@ -42,7 +41,7 @@
     );
     const budget = cost ? Number(cost[1].replace(/,/g, '')) * (cost[2] ? 1000 : 1) : null;
     const inclusive = cost && /up to|at most/i.test(cost[0]);
-    const formats = ['Online', 'Campus', 'Hybrid'].filter(f => contains(text, f));
+    const formats = ['Online', 'On Campus', 'Hybrid'].filter(f => contains(text, f));
     const types = ['Public', 'Private'].filter(t => contains(text, t));
     const filters = [...locationsExact, ...formats, ...types];
     if (budget !== null)

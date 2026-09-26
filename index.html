@@ -45,6 +45,7 @@ target="_blank" rel="noopener noreferrer" aria-label="Find my major (opens in a 
 <div class="question-progress" id="guided-progress" hidden><p id="progress-label" aria-live="polite"></p><progress id="answer-progress" max="5" value="0" aria-label="Questions answered"></progress></div>
 
 <div class="messages" id="messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions text"></div>
+
 <!--what shows up after you finish the questionnaire-->
 <section id="major-results" class="answer-review" hidden aria-labelledby="results-title">
   <h3 id="results-title" tabindex="-1">Programs related to your answers</h3>
@@ -72,10 +73,11 @@ target="_blank" rel="noopener noreferrer" aria-label="Find my major (opens in a 
 
 <div class="composer-dock">
 <div id="query-starters" class="query-starters" aria-label="Suggested prompts"></div>
-<form id="chat-form" class="composer"><label for="chat-message" id="answer-label">User answer</label>
+<form id="chat-form" class="composer">
           <div class="input-row"><textarea id="chat-message" rows="2" maxlength="2000" placeholder="Type your answer here…" aria-describedby="connection-note keyboard-note" required></textarea></div><p id="keyboard-note">Enter to continue · Shift + Enter for a new line</p></form>
 
 <p id="chat-feedback" class="chat-feedback" role="status"></p>
+
 <!--footer-->
 <p class="connection-note" id="connection-note">Demo data only · All colleges, programs, and tuition figures shown are fictional test fixtures.</p>
 <noscript>Enable JavaScript to answer the guided questions.</noscript>
