@@ -94,6 +94,7 @@
   }
   function activate(nextMode) {
     mode = nextMode;
+    $('query-starters').hidden = mode !== 'ask';
     $('ask-mode').setAttribute('aria-pressed', String(mode === 'ask'));
     $('guided-progress').hidden = mode !== 'guided';
     $('major-results').hidden = true;
@@ -105,7 +106,7 @@
   function showAsk(focus = false) {
     if (mode === 'guided' && current !== null && !$('chat-form').hidden) guidedDraft = {index:current, editing, text:$('chat-message').value};
     activate('ask'); current = null;
-    $('answer-review').hidden = true; $('chat-form').hidden = false; $('query-starters').hidden = false;
+    $('answer-review').hidden = true; $('chat-form').hidden = false;
     $('messages').replaceChildren();
     queryMessages.forEach(message => message.result ? renderResults(message.result) : bubble(message.text, message.user));
     $('answer-label').textContent = 'Ask about majors, colleges, or careers';
@@ -127,7 +128,7 @@
     activate('guided');
     $('chat-message').placeholder = 'Type your answer here…';
     current = index; editing = isEdit;
-    $('answer-review').hidden = true; $('chat-form').hidden = false; $('query-starters').hidden = false;
+    $('answer-review').hidden = true; $('chat-form').hidden = false;
     transcript(); bubble(`${isEdit ? 'Edit answer' : 'Question'} ${index + 1} of ${questions.length}: ${questions[index].text}`);
     $('answer-label').textContent = questions[index].text;
     $('chat-message').value = answers[questions[index].id] || '';
@@ -139,7 +140,7 @@
   function review(focus = true) {
     if (mode === 'ask') queryDraft = $('chat-message').value;
     activate('guided');
-    current = null; $('chat-form').hidden = true; $('query-starters').hidden = true; $('answer-review').hidden = false;
+    current = null; $('chat-form').hidden = true; $('answer-review').hidden = false;
     transcript(); $('review-list').replaceChildren();
     questions.forEach((q, index) => {
       if (!answers[q.id]) return;
