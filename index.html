@@ -6,8 +6,10 @@
 <link rel="icon" href="assets/img/favicon.png">
 <link rel="stylesheet" href="assets/css/chat-interface.css">
 <link rel="stylesheet" href="assets/css/chat-shell.css">
+<link rel="stylesheet" href="assets/css/chat-warm-theme.css">
 <script src="assets/data/demo-programs.js" defer></script>
 <script src="assets/js/demo-search.js" defer></script>
+<script src="assets/js/program-catalog.js" defer></script>
 <script src="assets/js/chat-interface.js" defer></script>
 <script src="assets/js/chat-shell.js" defer></script>
 </head>
@@ -21,28 +23,28 @@
 
 
 <!--Sidebar-->
+<button class="new-conversation" id="restart-answers" type="button"><span aria-hidden="true">＋</span> Start over</button>
 <p class="sidebar-label">Your workspace</p>
-<nav aria-label="Main navigation"><a href="index.html" class="sidebar-link" aria-current="page"><span aria-hidden="true">◉</span> Chat</a><a href="profile.html" class="sidebar-link"><span aria-hidden="true">○</span> Profile</a><a href="settings.html" class="sidebar-link"><span aria-hidden="true">⚙</span> Settings</a></nav>
+<nav aria-label="Main navigation"><a href="index.html" class="sidebar-link" aria-current="page"><span aria-hidden="true">◉</span> Chat</a></nav>
 
 <div class="sidebar-session"><p class="sidebar-label">Current session</p><a href="#chat" class="session-link">Ask about majors <span aria-hidden="true">↗</span></a>
   <button id="review-answers" class="sidebar-link" type="button" hidden>Review my answers</button></div>
+<a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span><span class="profile-arrow" aria-hidden="true">↗</span></a>
 </aside>
 
 <button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
 <main class="app-main" id="chat">
 <header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button>
-  <strong>Degree Path Assistant</strong><span class="preview-pill">Preview</span></div><details class="about-assistant"><summary>About this chat</summary><div><strong>A little about our chatbot</strong><p>Ask questions about majors, colleges, and career information. If you want help narrowing your options, try the optional Find my major questionnaire.</p><p>This preview searches fictional colleges and programs using simple keyword and filter matching. It is not connected to the real database.</p></div></details></header>
-<div class="conversation-body" id="conversation-body">
-<section class="chat-welcome" aria-labelledby="chat-title"><span class="welcome-symbol" aria-hidden="true">✳</span><h1 id="chat-title">Don't stress. Just chat!</h1><p>Your next chapter doesn't need to be figured out.<br>Ask about majors, colleges, and careers—or get help finding your direction.</p></section>
-<div class="chat-modes" role="group" aria-label="Chat mode"><button id="ask-mode" type="button" aria-pressed="true">Ask a question</button><button id="guided-mode" type="button" aria-pressed="false">Find my major</button></div>
-<div id="query-starters" class="query-starters">
-<button type="button" data-query="Which colleges offer computer science?">Computer science colleges</button>
-<button type="button" data-query="Show nursing programs in Connecticut">Nursing in Connecticut</button>
-<button type="button" data-query="Show online business programs under $20,000">Online business under $20k</button>
-<button type="button" data-query="Compare psychology and sociology">Psychology vs. sociology</button>
-</div>
+  <strong>Degree Path Assistant</strong><span class="preview-pill">Preview</span></div>
+  <a href="settings.html" class="topbar-settings" aria-label="Settings" title="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.7 2.2-2 .9-2.2-.5-2 3.4 1.5 1.7v2.6L2.1 15l2 3.4 2.2-.5 2 .9L9 21h4l.7-2.2 2-.9 2.2.5 2-3.4-1.5-1.7v-2.6L19.9 9l-2-3.4-2.2.5-2-.9L13 3z"/><circle cx="11" cy="12" r="3"/></svg><span>Settings</span></a></header>
 
-<!-- Find your major guided questionnaire -->
+
+<div class="conversation-body" id="conversation-body">
+<section class="chat-welcome" aria-labelledby="chat-title"><span class="welcome-symbol" aria-hidden="true"><!--logo should go here--></span><h1 id="chat-title">Don't stress. Just chat!</h1><p>Your next chapter doesn't need to be figured out.<br>Ask about majors, colleges, and careers—or complete our free questionnaire!</p></section>
+<div class="chat-modes" role="group" aria-label="Chat mode"><button id="ask-mode" type="button" aria-pressed="true">Ask a question</button><button id="guided-mode" type="button" aria-pressed="false">Find my major</button></div>
+<div id="query-starters" class="query-starters" aria-label="Suggested questions from available programs"></div>
+
+<!-- Code for the find your major guided questionnaire -->
 <div class="question-progress" id="guided-progress" hidden><p id="progress-label" aria-live="polite"></p><progress id="answer-progress" max="5" value="0" aria-label="Questions answered"></progress></div>
 
 <div class="messages" id="messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions text"></div>
@@ -50,7 +52,7 @@
   <p>Your answers are ready. Once connected, the chatbot will use them to suggest a couple of majors and explain why they may fit.</p><p>No recommendations have been generated in this preview.</p></section>
 <section id="answer-review" class="answer-review" aria-labelledby="review-title" hidden><h3 id="review-title" tabindex="-1">Review your answers</h3><p>You can edit any answer before finishing.</p><div id="review-list"></div><button id="finish-answers" type="button">Finish review</button></section>
 
-<button class="new-conversation" id="restart-answers" type="button"><span aria-hidden="true">＋</span> Start over</button>
+
 
 </div>
 <div class="composer-dock">

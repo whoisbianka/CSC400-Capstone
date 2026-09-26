@@ -68,3 +68,21 @@
 .results-table tbody th { font-weight:700; }
 .results-table tbody tr:nth-child(even) { background:#f6f7f9; }
 .results-table tbody tr:last-child>* { border-bottom:0; }
+
+.college-result-card { margin:18px 0; padding:22px; border:1px solid #dce1e6; border-radius:16px; background:#fff; box-shadow:0 4px 16px #0b132b06; }
+.college-card-header { display:flex; gap:14px; align-items:center; }
+.college-emblem { display:grid; place-items:center; flex-shrink:0; width:54px; height:54px; background:#fff0e3; color:#0B132B; border-radius:12px; font-weight:800; }
+.college-card-header h3 { margin:0 0 5px; font-size:20px; }
+.chat-app .college-card-header p { font-size:12px; color:#4E5D6C; }
+.major-tags { display:flex; gap:8px; flex-wrap:wrap; margin:18px 0; }
+.major-tags span { background:#edf1f5; color:#0B132B; border-radius:20px; padding:6px 12px; font-size:12px; }
+.college-stats { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px 0; border-top:1px solid #e3e7eb; border-bottom:1px solid #e3e7eb; }
+.college-stats dt { font-size:11px; color:#4E5D6C; }
+.college-stats dd { margin:6px 0 0; font-size:17px; font-weight:700; }
+.chat-app .match-reason { font-size:12px; margin-bottom:12px; }
+.program-details summary { cursor:pointer; font-weight:650; font-size:13px; padding:8px 0; }
+.program-detail { padding:14px 0; border-top:1px solid #e3e7eb; }
+.program-detail h4 { margin:0 0 8px; font-size:15px; }
+.chat-app .program-detail p { font-size:12px; }
+.result-count { font-size:13px; font-weight:700; }
+@media(max-width:480px) { .college-result-card { padding:16px; }.college-card-header h3 { font-size:17px; }.college-stats { grid-template-columns:1fr; } }

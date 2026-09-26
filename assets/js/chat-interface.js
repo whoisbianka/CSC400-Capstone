@@ -43,27 +43,44 @@
   }
   function renderResults(result, target = $('messages')) {
     const item = node('article', ''); item.className = 'message assistant result-message';
-    const author = node('p', 'Degree Path Assistant · Demo results'); author.className = 'message-author';
+    const author = node('p', result.demo ? 'Degree Path Assistant · Demo results' : 'Degree Path Assistant · Program results'); author.className = 'message-author';
     item.append(author, node('p', result.message));
-    const disclaimer = node('p', 'Fictional test data — not real colleges, rankings, costs, or recommendations. Career examples may require additional credentials.');
+    const disclaimer = node('p', result.demo ? 'Fictional test data — not real colleges, rankings, costs, or recommendations.' : 'Results from the connected program catalog. Check program requirements and costs with the college.');
     disclaimer.className = 'demo-disclaimer'; item.append(disclaimer);
     if (result.filters.length) item.append(node('p', 'Filters: ' + result.filters.join(' · ')));
     if (result.terms.length) item.append(node('p', 'Matched topics: ' + result.terms.join(', ')));
     if (result.rows.length) {
-      const wrap = node('div', ''); wrap.className = 'results-scroll'; wrap.tabIndex = 0;
-      wrap.setAttribute('role', 'region'); wrap.setAttribute('aria-label', 'Program comparison table; scroll horizontally for more columns');
-      const table = node('table', ''); table.className = 'results-table';
-      table.append(node('caption', 'Matching majors and colleges · Demo dataset'));
-      const head = node('thead', ''); const headers = node('tr', '');
-      ['Major', 'College', 'Location', 'Format', 'Annual tuition (demo)', 'Career examples', 'Why shown'].forEach(label => { const th = node('th',label); th.scope = 'col'; headers.append(th); });
-      head.append(headers); table.append(head); const body = node('tbody','');
+      const colleges = new Map();
       result.rows.forEach(program => {
-        const row = node('tr','');
-        const major = node('th', program.major); major.scope = 'row'; row.append(major);
-        [program.college + ' · ' + program.type, program.state, program.format, '$' + program.tuition.toLocaleString('en-US'), program.careers.join(', '), program.matched.length ? program.matched.join(', ') : 'Matches your filters'].forEach(value => row.append(node('td',value)));
-        body.append(row);
+        const key = program.college + '|' + program.state;
+        if (!colleges.has(key)) colleges.set(key, []);
+        colleges.get(key).push(program);
       });
-      table.append(body); wrap.append(table); item.append(wrap);
+      const count = node('p', `${colleges.size} colleges · ${result.rows.length} related programs`); count.className = 'result-count'; item.append(count);
+      colleges.forEach(programs => {
+        const first = programs[0];
+        const card = node('article', ''); card.className = 'college-result-card';
+        const header = node('div',''); header.className = 'college-card-header';
+        const emblem = node('span', first.college.split(' ').map(w => w[0]).slice(0,2).join('')); emblem.className = 'college-emblem'; emblem.setAttribute('aria-hidden','true');
+        const title = node('div',''); title.append(node('h3',first.college),node('p',[first.state,first.type].filter(Boolean).join(' · ') || 'Location and college type not provided'));
+        header.append(emblem,title); card.append(header);
+        const tagList = node('div',''); tagList.className = 'major-tags';
+        [...new Set(programs.map(p => p.major))].forEach(major => tagList.append(node('span',major))); card.append(tagList);
+        const stats = node('dl',''); stats.className = 'college-stats';
+        const costs = programs.map(p => p.tuition).filter(p => p !== null);
+        const tuition = costs.length ? (Math.min(...costs) === Math.max(...costs) ? '$' + Math.min(...costs).toLocaleString('en-US') : '$' + Math.min(...costs).toLocaleString('en-US') + '–$' + Math.max(...costs).toLocaleString('en-US')) : 'Not available';
+        [['Annual tuition' + (result.demo ? ' · demo' : ''),tuition],['Study format',[...new Set(programs.map(p => p.format).filter(Boolean))].join(' / ') || 'Not available']].forEach(([label,value]) => { const group = node('div',''); group.append(node('dt',label),node('dd',value)); stats.append(group); });
+        card.append(stats);
+        const matches = [...new Set(programs.flatMap(p => p.matched))];
+        const why = node('p',matches.length ? 'Related to: ' + matches.join(', ') : 'Matches the filters in your question.'); why.className = 'match-reason'; card.append(why);
+        const details = node('details',''); details.className = 'program-details'; details.append(node('summary','View matching program details'));
+        programs.forEach(program => {
+          const section = node('div',''); section.className = 'program-detail';
+          section.append(node('h4',program.major),node('p','Format: ' + (program.format || 'Not available')),node('p','Annual tuition: ' + (program.tuition === null ? 'Not available' : '$' + program.tuition.toLocaleString('en-US'))),node('p','Career examples: ' + (program.careers.join(', ') || 'Not available')));
+          details.append(section);
+        });
+        card.append(details); item.append(card);
+      });
     }
     target.append(item);
   }
@@ -80,7 +97,7 @@
     $('major-results').hidden = true;
     $('chat-feedback').textContent = '';
     $('connection-note').textContent = mode === 'ask'
-      ? 'Demo data only · Colleges, programs, and tuition figures are fictional. Matching uses keywords and filters, not a live chatbot.'
+      ? (window.programCatalog.isDemo() ? 'Demo data only · Colleges, programs, and tuition figures are fictional. Matching uses keywords and filters, not a live chatbot.' : 'Program catalog loaded · Keyword and filter search preview.')
       : storageAvailable ? 'Optional sample questions · Answers saved in this browser tab for this session, not to your account.' : 'Optional sample questions · Answers stay on this page only; browser storage is unavailable.';
     $('restart-answers').textContent = mode === 'ask' ? 'Clear conversation' : 'Restart questionnaire';
   }
@@ -147,7 +164,9 @@
     if (!value) return;
     if (mode === 'ask') {
       queryMessages.push({text:value, user:true}); bubble(value, true);
-      const result = window.demoSearch(value, window.demoPrograms);
+      const result = window.demoSearch(value, window.programCatalog.getPrograms());
+      result.demo = window.programCatalog.isDemo();
+      if (!result.demo) result.message = result.rows.length ? `${result.rows.length} matching programs found.` : 'No matching programs found. Try another major or broaden your filters.';
       queryMessages.push({result}); renderResults(result);
       queryDraft = ''; $('chat-message').value = ''; $('send-message').disabled = true;
       $('conversation-body').scrollTop = $('conversation-body').scrollHeight;
@@ -177,8 +196,18 @@
   save();
   $('ask-mode').addEventListener('click', () => { if (mode !== 'ask') showAsk(true); });
   $('guided-mode').addEventListener('click', () => { if (mode !== 'guided') startGuided(); });
-  document.querySelectorAll('[data-query]').forEach(button => button.addEventListener('click', () => {
-    $('chat-message').value = button.dataset.query; $('send-message').disabled = false; $('chat-message').focus();
-  }));
+  function refreshSuggestions() {
+    if (mode === 'ask') $('connection-note').textContent = window.programCatalog.isDemo() ? 'Demo data only · Colleges, programs, and tuition figures are fictional.' : 'Program catalog loaded · Keyword and filter search preview.';
+    const container = $('query-starters'); container.replaceChildren();
+    const suggestions = window.programCatalog.suggestions();
+    suggestions.forEach(prompt => {
+      const button = node('button', prompt); button.type = 'button';
+      button.addEventListener('click', () => { $('chat-message').value = prompt; $('send-message').disabled = false; $('chat-message').focus(); });
+      container.append(button);
+    });
+    if (!suggestions.length) container.append(node('p', 'Suggested questions will appear when program data is available.'));
+  }
+  window.addEventListener('program-catalog-updated', refreshSuggestions);
+  refreshSuggestions();
   progress(); showAsk();
 })();
