@@ -1,28 +1,138 @@
-body { background:#faf9f6; }
-.program-page { max-width:1000px; padding-bottom:60px; }
-.program-banner { padding:48px; background:#0B132B; color:#fff; border-radius:20px; margin:24px 0; }
-.program-banner h1 { font-size:clamp(30px,5vw,44px); overflow-wrap:anywhere; }
-.program-banner .eyebrow { color:#FF7A00; }
-.program-banner>p:last-child { font-size:19px; color:#e2e8f0; }
-.record-notice { color:#4E5D6C; padding:16px 0; font-size:13px; }
-.program-section { padding:28px; background:#fff; border:1px solid #dce1e6; border-radius:16px; margin:18px 0; line-height:1.7; overflow-wrap:anywhere; }
-.program-section h2 { font-size:23px; }
-.program-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:24px; margin:0; }
-.program-facts dt { font-size:12px; color:#4E5D6C; }
-.program-facts dd { margin:4px 0 0; font-weight:650; }
-.topic-list { display:flex; gap:8px; flex-wrap:wrap; list-style:none; padding:0; }
-.topic-list li { padding:5px 12px; background:#fff0e3; border-radius:20px; font-size:13px; }
-.small-note { color:#4E5D6C; font-size:12px; }
-@media(max-width:600px) { .program-banner { padding:28px; }.program-section { padding:22px; } }
+body {
+  background: #faf9f6;
+}
+.program-page {
+  max-width: 1000px;
+  padding-bottom: 60px;
+}
+.program-banner {
+  padding: 48px;
+  background: #0b132b;
+  color: #fff;
+  border-radius: 20px;
+  margin: 24px 0;
+}
+.program-banner h1 {
+  font-size: clamp(30px, 5vw, 44px);
+  overflow-wrap: anywhere;
+}
+.program-banner .eyebrow {
+  color: #ff7a00;
+}
+.program-banner > p:last-child {
+  font-size: 19px;
+  color: #e2e8f0;
+}
+.record-notice {
+  color: #4e5d6c;
+  padding: 16px 0;
+  font-size: 13px;
+}
+.program-section {
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #dce1e6;
+  border-radius: 16px;
+  margin: 18px 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.program-section h2 {
+  font-size: 23px;
+}
+.program-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  margin: 0;
+}
+.program-facts dt {
+  font-size: 12px;
+  color: #4e5d6c;
+}
+.program-facts dd {
+  margin: 4px 0 0;
+  font-weight: 650;
+}
+.topic-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+}
+.topic-list li {
+  padding: 5px 12px;
+  background: #fff0e3;
+  border-radius: 20px;
+  font-size: 13px;
+}
+.small-note {
+  color: #4e5d6c;
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .program-banner {
+    padding: 28px;
+  }
+  .program-section {
+    padding: 22px;
+  }
+}
 
-.program-workspace { flex:1; min-height:0; overflow-y:auto; padding:20px 32px; }
-.program-workspace .program-page { margin:auto; }
-#program-library label { display:block; font-weight:650; margin-bottom:10px; }
-#program-search { width:100%; padding:14px 18px; border:1px solid #c8c5bc; border-radius:12px; font:inherit; background:#fffefa; }
-#library-count { color:#4E5D6C; font-size:13px; }
-.library-results { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); gap:16px; }
-.library-card { display:block; text-decoration:none; color:#0B132B; background:#fffefa; border:1px solid #dcdad2; border-radius:14px; padding:22px; }
-.library-card:hover { border-color:#FF7A00; }
-.library-card h2 { font-size:20px; }
-.library-card p { font-size:13px; color:#4E5D6C; line-height:1.6; }
-@media(max-width:600px) { .program-workspace { padding:16px; } }
+.program-workspace {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 32px;
+}
+.program-workspace .program-page {
+  margin: auto;
+}
+#program-library label {
+  display: block;
+  font-weight: 650;
+  margin-bottom: 10px;
+}
+#program-search {
+  width: 100%;
+  padding: 14px 18px;
+  border: 1px solid #c8c5bc;
+  border-radius: 12px;
+  font: inherit;
+  background: #fffefa;
+}
+#library-count {
+  color: #4e5d6c;
+  font-size: 13px;
+}
+.library-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+.library-card {
+  display: block;
+  text-decoration: none;
+  color: #0b132b;
+  background: #fffefa;
+  border: 1px solid #dcdad2;
+  border-radius: 14px;
+  padding: 22px;
+}
+.library-card:hover {
+  border-color: #ff7a00;
+}
+.library-card h2 {
+  font-size: 20px;
+}
+.library-card p {
+  font-size: 13px;
+  color: #4e5d6c;
+  line-height: 1.6;
+}
+@media (max-width: 600px) {
+  .program-workspace {
+    padding: 16px;
+  }
+}

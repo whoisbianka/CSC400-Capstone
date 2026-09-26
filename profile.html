@@ -1,49 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Profile | Degree Path Explorer</title>
-  <link rel="icon" href="assets/img/favicon.png">
-  <link rel="stylesheet" href="assets/css/chat-interface.css">
-  <link rel="stylesheet" href="assets/css/chat-shell.css">
-  <link rel="stylesheet" href="assets/css/chat-warm-theme.css">
-  <script src="assets/js/chat-shell.js" defer></script>
-  <script src="assets/js/clerk-config.js" defer></script>
-  <script src="assets/js/profile-auth.js" defer></script>
-  <style>
-    #auth-component { margin:24px 0; max-width:100%; }
-    #auth-component .cl-rootBox, #auth-component .cl-cardBox { max-width:100%; }
-    .account-actions { display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin:24px 0; }
-    .account-actions button { border:1px solid currentColor; border-radius:10px; padding:10px 16px; background:transparent; color:inherit; cursor:pointer; }
-    .account-actions [hidden], #auth-user-button[hidden] { display:none; }
-  </style>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profile | Degree Path Explorer</title>
+    <link rel="icon" href="assets/img/favicon.png">
+    <link rel="stylesheet" href="assets/css/chat-interface.css">
+    <link rel="stylesheet" href="assets/css/chat-shell.css">
+    <link rel="stylesheet" href="assets/css/chat-warm-theme.css">
+    <script src="assets/js/chat-shell.js" defer></script>
+    <script src="assets/js/clerk-config.js" defer></script>
+    <script src="assets/js/profile-auth.js" defer></script>
+    <style>
+      #auth-component {
+        margin: 24px 0;
+        max-width: 100%;
+      }
 
-</head>
-<body class="chat-app">
-<a class="skip-link" href="#page-title">Skip to content</a>
-<aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
-  <a class="app-brand" href="index.html"><span class="brand-icon" aria-hidden="true">D</span><span>Degree Path Explorer</span></a>
-  <p class="sidebar-label">Your workspace</p>
-  <nav aria-label="Workspace navigation"><a href="index.html" class="sidebar-link">Chat</a><a href="program-details.html" class="sidebar-link">Major details</a></nav>
-  <a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
-</aside>
-<button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
-<main class="app-main">
-  <header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>Profile</strong></div><nav class="global-nav" aria-label="Global navigation"><a href="explore.html">Explore</a><a href="profile.html" aria-current="page">Profile</a><a href="settings.html">Settings</a></nav><div id="auth-user-button" aria-label="Your account" hidden></div></header>
-  <div class="page-workspace"><section class="workspace-page" aria-labelledby="page-title">
-    <p class="eyebrow">Your account</p>
-    <h1 id="page-title">Profile</h1>
-    <p id="auth-description">Sign in or create an account to manage your profile and account security.</p>
-    <p id="auth-status" role="status" aria-live="polite">Loading your account…</p>
-    <noscript><p>Enable JavaScript to sign in. You can still browse the college explorer.</p></noscript>
-    <div id="auth-component"></div>
-    <div class="account-actions">
-      <button id="auth-retry" type="button" hidden>Try again</button>
-      <button id="auth-sign-out" type="button" hidden>Sign out</button>
-      <a class="primary-link" href="explore.html">Explore colleges →</a>
-    </div>
-  </section></div>
-</main>
-</body>
+      #auth-component .cl-rootBox, #auth-component .cl-cardBox {
+        max-width: 100%;
+      }
+
+      .account-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+        margin: 24px 0;
+      }
+
+      .account-actions button {
+        border: 1px solid currentColor;
+        border-radius: 10px;
+        padding: 10px 16px;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+      }
+
+      .account-actions [hidden], #auth-user-button[hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body class="chat-app">
+    <a class="skip-link" href="#page-title">Skip to content</a>
+    <!-- Sidebar navigation -->
+    <aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
+      <a class="app-brand" href="index.html">
+        <span class="brand-icon" aria-hidden="true">D</span>
+        <span>Degree Path Explorer</span>
+      </a>
+      <p class="sidebar-label">Your workspace</p>
+
+      <nav aria-label="Workspace navigation">
+        <a href="index.html" class="sidebar-link">Chat</a>
+        <a href="program-details.html" class="sidebar-link">Major details</a>
+      </nav>
+      <a href="profile.html" class="sidebar-profile">
+        <span class="profile-avatar" aria-hidden="true">○</span>
+        <span>Profile</span>
+      </a>
+    </aside>
+    <button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
+
+    <main class="app-main">
+      <!-- Global navigation -->
+      <header class="app-topbar">
+        <div>
+          <button
+            id="sidebar-toggle"
+            class="menu-button"
+            aria-label="Open navigation"
+            aria-controls="app-sidebar"
+            aria-expanded="false"
+            type="button"
+          >
+            ☰
+          </button>
+          <strong>Profile</strong>
+        </div>
+
+        <nav class="global-nav" aria-label="Global navigation">
+          <a href="explore.html">Explore</a>
+          <a href="profile.html" aria-current="page">Profile</a>
+          <a href="settings.html">Settings</a>
+        </nav>
+        <div id="auth-user-button" aria-label="Your account" hidden></div>
+      </header>
+      <div class="page-workspace">
+        <section class="workspace-page" aria-labelledby="page-title">
+          <p class="eyebrow">Your account</p>
+          <h1 id="page-title">Profile</h1>
+          <p id="auth-description">
+            Sign in or create an account to manage your profile and account security.
+          </p>
+          <p id="auth-status" role="status" aria-live="polite">Loading your account…</p>
+          <noscript><p>Enable JavaScript to sign in. You can still browse the college explorer.</p></noscript>
+          <div id="auth-component"></div>
+          <div class="account-actions">
+            <button id="auth-retry" type="button" hidden>Try again</button>
+            <button id="auth-sign-out" type="button" hidden>Sign out</button>
+            <a class="primary-link" href="explore.html">Explore colleges →</a>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
 </html>

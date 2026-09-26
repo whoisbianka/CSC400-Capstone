@@ -19,7 +19,10 @@
       script.async = true;
       script.crossOrigin = 'anonymous';
       if (key) script.setAttribute('data-clerk-publishable-key', key);
-      script.onload = () => { window.clearTimeout(timeout); resolve(); };
+      script.onload = () => {
+        window.clearTimeout(timeout);
+        resolve();
+      };
       script.onerror = () => {
         window.clearTimeout(timeout);
         script.remove();
@@ -31,7 +34,8 @@
 
   function showError() {
     status.hidden = false;
-    status.textContent = 'We couldn’t load your account. Please try again. You can still explore colleges.';
+    status.textContent =
+      'We couldn’t load your account. Please try again. You can still explore colleges.';
     retry.hidden = false;
   }
 
@@ -40,7 +44,8 @@
   async function initialize() {
     const key = window.CLERK_PUBLISHABLE_KEY;
     if (!key) {
-      status.textContent = 'Accounts are not available yet. You can still explore colleges without signing in.';
+      status.textContent =
+        'Accounts are not available yet. You can still explore colleges without signing in.';
       return;
     }
 
@@ -58,7 +63,7 @@
       await clerk.load({
         ui: { ClerkUI: window.__internal_ClerkUICtor },
         signInFallbackRedirectUrl: profileUrl,
-        signUpFallbackRedirectUrl: profileUrl,
+        signUpFallbackRedirectUrl: profileUrl
       });
 
       function render() {
@@ -73,18 +78,22 @@
         container.replaceChildren();
         signOut.hidden = next !== 'profile';
         userButton.hidden = next !== 'profile';
-        description.textContent = next === 'profile'
-          ? 'Manage your profile and account security.'
-          : 'Sign in or create an account to manage your profile and account security.';
+        description.textContent =
+          next === 'profile'
+            ? 'Manage your profile and account security.'
+            : 'Sign in or create an account to manage your profile and account security.';
         if (next === 'profile') {
           clerk.mountUserProfile(container, { routing: 'hash' });
-          clerk.mountUserButton(userButton, { userProfileMode: 'navigation', userProfileUrl: profileUrl });
+          clerk.mountUserButton(userButton, {
+            userProfileMode: 'navigation',
+            userProfileUrl: profileUrl
+          });
         } else {
           clerk.mountSignIn(container, {
             routing: 'hash',
             withSignUp: true,
             forceRedirectUrl: profileUrl,
-            signUpForceRedirectUrl: profileUrl,
+            signUpForceRedirectUrl: profileUrl
           });
         }
         mounted = next;
@@ -104,7 +113,11 @@
       });
       render();
       clerk.addListener(() => {
-        try { render(); } catch { showError(); }
+        try {
+          render();
+        } catch {
+          showError();
+        }
       });
     } catch {
       showError();

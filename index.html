@@ -1,61 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Degree Path Explorer</title>
-<link rel="icon" href="assets/img/favicon.png">
-<link rel="stylesheet" href="assets/css/chat-interface.css">
-<link rel="stylesheet" href="assets/css/chat-shell.css">
-<link rel="stylesheet" href="assets/css/chat-warm-theme.css">
-<script src="assets/data/demo-programs.js" defer></script>
-<script src="assets/js/demo-search.js" defer></script>
-<script src="assets/js/program-catalog.js" defer></script>
-<script src="assets/js/chat-interface.js" defer></script>
-<script src="assets/js/chat-shell.js" defer></script>
-</head>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Degree Path Explorer</title>
+    <link rel="icon" href="assets/img/favicon.png">
+    <link rel="stylesheet" href="assets/css/chat-interface.css">
+    <link rel="stylesheet" href="assets/css/chat-shell.css">
+    <link rel="stylesheet" href="assets/css/chat-warm-theme.css">
+    <script src="assets/data/demo-programs.js" defer></script>
+    <script src="assets/js/demo-search.js" defer></script>
+    <script src="assets/js/program-catalog.js" defer></script>
+    <script src="assets/js/chat-interface.js" defer></script>
+    <script src="assets/js/chat-shell.js" defer></script>
+  </head>
 
+  <body class="chat-app">
+    <a class="skip-link" href="#chat-message">Skip to your message</a>
+    <!-- Sidebar navigation -->
+    <aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
+      <a class="app-brand" href="index.html">
+        <span class="brand-icon" aria-hidden="true">D</span>
+        <span>Degree Path Explorer</span>
+      </a>
+      <p class="sidebar-label">Your workspace</p>
 
-<body class="chat-app">
-<a class="skip-link" href="#chat-message">Skip to your message</a>
-<aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
-  <a class="app-brand" href="index.html"><span class="brand-icon" aria-hidden="true">D</span><span>Degree Path Explorer</span></a>
-  <p class="sidebar-label">Your workspace</p>
-  <nav aria-label="Workspace navigation"><a href="index.html" class="sidebar-link" aria-current="page">Chat</a><a href="program-details.html" class="sidebar-link">Major details</a></nav>
-  <a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
-</aside>
+      <nav aria-label="Workspace navigation">
+        <a href="index.html" class="sidebar-link" aria-current="page">Chat</a>
+        <a href="program-details.html" class="sidebar-link">Major details</a>
+      </nav>
+      <a href="profile.html" class="sidebar-profile">
+        <span class="profile-avatar" aria-hidden="true">○</span>
+        <span>Profile</span>
+      </a>
+    </aside>
+    <button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
 
-<button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
-<main class="app-main" id="chat">
-<header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>Degree Path Assistant</strong></div><nav class="global-nav" aria-label="Global navigation"><a href="explore.html">Explore</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav></header>
+    <main class="app-main" id="chat">
+      <!-- Global navigation -->
+      <header class="app-topbar">
+        <div>
+          <button
+            id="sidebar-toggle"
+            class="menu-button"
+            aria-label="Open navigation"
+            aria-controls="app-sidebar"
+            aria-expanded="false"
+            type="button"
+          >
+            ☰
+          </button>
+          <strong>Degree Path Assistant</strong>
+        </div>
 
+        <nav class="global-nav" aria-label="Global navigation">
+          <a href="explore.html">Explore</a>
+          <a href="profile.html">Profile</a>
+          <a href="settings.html">Settings</a>
+        </nav>
+      </header>
+      <div class="chat-workspace">
+        <div class="conversation-body" id="conversation-body">
+          <section class="chat-welcome" aria-labelledby="chat-title">
+            <span class="welcome-symbol" aria-hidden="true"><!--logo should go here--></span>
+            <h1 id="chat-title">Don't stress. Just chat!</h1>
+            <p>
+              Your next chapter doesn't need to be figured out.<br>Ask about majors, colleges, and careers—or complete our free questionnaire!
+            </p>
+          </section>
+          <div class="chat-modes" role="group" aria-label="Chat mode">
+            <button id="ask-mode" type="button" aria-pressed="true">Ask a question</button>
+            <a
+              id="guided-mode"
+              href="index.html?mode=guided"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Find my major (opens in a new tab)"
+            >
+              Find my major
+            </a>
+          </div>
+          <!-- Guided questionnaire progress -->
+          <div class="question-progress" id="guided-progress" hidden>
+            <p id="progress-label" aria-live="polite"></p>
+            <progress id="answer-progress" max="5" value="0" aria-label="Questions answered"></progress>
+          </div>
+          <div
+            class="messages"
+            id="messages"
+            role="log"
+            aria-label="Conversation"
+            aria-live="polite"
+            aria-relevant="additions text"
+          ></div>
+          <!-- Results shown after the questionnaire -->
+          <section id="major-results" class="answer-review" hidden aria-labelledby="results-title">
+            <h3 id="results-title" tabindex="-1">Your major suggestions</h3>
+            <p>
+              Your answers are ready. Once connected, the chatbot will use them to suggest a couple of majors
+              and explain why they may fit.
+            </p>
+            <p>No recommendations have been generated in this preview.</p>
+          </section>
 
-<div class="chat-workspace">
-<div class="conversation-body" id="conversation-body">
-<section class="chat-welcome" aria-labelledby="chat-title"><span class="welcome-symbol" aria-hidden="true"><!--logo should go here--></span><h1 id="chat-title">Don't stress. Just chat!</h1><p>Your next chapter doesn't need to be figured out.<br>Ask about majors, colleges, and careers—or complete our free questionnaire!</p></section>
-<div class="chat-modes" role="group" aria-label="Chat mode"><button id="ask-mode" type="button" aria-pressed="true">Ask a question</button><a id="guided-mode" href="index.html?mode=guided" target="_blank" rel="noopener noreferrer" aria-label="Find my major (opens in a new tab)">Find my major</a></div>
-
-
-<!-- Code for the find your major guided questionnaire -->
-<div class="question-progress" id="guided-progress" hidden><p id="progress-label" aria-live="polite"></p><progress id="answer-progress" max="5" value="0" aria-label="Questions answered"></progress></div>
-
-<div class="messages" id="messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions text"></div>
-<section id="major-results" class="answer-review" hidden aria-labelledby="results-title"><h3 id="results-title" tabindex="-1">Your major suggestions</h3>
-  <p>Your answers are ready. Once connected, the chatbot will use them to suggest a couple of majors and explain why they may fit.</p><p>No recommendations have been generated in this preview.</p></section>
-<section id="answer-review" class="answer-review" aria-labelledby="review-title" hidden><h3 id="review-title" tabindex="-1">Review your answers</h3><p>You can edit any answer before finishing.</p><div id="review-list"></div><button id="finish-answers" type="button">Finish review</button></section>
-</div>
-
-
-<div class="composer-dock">
-<div id="query-starters" class="query-starters" aria-label="Suggested prompts"></div>
-<form id="chat-form" class="composer"><label for="chat-message" id="answer-label">Your answer</label>
-          <div class="input-row"><textarea id="chat-message" rows="2" maxlength="2000" placeholder="Type your answer here…" aria-describedby="connection-note keyboard-note" required></textarea></div><p id="keyboard-note">Enter to continue · Shift + Enter for a new line</p></form>
-
-<p id="chat-feedback" class="chat-feedback" role="status"></p>
-<p class="connection-note" id="connection-note">Demo data only · All colleges, programs, and tuition figures shown are fictional test fixtures.</p>
-<noscript>Enable JavaScript to answer the guided questions.</noscript>
-
-</div>
-</div>
-</main>
-</body>
+          <section id="answer-review" class="answer-review" aria-labelledby="review-title" hidden>
+            <h3 id="review-title" tabindex="-1">Review your answers</h3>
+            <p>You can edit any answer before finishing.</p>
+            <!-- TODO: Hide the answer review after finishing the quiz. -->
+            <div id="review-list"></div>
+            <button id="finish-answers" type="button">Finish review</button>
+          </section>
+        </div>
+        <div class="composer-dock">
+          <div id="query-starters" class="query-starters" aria-label="Suggested prompts"></div>
+          <form id="chat-form" class="composer">
+            <label for="chat-message" id="answer-label">User answer</label>
+            <div class="input-row">
+              <textarea
+                id="chat-message"
+                rows="2"
+                maxlength="2000"
+                placeholder="Type your answer here…"
+                aria-describedby="connection-note keyboard-note"
+                required
+              ></textarea>
+            </div>
+            <p id="keyboard-note">Enter to continue · Shift + Enter for a new line</p>
+          </form>
+          <p id="chat-feedback" class="chat-feedback" role="status"></p>
+          <!-- Demo data notice -->
+          <p class="connection-note" id="connection-note">
+            Demo data only · All colleges, programs, and tuition figures shown are fictional test fixtures.
+          </p>
+          <noscript>Enable JavaScript to answer the guided questions.</noscript>
+        </div>
+      </div>
+    </main>
+  </body>
 </html>

@@ -1,33 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Settings | Degree Path Explorer</title>
-  <link rel="icon" href="assets/img/favicon.png">
-  <link rel="stylesheet" href="assets/css/chat-interface.css">
-  <link rel="stylesheet" href="assets/css/chat-shell.css">
-  <link rel="stylesheet" href="assets/css/chat-warm-theme.css">
-  <script src="assets/js/chat-shell.js" defer></script>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Settings | Degree Path Explorer</title>
+    <link rel="icon" href="assets/img/favicon.png">
+    <link rel="stylesheet" href="assets/css/chat-interface.css">
+    <link rel="stylesheet" href="assets/css/chat-shell.css">
+    <link rel="stylesheet" href="assets/css/chat-warm-theme.css">
+    <script src="assets/js/chat-shell.js" defer></script>
+  </head>
 
-</head>
-<body class="chat-app">
-<a class="skip-link" href="#page-title">Skip to content</a>
-<aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
-  <a class="app-brand" href="index.html"><span class="brand-icon" aria-hidden="true">D</span><span>Degree Path Explorer</span></a>
-  <p class="sidebar-label">Your workspace</p>
-  <nav aria-label="Workspace navigation"><a href="index.html" class="sidebar-link">Chat</a><a href="program-details.html" class="sidebar-link">Major details</a></nav>
-  <a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
-</aside>
-<button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
-<main class="app-main">
-  <header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>Settings</strong></div><nav class="global-nav" aria-label="Global navigation"><a href="explore.html">Explore</a><a href="profile.html">Profile</a><a href="settings.html" aria-current="page">Settings</a></nav></header>
-  <div class="page-workspace"><section class="workspace-page" aria-labelledby="page-title">
-    <p class="eyebrow">Coming soon</p>
-    <h1 id="page-title">Settings</h1>
-    <p>Manage your sign-in details and account security on your <a href="profile.html">profile page</a>. Application preferences are coming soon.</p>
-    <a class="primary-link" href="index.html">Back to the conversation →</a>
-  </section></div>
-</main>
-</body>
+  <body class="chat-app">
+    <a class="skip-link" href="#page-title">Skip to content</a>
+    <!-- Sidebar navigation -->
+    <aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
+      <a class="app-brand" href="index.html">
+        <span class="brand-icon" aria-hidden="true">D</span>
+        <span>Degree Path Explorer</span>
+      </a>
+      <p class="sidebar-label">Your workspace</p>
+
+      <nav aria-label="Workspace navigation">
+        <a href="index.html" class="sidebar-link">Chat</a>
+        <a href="program-details.html" class="sidebar-link">Major details</a>
+      </nav>
+      <a href="profile.html" class="sidebar-profile">
+        <span class="profile-avatar" aria-hidden="true">○</span>
+        <span>Profile</span>
+      </a>
+    </aside>
+    <button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
+
+    <main class="app-main">
+      <!-- Global navigation -->
+      <header class="app-topbar">
+        <div>
+          <button
+            id="sidebar-toggle"
+            class="menu-button"
+            aria-label="Open navigation"
+            aria-controls="app-sidebar"
+            aria-expanded="false"
+            type="button"
+          >
+            ☰
+          </button>
+          <strong>Settings</strong>
+        </div>
+
+        <nav class="global-nav" aria-label="Global navigation">
+          <a href="explore.html">Explore</a>
+          <a href="profile.html">Profile</a>
+          <a href="settings.html" aria-current="page">Settings</a>
+        </nav>
+      </header>
+      <div class="page-workspace">
+        <section class="workspace-page" aria-labelledby="page-title">
+          <p class="eyebrow">Coming soon</p>
+          <h1 id="page-title">Settings</h1>
+          <p>
+            Manage your sign-in details and account security on your <a href="profile.html">profile page</a>. Application preferences are coming soon.
+          </p>
+          <a class="primary-link" href="index.html">Back to the conversation →</a>
+        </section>
+      </div>
+    </main>
+  </body>
 </html>
