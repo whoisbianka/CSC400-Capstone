@@ -465,3 +465,16 @@
     padding: 28px 20px;
   }
 }
+
+/* Questionnaire results reuse the program comparison table. */
+#major-results .tbl-wrap-outer {
+  margin-top: 20px;
+}
+#edit-quiz-answers {
+  border: 1px solid var(--chat-border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: var(--chat-paper);
+  color: var(--chat-ink);
+  cursor: pointer;
+}

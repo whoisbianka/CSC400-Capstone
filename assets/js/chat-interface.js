@@ -36,6 +36,7 @@
   const queryMessages = [];
   let current = null;
   let editing = false;
+  let quizTable = null;
   const count = () => Object.keys(answers).length;
   const node = (tag, text) => {
     const n = document.createElement(tag);
@@ -195,10 +196,11 @@
   }
   function activate(nextMode) {
     mode = nextMode;
-    $('query-starters').hidden = mode !== 'ask';
+    $('query-starters').hidden = mode !== 'ask' || queryMessages.length > 0;
     $('ask-mode').setAttribute('aria-pressed', String(mode === 'ask'));
     $('guided-progress').hidden = mode !== 'guided';
     $('major-results').hidden = true;
+    $('messages').hidden = false;
     $('chat-feedback').textContent = '';
     $('connection-note').textContent =
       mode === 'ask'
@@ -291,6 +293,7 @@
     if (!value) return;
     if (mode === 'ask') {
       queryMessages.push({ text: value, user: true });
+      $('query-starters').hidden = true;
       bubble(value, true);
       const result = window.demoSearch(value, window.programCatalog.getPrograms());
       result.demo = window.programCatalog.isDemo();
@@ -321,9 +324,32 @@
   $('finish-answers').addEventListener('click', () => {
     const next = questions.findIndex(q => !answers[q.id]);
     if (next !== -1) return showQuestion(next, false, true);
+    $('answer-review').hidden = true;
+    $('guided-progress').hidden = true;
+    $('messages').hidden = true;
+    $('chat-form').hidden = true;
+    $('query-starters').hidden = true;
+    $('chat-feedback').textContent = '';
     $('major-results').hidden = false;
+    if (quizTable) quizTable.reset();
+    else {
+      quizTable = window.createProgramTable($('major-results'), {
+        showMatches: true,
+        getPrograms() {
+          const query = questions.map(question => answers[question.id]).join(' ');
+          const result = window.demoSearch(query, window.programCatalog.getPrograms());
+          const details = [...result.terms, ...result.filters];
+          $('quiz-match-summary').textContent = result.rows.length
+            ? `${result.rows.length} ${result.rows.length === 1 ? 'program matches' : 'programs match'} ${details.length ? details.join(', ') : 'the preferences in your answers'}.`
+            : 'No programs match your answers in the current catalog. Edit your answers to add a subject or broaden your preferences.';
+          return result.rows;
+        }
+      });
+    }
     $('results-title').focus();
+    $('major-results').scrollIntoView({ block: 'start' });
   });
+  $('edit-quiz-answers').addEventListener('click', () => review());
   save();
   $('ask-mode').addEventListener('click', () => {
     if (mode !== 'ask') showAsk(true);
