@@ -50,7 +50,9 @@
     $('chat-message').value = answers[questions[index].id] || '';
     $('send-message').textContent = isEdit ? 'Save changes' : 'Save & continue';
     $('send-message').disabled = !$('chat-message').value.trim();
-    progress(); $('messages').scrollTop = $('messages').scrollHeight;
+    progress();
+    const scrollArea = $('conversation-body') || $('messages');
+    scrollArea.scrollTop = scrollArea.scrollHeight;
     if (focus) $('chat-message').focus();
   }
   function review(focus = true) {
