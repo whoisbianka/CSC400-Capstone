@@ -9,6 +9,15 @@
   <link rel="stylesheet" href="assets/css/chat-shell.css">
   <link rel="stylesheet" href="assets/css/chat-warm-theme.css">
   <script src="assets/js/chat-shell.js" defer></script>
+  <script src="assets/js/clerk-config.js" defer></script>
+  <script src="assets/js/profile-auth.js" defer></script>
+  <style>
+    #auth-component { margin:24px 0; max-width:100%; }
+    #auth-component .cl-rootBox, #auth-component .cl-cardBox { max-width:100%; }
+    .account-actions { display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin:24px 0; }
+    .account-actions button { border:1px solid currentColor; border-radius:10px; padding:10px 16px; background:transparent; color:inherit; cursor:pointer; }
+    .account-actions [hidden] { display:none; }
+  </style>
 
 </head>
 <body class="chat-app">
@@ -23,10 +32,17 @@
 <main class="app-main">
   <header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>Profile</strong></div><nav class="global-nav" aria-label="Global navigation"><a href="explore.html">Explore</a><a href="profile.html" aria-current="page">Profile</a><a href="settings.html">Settings</a></nav></header>
   <div class="page-workspace"><section class="workspace-page" aria-labelledby="page-title">
-    <p class="eyebrow">Coming soon</p>
+    <p class="eyebrow">Your account</p>
     <h1 id="page-title">Profile</h1>
-    <p>Your profile will live here. Profile details and saved information are coming soon.</p>
-    <a class="primary-link" href="index.html">Back to the conversation →</a>
+    <p>Sign in or create an account to manage your profile and account security.</p>
+    <p id="auth-status" role="status" aria-live="polite">Loading your account…</p>
+    <noscript><p>Enable JavaScript to sign in. You can still browse the college explorer.</p></noscript>
+    <div id="auth-component"></div>
+    <div class="account-actions">
+      <button id="auth-retry" type="button" hidden>Try again</button>
+      <button id="auth-sign-out" type="button" hidden>Sign out</button>
+      <a class="primary-link" href="explore.html">Explore colleges →</a>
+    </div>
   </section></div>
 </main>
 </body>
