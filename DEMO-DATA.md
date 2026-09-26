@@ -28,3 +28,6 @@ window.programCatalog.setPrograms(apiRecords, { demo: false });
 ```
 
 This replaces the active search records and refreshes the suggested prompts, including the empty-data state. `college` and `major` are required strings. Optional fields are `state`, `stateCode`, `type`, `format`, `tuition` (annual numeric value or null), `keywords` and `careers` (string arrays). Missing costs display “Not available,” never zero. Normalize formats to Online, Campus, or Hybrid. Historical response cards retain the data and demo label from the time the question was asked. Replace `demoSearch` with backend natural-language retrieval separately; the adapter does not itself connect a database or implement AI.
+
+## Program detail tabs
+Each college card links to one detail page per matching program. The URL fragment contains a snapshot of the selected public program record, so new tabs do not rely on session storage or window.opener. Do not include private user information or credentials in program records. The detail page displays existing fields and optional `overview`, `degree`, `duration`, `courses` (string array), `admissions`, `outlook`, and `url`. Missing information is labeled unavailable. A future backend can replace the snapshot URL with a persistent program ID.

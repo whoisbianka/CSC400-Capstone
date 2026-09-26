@@ -73,11 +73,15 @@
         card.append(stats);
         const matches = [...new Set(programs.flatMap(p => p.matched))];
         const why = node('p',matches.length ? 'Related to: ' + matches.join(', ') : 'Matches the filters in your question.'); why.className = 'match-reason'; card.append(why);
-        const details = node('details',''); details.className = 'program-details'; details.append(node('summary','View matching program details'));
+        const details = node('div',''); details.className = 'program-details';
         programs.forEach(program => {
-          const section = node('div',''); section.className = 'program-detail';
-          section.append(node('h4',program.major),node('p','Format: ' + (program.format || 'Not available')),node('p','Annual tuition: ' + (program.tuition === null ? 'Not available' : '$' + program.tuition.toLocaleString('en-US'))),node('p','Career examples: ' + (program.careers.join(', ') || 'Not available')));
-          details.append(section);
+          const link = node('a', `View ${program.major} details ↗`);
+          link.className = 'program-detail-link';
+          // Carry the selected public program record so this also works with API-loaded records.
+          link.href = 'program-details.html#' + encodeURIComponent(JSON.stringify({program, demo:result.demo}));
+          link.target = '_blank'; link.rel = 'noopener noreferrer';
+          link.setAttribute('aria-label', `View ${program.major} at ${program.college} (opens in a new tab)`);
+          details.append(link);
         });
         card.append(details); item.append(card);
       });

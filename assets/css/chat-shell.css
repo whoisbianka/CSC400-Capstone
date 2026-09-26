@@ -86,3 +86,5 @@
 .chat-app .program-detail p { font-size:12px; }
 .result-count { font-size:13px; font-weight:700; }
 @media(max-width:480px) { .college-result-card { padding:16px; }.college-card-header h3 { font-size:17px; }.college-stats { grid-template-columns:1fr; } }
+
+.program-detail-link { display:block; padding:12px 0; font-size:13px; font-weight:650; color:#0B132B; text-underline-offset:4px; }

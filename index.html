@@ -25,18 +25,19 @@
 <!--Sidebar-->
 <button class="new-conversation" id="restart-answers" type="button"><span aria-hidden="true">＋</span> Start over</button>
 <p class="sidebar-label">Your workspace</p>
-<nav aria-label="Main navigation"><a href="index.html" class="sidebar-link" aria-current="page"><span aria-hidden="true">◉</span> Chat</a></nav>
+<nav aria-label="Main navigation"><a href="index.html" class="sidebar-link" aria-current="page"><span aria-hidden="true">◉</span> Chat</a><a href="program-details.html" class="sidebar-link"><span aria-hidden="true">▤</span> Major Details</a></nav>
 
 <div class="sidebar-session"><p class="sidebar-label">Current session</p><a href="#chat" class="session-link">Ask about majors <span aria-hidden="true">↗</span></a>
-  <button id="review-answers" class="sidebar-link" type="button" hidden>Review my answers</button></div>
-<a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span><span class="profile-arrow" aria-hidden="true">↗</span></a>
+  
+<a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
 </aside>
 
 <button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
 <main class="app-main" id="chat">
 <header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button>
   <strong>Degree Path Assistant</strong><span class="preview-pill">Preview</span></div>
-  <a href="settings.html" class="topbar-settings" aria-label="Settings" title="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.7 2.2-2 .9-2.2-.5-2 3.4 1.5 1.7v2.6L2.1 15l2 3.4 2.2-.5 2 .9L9 21h4l.7-2.2 2-.9 2.2.5 2-3.4-1.5-1.7v-2.6L19.9 9l-2-3.4-2.2.5-2-.9L13 3z"/><circle cx="11" cy="12" r="3"/></svg><span>Settings</span></a></header>
+  <a href="settings.html" class="topbar-settings" aria-label="Settings" title="Settings">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.7 2.2-2 .9-2.2-.5-2 3.4 1.5 1.7v2.6L2.1 15l2 3.4 2.2-.5 2 .9L9 21h4l.7-2.2 2-.9 2.2.5 2-3.4-1.5-1.7v-2.6L19.9 9l-2-3.4-2.2.5-2-.9L13 3z"/><circle cx="11" cy="12" r="3"/></svg><span>Settings</span></a></header>
 
 
 <div class="conversation-body" id="conversation-body">
@@ -51,10 +52,9 @@
 <section id="major-results" class="answer-review" hidden aria-labelledby="results-title"><h3 id="results-title" tabindex="-1">Your major suggestions</h3>
   <p>Your answers are ready. Once connected, the chatbot will use them to suggest a couple of majors and explain why they may fit.</p><p>No recommendations have been generated in this preview.</p></section>
 <section id="answer-review" class="answer-review" aria-labelledby="review-title" hidden><h3 id="review-title" tabindex="-1">Review your answers</h3><p>You can edit any answer before finishing.</p><div id="review-list"></div><button id="finish-answers" type="button">Finish review</button></section>
-
-
-
 </div>
+
+
 <div class="composer-dock">
 <form id="chat-form" class="composer"><label for="chat-message" id="answer-label">Your answer</label>
           <div class="input-row"><textarea id="chat-message" rows="2" maxlength="2000" placeholder="Type your answer here…" aria-describedby="connection-note keyboard-note" required></textarea><button id="send-message" type="submit" disabled>Save &amp; continue</button></div><p id="keyboard-note">Enter to continue · Shift + Enter for a new line</p></form>
@@ -62,6 +62,7 @@
 <p id="chat-feedback" class="chat-feedback" role="status"></p>
 <p class="connection-note" id="connection-note">Demo data only · All colleges, programs, and tuition figures shown are fictional test fixtures.</p>
 <noscript>Enable JavaScript to answer the guided questions.</noscript>
+
 </div>
 </main>
 </body>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Program details | Degree Path Explorer</title>
+<link rel="stylesheet" href="assets/css/chat-interface.css">
+<link rel="stylesheet" href="assets/css/chat-shell.css">
+<link rel="stylesheet" href="assets/css/chat-warm-theme.css">
+<link rel="stylesheet" href="assets/css/program-details.css">
+<script src="assets/data/demo-programs.js" defer></script>
+<script src="assets/js/program-catalog.js" defer></script>
+<script src="assets/js/program-details.js" defer></script>
+<script src="assets/js/chat-shell.js" defer></script>
+</head>
+<body class="chat-app">
+<aside class="app-sidebar" id="app-sidebar" aria-label="Chat navigation">
+<a class="app-brand" href="index.html"><span class="brand-icon" aria-hidden="true">D</span><span>Degree Path Explorer<br></span></a>
+
+
+
+<!--Sidebar-->
+
+<p class="sidebar-label">Your workspace</p>
+<nav aria-label="Main navigation"><a href="index.html" class="sidebar-link"><span aria-hidden="true">◉</span> Chat</a><a href="program-details.html" class="sidebar-link" aria-current="page"><span aria-hidden="true">▤</span> Major Details</a></nav>
+
+
+<a href="profile.html" class="sidebar-profile"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
+</aside><button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
+<main class="app-main"><header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button>
+  <strong>Major Details</strong><span class="preview-pill">Preview</span></div>
+  <a href="settings.html" class="topbar-settings" aria-label="Settings" title="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.7 2.2-2 .9-2.2-.5-2 3.4 1.5 1.7v2.6L2.1 15l2 3.4 2.2-.5 2 .9L9 21h4l.7-2.2 2-.9 2.2.5 2-3.4-1.5-1.7v-2.6L19.9 9l-2-3.4-2.2.5-2-.9L13 3z"/><circle cx="11" cy="12" r="3"/></svg><span>Settings</span></a></header><div class="program-workspace"><div class="program-page">
+<a href="program-details.html" id="all-programs" hidden>← All major details</a>
+<section class="program-banner"><p class="eyebrow" id="record-label">Program information</p><h1 id="program-title">Choose a program</h1><p id="college-name">Open a program details link from your chat results.</p></section>
+<section id="program-library" aria-label="Browse major details">
+<label for="program-search">Search majors or colleges</label><input type="search" id="program-search" placeholder="Search by major, college, or state…">
+<p id="library-count" role="status"></p><div id="library-results" class="library-results"></div>
+</section>
+<div id="program-content" hidden>
+<p class="record-notice" id="record-notice"></p>
+<section class="program-section"><h2>At a glance</h2><dl id="program-facts" class="program-facts"></dl></section>
+<section class="program-section"><h2>About this major</h2><p id="program-overview"></p></section>
+<section class="program-section"><h2>Subjects &amp; interests</h2><ul id="program-keywords" class="topic-list"></ul></section>
+<section class="program-section"><h2>Career possibilities</h2><ul id="program-careers"></ul><p class="small-note">Some careers require additional education, licensing, or experience.</p></section>
+<section class="program-section"><h2>Courses &amp; curriculum</h2><ul id="program-courses"></ul></section>
+<section class="program-section"><h2>Admissions &amp; requirements</h2><p id="program-admissions"></p></section>
+<section class="program-section"><h2>Industry insights</h2><p id="program-outlook"></p></section>
+<section class="program-section"><h2>Program website</h2><p id="program-website"></p></section>
+</div>
+<noscript>Enable JavaScript to display the selected program.</noscript>
+</div></div></main>
+</body></html>
