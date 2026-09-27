@@ -552,6 +552,7 @@
     // Save the submitted answer to the correct question id.
     guidedDraft = null;
     answers[questions[current].id] = value;
+    $('chat-message').value = '';
 
     save();
 

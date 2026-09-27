@@ -1,4 +1,4 @@
 (() => {
   'use strict';
-  window.createProgramTable(document.querySelector('.tbl-wrap-outer'));
+  window.createProgramTable(document.querySelector('.tbl-wrap-outer'), { dropdownFilter: true });
 })();

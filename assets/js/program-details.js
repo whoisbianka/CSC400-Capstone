@@ -46,7 +46,7 @@
     $('program-content').hidden = true;
     $('program-library').hidden = !!location.hash;
     $('all-programs').hidden = !location.hash;
-    ['program-facts', 'program-keywords', 'program-careers', 'program-courses'].forEach(id =>
+    ['program-facts', 'program-careers', 'program-courses'].forEach(id =>
       $(id).replaceChildren()
     );
     if (!location.hash) {
@@ -94,7 +94,6 @@
         p.overview,
         'A detailed major description will appear here when it is included in the program dataset.'
       );
-      list('program-keywords', p.keywords);
       list('program-careers', p.careers);
       list('program-courses', p.courses);
       $('program-admissions').textContent = text(p.admissions);

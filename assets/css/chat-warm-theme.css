@@ -371,6 +371,22 @@
   gap: 7px;
   margin-bottom: 14px;
 }
+.tbl-filters:has(.tbl-format) {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.tbl-filters label {
+  margin-bottom: 0;
+}
+.tbl-format {
+  max-width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--chat-border);
+  border-radius: 12px;
+  background: #fffefa;
+  color: inherit;
+  font: inherit;
+}
 .tbl-chip {
   padding: 7px 13px;
   border: 1px solid var(--chat-border);

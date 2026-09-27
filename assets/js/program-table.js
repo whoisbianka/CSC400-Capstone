@@ -119,6 +119,26 @@
       ].sort();
       if (!formats.includes(format)) format = '';
       $('tbl-filters').replaceChildren();
+      if (options.dropdownFilter) {
+        const label = node('label', 'Study format');
+        label.htmlFor = 'tbl-format';
+        const select = node('select', '');
+        select.id = 'tbl-format';
+        select.className = 'tbl-format';
+        ['', ...formats].forEach(value => {
+          const option = node('option', value || 'All formats');
+          option.value = value;
+          select.append(option);
+        });
+        select.value = format;
+        select.addEventListener('change', () => {
+          format = select.value;
+          render();
+        });
+        $('tbl-filters').append(label, select);
+        render();
+        return;
+      }
       ['', ...formats].forEach(value => {
         const button = node('button', value || 'All formats');
         button.type = 'button';
