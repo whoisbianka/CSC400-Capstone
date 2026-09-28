@@ -1,0 +1,6 @@
+.env
+/data
+/tables
+test.py
+.venv
+__pycache__
