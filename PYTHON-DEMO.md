@@ -32,7 +32,9 @@ requirements.txt               Flask and WTForms dependencies
      search.py                 Keyword/filter matching
      questionnaire.py          Questions, validation, matching
      catalog.py                Filtering and sorting
-   repositories/programs.py    Demo data access; future PostgreSQL boundary
+   repositories/programs.py    Demo data access
+   repositories/postgres.py    PostgreSQL catalog mapping
+   database.py                 Lazy direct/Cloud SQL connections
    data/demo_programs.json      The same 15 fictional programs
    templates/                  Shared layout and server-rendered pages
    static/css/                 Existing theme plus form layout
@@ -53,7 +55,7 @@ All colleges, programs, and tuition figures remain fictional. Matching is determ
 
 ## Data and sessions
 
-No database setup or migrations are included. Replace `DemoProgramRepository` with an implementation of `all()` and `get(program_id)` after agreeing on the PostgreSQL schema. Set it in the application factory; preserve the normalized program fields expected by the services/templates. Database credentials belong on the server.
+No database setup or migrations are run. A read-only `PostgresProgramRepository` now implements `all()` and `get(program_id)` against `database-branch`. Select demo, direct PostgreSQL, or Cloud SQL via configuration. See [database connection setup](DATABASE-CONNECTION.md). Database credentials belong on the server.
 
 Questionnaire answers and recent searches are held in server memory, scoped to an opaque browser session ID. Tabs in the same browser share a session. They expire after two hours of inactivity, server restart, or eviction when more than 256 demo sessions exist. They are not saved to a Clerk account or PostgreSQL. Cookies contain only a session identifier and form-protection token, not answers. Form POSTs use CSRF tokens, and templates escape user input.
 

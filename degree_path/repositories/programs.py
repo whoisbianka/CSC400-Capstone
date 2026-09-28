@@ -4,6 +4,10 @@ from pathlib import Path
 
 
 class DemoProgramRepository:
+    is_demo = True
+    tuition_label = 'Annual demo tuition'
+    source_note = 'Demo data only · All colleges, programs, and tuition figures are fictional test fixtures.'
+
     def __init__(self, path=None):
         self.path = path or Path(__file__).resolve().parents[1] / 'data/demo_programs.json'
 

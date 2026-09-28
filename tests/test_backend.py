@@ -40,7 +40,7 @@ class SearchTests(unittest.TestCase):
 
 class FlaskTests(unittest.TestCase):
     def setUp(self):
-        self.app = create_app({'TESTING': True, 'SECRET_KEY': 'test-only'})
+        self.app = create_app({'TESTING': True, 'SECRET_KEY': 'test-only', 'PROGRAM_DATA_SOURCE': 'demo'})
         self.client = self.app.test_client()
 
     def post(self, path, data, client=None):

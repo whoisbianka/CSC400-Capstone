@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}<div class="page-workspace"><section class="workspace-page">
 <p class="eyebrow">Program details</p><h1 id="page-title">{{ program.major }}</h1><h2>{{ program.college }}</h2>
-<p>{{ program.state }} · {{ program.type }} · {{ program.format }}</p>
-<p><strong>Annual tuition:</strong> {{ program.tuition|money }}</p>
-<p class="small-note">Fictional demo program. Tuition is a test value, not total cost of attendance.</p>
-<h3>Overview</h3><p>{{ program.get('overview') or 'Not available in this demo.' }}</p>
+<p>{{ program.state }} · {{ program.type or "College type unavailable" }} · {{ program.format or "Study format unavailable" }}</p>
+<p><strong>{{ tuition_label }}:</strong> {{ program.tuition|money }}</p>
+<p class="small-note">{{ source_note }} Tuition is not total cost of attendance.</p>
+<h3>Overview</h3><p>{{ program.get('overview') or 'Not available in the current catalog.' }}</p>
 <h3>Related careers</h3><ul>{% for career in program.careers %}<li>{{ career }}</li>{% else %}<li>Not available</li>{% endfor %}</ul>
-{% for key, label in [('degree','Degree'),('duration','Duration'),('admissions','Admission requirements'),('outlook','Career outlook')] %}<h3>{{ label }}</h3><p>{{ program.get(key) or 'Not available in this demo.' }}</p>{% endfor %}
+{% for key, label in [('degree','Degree'),('duration','Duration'),('admissions','Admission requirements'),('outlook','Career outlook')] %}<h3>{{ label }}</h3><p>{{ program.get(key) or 'Not available in the current catalog.' }}</p>{% endfor %}
 <a class="primary-link" href="{{ url_for('web.explore') }}">Explore more programs →</a>
 </section></div>{% endblock %}

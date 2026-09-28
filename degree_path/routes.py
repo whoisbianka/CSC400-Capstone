@@ -13,6 +13,11 @@ def repository():
     return current_app.extensions['program_repository']
 
 
+def search_options():
+    repo = repository()
+    return {'demo': repo.is_demo, 'tuition_label': repo.tuition_label}
+
+
 def state():
     # Local demo only: opaque browser cookie, answers/history in process memory.
     # Expire inactive sessions after two hours and retain at most 256 browsers.
@@ -34,7 +39,7 @@ def state():
 
 
 def table_context(programs):
-    return {'rows': filter_programs(programs, request.args), 'sorts': SORTS, 'formats': FORMATS}
+    return {'rows': filter_programs(programs, request.args), 'sorts': SORTS, 'formats': FORMATS if repository().is_demo else ()}
 
 
 @web.route('/', methods=['GET', 'POST'])
@@ -45,7 +50,7 @@ def chat():
         question = request.form.get('question', '')
         error = validate_text(question)
         if not error:
-            data['history'].append({'question': question.strip(), 'result': search(question, repository().all())})
+            data['history'].append({'question': question.strip(), 'result': search(question, repository().all(), **search_options())})
             data['history'] = data['history'][-10:]
             return redirect(url_for('web.chat', _anchor='latest-result'), code=303)
     majors = list(dict.fromkeys(p['major'] for p in repository().all()))[:3]
@@ -68,7 +73,7 @@ def explore():
 def program_details(program_id):
     program = repository().get(program_id)
     if program is None:
-        abort(404, description='This program is not in the demo catalog.')
+        abort(404, description='This program is not in the current catalog.')
     return render_template('program_details.html', title=program['major'], program=program)
 
 
@@ -108,7 +113,7 @@ def questionnaire_results():
     answers = state()['answers']
     if next_step(answers) is not None:
         return redirect(url_for('web.questionnaire'))
-    result = results(answers, repository().all())
+    result = results(answers, repository().all(), **search_options())
     return render_template('results.html', title='Your program matches', result=result, **table_context(result['rows']))
 
 
@@ -140,12 +145,12 @@ def legacy_page(page):
 
 @web.get('/api/health')
 def health():
-    return jsonify(status='ok', engine='python', framework='flask', demo=True)
+    return jsonify(status='ok', engine='python', framework='flask', demo=repository().is_demo)
 
 
 @web.get('/api/programs')
 def programs_api():
-    return jsonify(programs=repository().all(), demo=True)
+    return jsonify(programs=repository().all(), demo=repository().is_demo)
 
 
 @web.post('/api/search')
@@ -157,4 +162,4 @@ def search_api():
     error = validate_text(question, 12000)
     if error:
         abort(400, description=error)
-    return jsonify(search(question, repository().all()))
+    return jsonify(search(question, repository().all(), **search_options()))

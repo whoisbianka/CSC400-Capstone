@@ -9,7 +9,7 @@
 <p class="tbl-count" role="status">{{ rows|length }} program{{ '' if rows|length == 1 else 's' }}</p>
 <div class="tbl-scroll" role="region" aria-label="Programs table" tabindex="0"><table>
 <caption class="sr-only">Compare majors and colleges</caption>
-<thead><tr><th>College</th><th>Location</th><th>Major</th><th>College type</th><th>Study format</th><th>Annual tuition</th></tr></thead>
-<tbody>{% for p in rows %}<tr><td>{{ p.college }}</td><td>{{ p.state }}</td><td><a href="{{ url_for('web.program_details', program_id=p.id) }}">{{ p.major }}</a></td><td>{{ p.type }}</td><td>{{ p.format }}</td><td>{{ p.tuition|money }}</td></tr>{% else %}<tr><td colspan="6">No programs match these filters.</td></tr>{% endfor %}</tbody>
-</table></div><p class="small-note">Demo data only · All colleges, programs, and tuition figures are fictional test fixtures.</p>
+<thead><tr><th>College</th><th>Location</th><th>Major</th><th>College type</th><th>Study format</th><th>{{ tuition_label }}</th></tr></thead>
+<tbody>{% for p in rows %}<tr><td>{{ p.college }}</td><td>{{ p.state }}</td><td><a href="{{ url_for('web.program_details', program_id=p.id) }}">{{ p.major }}</a></td><td>{{ p.type or "Not available" }}</td><td>{{ p.format or "Not available" }}</td><td>{{ p.tuition|money }}</td></tr>{% else %}<tr><td colspan="6">No programs match these filters.</td></tr>{% endfor %}</tbody>
+</table></div><p class="small-note">{{ source_note }}</p>
 </div>

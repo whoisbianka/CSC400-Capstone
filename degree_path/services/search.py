@@ -12,13 +12,13 @@ def contains(text, phrase):
     return f' {normalize(phrase)} ' in f' {text} '
 
 
-def search(question, programs):
+def search(question, programs, *, demo=True, tuition_label='annual demo tuition'):
     text = normalize(question)
     vocabulary = dict.fromkeys(normalize(v) for p in programs for v in [p['major'], *p['keywords'], *p['careers']])
     terms = [term for term in vocabulary if contains(text, term)]
     terms = [term for term in terms if not any(other != term and contains(other, term) for other in terms)]
     colleges = [name for name in dict.fromkeys(p['college'] for p in programs) if contains(text, name)]
-    locations = [state for state in STATES if contains(text, state)]
+    locations = [state for state in dict.fromkeys(STATES + [p['state'] for p in programs if p['state']]) if contains(text, state)]
     locations = [state for state in locations if not any(other != state and state in other for other in locations)]
     for p in programs:
         if p['stateCode'] and re.search(r'\b' + re.escape(p['stateCode']) + r'\b', question) and p['state'] not in locations:
@@ -31,11 +31,14 @@ def search(question, programs):
     filters = locations + formats + types
     if budget is not None:
         amount = f'{budget:,.3f}'.rstrip('0').rstrip('.')
-        filters.append(f'{"At most" if inclusive else "Under"} ${amount} annual demo tuition')
+        filters.append(f'{"At most" if inclusive else "Under"} ${amount} {tuition_label.lower()}')
     browse = re.search(r'\b(all|any|show|list|browse)\b', text) and re.search(r'\b(programs|majors|colleges|options)\b', text)
-    result = {'rows': [], 'terms': terms, 'filters': filters, 'demo': True, 'engine': 'python'}
+    result = {'rows': [], 'terms': terms, 'filters': filters, 'demo': demo, 'engine': 'python'}
+    if not demo and (formats or types):
+        result['message'] = 'Study format and public/private filters are unavailable in this database schema. Try a major, location, or tuition limit.'
+        return result
     if not terms and not colleges and not filters and not browse:
-        result['message'] = 'I could not match that question to the demo dataset. Try a subject such as computer science, nursing, business, or psychology.'
+        result['message'] = 'I could not match that question to the current catalog. Try a major name or browse all programs.'
         return result
     for p in programs:
         matched = [t for t in terms if t in [normalize(v) for v in [p['major'], *p['keywords'], *p['careers']]]]
@@ -47,6 +50,6 @@ def search(question, programs):
             result['rows'].append({**p, 'matched': matched})
     result['rows'].sort(key=lambda p: (-len(p['matched']), p['tuition'] if p['tuition'] is not None else float('inf')))
     count = len(result['rows'])
-    result['message'] = (f'{count} demo program{"s" if count != 1 else ""} matched.' if count else
-                         'No demo programs match these subjects and filters. Try removing a location, format, or tuition limit.')
+    result['message'] = (f'{count} {"demo " if demo else ""}program{"s" if count != 1 else ""} matched.' if count else
+                         ('No demo programs match' if demo else 'No programs match') + ' these subjects and filters. Try broadening your search.')
     return result

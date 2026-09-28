@@ -15,5 +15,5 @@ def next_step(answers):
     return next((i for i, (key, _) in enumerate(QUESTIONS) if not answers.get(key)), None)
 
 
-def results(answers, programs):
-    return search(' '.join(answers[key] for key, _ in QUESTIONS), programs)
+def results(answers, programs, **options):
+    return search(' '.join(answers[key] for key, _ in QUESTIONS), programs, **options)
