@@ -1,6 +1,6 @@
 # Demo program search
 
-All 15 records in `assets/data/demo-programs.js` are fictional UI test fixtures. The browser matcher in `assets/js/demo-search.js` is deterministic, not an AI or real database integration. Replace it with the team's backend query results later. No rankings, ratings, admission odds, or verified salary claims are supplied.
+All 15 records in `assets/data/demo-programs.js` are fictional UI test fixtures. The browser matcher in `assets/js/demo-search.js` and optional Python matcher in `backend/search.py` are deterministic, not AI or real database integrations. See [Python demo setup](PYTHON-DEMO.md). Replace it with the team's backend query results later. No rankings, ratings, admission odds, or verified salary claims are supplied.
 
 ## Sample questions and expected results
 
@@ -13,7 +13,7 @@ All 15 records in `assets/data/demo-programs.js` are fictional UI test fixtures.
 - Show computer science programs in Texas — no matches (no Texas fixtures).
 - Show all programs — 15 rows.
 
-Filters: full US state names (or CT, NY, MA, CA), Public/Private, Online/Campus/Hybrid, and tuition limits written as “under $20,000” or “up to 20k.” Multiple subjects or locations are OR matches; different filter types are AND matches. Each query is independent. Negation, ambiguous place names, conversational follow-ups, real-time facts, and arbitrary natural-language constraints are not supported by this demo. The optional guided questionnaire remains a separate preview pending your recommendation logic.
+Filters: full US state names (or CT, NY, MA, CA), Public/Private, Online/Campus/Hybrid, and tuition limits written as “under $20,000” or “up to 20k.” Multiple subjects or locations are OR matches; different filter types are AND matches. Each query is independent. Negation, ambiguous place names, conversational follow-ups, real-time facts, and arbitrary natural-language constraints are not supported by this demo. The optional guided questionnaire combines answers into a demo search; a full recommendation system remains future work.
 
 The table reports annual tuition test values, not total cost of attendance. Results are ordered by matched topic count and then tuition, not by college quality.
 

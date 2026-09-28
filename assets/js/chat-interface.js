@@ -75,6 +75,29 @@
 
   // Holds the final program-table component after it is created.
   let quizTable = null;
+  let quizResult = null;
+  let searchPending = false;
+
+  // Keep the current view stable until a search completes; restore disabled states.
+  async function searchPrograms(question) {
+    searchPending = true;
+    const controls = [...document.querySelectorAll('.chat-workspace button, .chat-workspace textarea, .chat-workspace input')];
+    const previous = controls.map(control => control.disabled);
+    controls.forEach(control => { control.disabled = true; });
+    $('chat-feedback').textContent = window.DEMO_API_ENABLED
+      ? 'Searching demo programs with Python…' : 'Searching demo programs…';
+    try {
+      const result = await window.programApi.search(question);
+      $('chat-feedback').textContent = '';
+      return result;
+    } catch {
+      $('chat-feedback').textContent = 'Search unavailable. Restart the Python server and try again. Your input has been kept.';
+      return null;
+    } finally {
+      controls.forEach((control, index) => { control.disabled = previous[index]; });
+      searchPending = false;
+    }
+  }
 
   // Counts how many questionnaire answers currently exist.
   const count = () => Object.keys(answers).length;
@@ -141,10 +164,12 @@
   // =========================================================
 
   // Displays matching colleges and programs inside the chat area.
-  // `result` comes from demoSearch(), and `target` is where results are added.
+  // `result` comes from programApi.search(), and `target` is where results are added.
   function renderResults(result, target = $('messages')) {
     const item = node('article', '');
     item.className = 'message assistant result-message';
+
+    item.append(node('p', result.message));
 
     // Show filters selected by the search, if any.
     if (result.filters.length) {
@@ -310,7 +335,7 @@
     $('connection-note').textContent =
       mode === 'ask'
         ? window.programCatalog.isDemo()
-          ? 'Demo data only · Colleges, programs, and tuition figures are fictional. Matching uses keywords and filters, not a live chatbot.'
+          ? `${window.DEMO_API_ENABLED ? 'Python backend' : 'Browser search'} · Fictional demo data. Matching uses keywords and filters, not a live chatbot.`
           : 'Program catalog loaded · Keyword and filter search preview.'
         : storageAvailable
           ? 'Optional sample questions · Answers saved in this browser tab for this session, not to your account.'
@@ -493,8 +518,9 @@
   });
 
   // Handles submitted text in both Ask mode and Guided mode.
-  $('chat-form').addEventListener('submit', e => {
+  $('chat-form').addEventListener('submit', async e => {
     e.preventDefault();
+    if (searchPending) return;
 
     const value = $('chat-message').value.trim();
 
@@ -504,17 +530,12 @@
 
     // Ask mode: search the program catalog using the user's message.
     if (mode === 'ask') {
-      queryMessages.push({ text: value, user: true });
+      const result = await searchPrograms(value);
+      if (!result) return;
 
+      queryMessages.push({ text: value, user: true });
       $('query-starters').hidden = true;
       bubble(value, true);
-
-      const result = window.demoSearch(
-        value,
-        window.programCatalog.getPrograms()
-      );
-
-      result.demo = window.programCatalog.isDemo();
 
       // Use a different result message if a real catalog is connected.
       if (!result.demo) {
@@ -566,13 +587,19 @@
   });
 
   // Continues the questionnaire or creates final major/program results.
-  $('finish-answers').addEventListener('click', () => {
+  $('finish-answers').addEventListener('click', async () => {
+    if (searchPending) return;
     const next = questions.findIndex(q => !answers[q.id]);
 
     // Continue if any questions still need answers.
     if (next !== -1) {
       return showQuestion(next, false, true);
     }
+
+    const query = questions.map(question => answers[question.id]).join(' ');
+    const result = await searchPrograms(query);
+    if (!result) return;
+    quizResult = result;
 
     // Hide the questionnaire interface and show final results.
     $('answer-review').hidden = true;
@@ -591,16 +618,9 @@
       quizTable = window.createProgramTable($('major-results'), {
         showMatches: true,
 
-        // Combines every answer into one search query for the program catalog.
+        // Table filters reuse the latest completed search without making more requests.
         getPrograms() {
-          const query = questions
-            .map(question => answers[question.id])
-            .join(' ');
-
-          const result = window.demoSearch(
-            query,
-            window.programCatalog.getPrograms()
-          );
+          const result = quizResult;
 
           const details = [...result.terms, ...result.filters];
 
@@ -645,7 +665,7 @@
     // Update the catalog status message while in Ask mode.
     if (mode === 'ask') {
       $('connection-note').textContent = window.programCatalog.isDemo()
-        ? 'Demo data only · Colleges, programs, and tuition figures are fictional.'
+        ? `${window.DEMO_API_ENABLED ? 'Python backend' : 'Browser search'} · Colleges, programs, and tuition figures are fictional.`
         : 'Program catalog loaded · Keyword and filter search preview.';
     }
 
