@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="chat-workspace">
+<div class="conversation-body">
+<section class="chat-welcome"><h1 id="page-title">Don't stress. Just chat!</h1><p>Your next chapter doesn't need to be figured out.<br>Ask about majors, colleges, and careers—or complete our free questionnaire!</p></section>
+<div class="chat-modes"><a class="primary-link" href="{{ url_for('web.questionnaire') }}">Find my major →</a></div>
+<div class="messages" aria-label="Conversation">
+{% for entry in history %}
+<article class="message user"><p class="message-author">You</p><p>{{ entry.question }}</p></article>
+<div {% if loop.last %}id="latest-result"{% endif %}>
+{% with result=entry.result %}{% include '_cards.html' %}{% endwith %}
+</div>
+{% endfor %}
+</div>
+{% if history %}<form method="post" action="{{ url_for('web.reset_chat') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="secondary-button">Clear conversation</button></form>{% endif %}
+</div>
+<div class="composer-dock">
+{% if not history %}<div class="query-starters" aria-label="Suggested searches">
+{% for prompt in suggestions %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button name="question" value="{{ prompt }}">{{ prompt }}</button></form>{% endfor %}
+</div>{% endif %}
+<form method="post" class="composer">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label for="chat-message" class="sr-only">Your question</label>
+<textarea id="chat-message" name="question" rows="2" maxlength="2000" required data-enter-submit placeholder="What would you like to know?">{{ question }}</textarea>
+<button class="primary-link" type="submit">Search programs</button>
+</form>
+{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+<p class="connection-note">Python + Flask demo · All colleges, programs, and tuition figures are fictional. Questions are matched using keywords and filters.</p>
+</div></div>
+{% endblock %}

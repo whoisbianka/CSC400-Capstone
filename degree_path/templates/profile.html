@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}"><script src="{{ url_for('static', filename='js/clerk-config.js') }}" defer></script><script src="{{ url_for('static', filename='js/profile-auth.js') }}" defer></script>{% endblock %}
+{% block content %}<div id="auth-user-button" aria-label="Your account" hidden></div><div class="page-workspace">
+        <section class="workspace-page" aria-labelledby="page-title">
+          <p class="eyebrow">Your account</p>
+          <h1 id="page-title">Profile</h1>
+          <p id="auth-description">
+            Sign in or create an account to manage your profile and account security.
+          </p>
+          <p id="auth-status" role="status" aria-live="polite">Loading your account…</p>
+          <noscript><p>Enable JavaScript to sign in. You can still browse the college explorer.</p></noscript>
+          <div id="auth-component"></div>
+          <div class="account-actions">
+            <button id="auth-retry" type="button" hidden>Try again</button>
+            <button id="auth-sign-out" type="button" hidden>Sign out</button>
+            
+          </div>
+        </section>
+      </div>{% endblock %}

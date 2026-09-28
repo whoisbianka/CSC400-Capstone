@@ -1,11 +1,9 @@
-import http.client
-import json
-import threading
 import unittest
-from http.server import ThreadingHTTPServer
+from degree_path import create_app
+from degree_path.repositories.programs import DemoProgramRepository
+from degree_path.services.search import search
 
-from backend.search import load_programs, search
-from backend.server import Handler
+load_programs = DemoProgramRepository().all
 
 
 class SearchTests(unittest.TestCase):
@@ -40,50 +38,110 @@ class SearchTests(unittest.TestCase):
         self.assertEqual([p['id'] for p in rows], ['demo-1'])
 
 
-class ApiTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
-        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
-        cls.thread.start()
+class FlaskTests(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app({'TESTING': True, 'SECRET_KEY': 'test-only'})
+        self.client = self.app.test_client()
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.server.shutdown()
-        cls.server.server_close()
-        cls.thread.join()
+    def post(self, path, data, client=None):
+        client = client or self.client
+        client.get('/')
+        with client.session_transaction() as session:
+            token = session['csrf']
+        return client.post(path, data={**data, 'csrf_token': token}, follow_redirects=True)
 
-    def request(self, method, path, body=None, content_type='application/json'):
-        conn = http.client.HTTPConnection('127.0.0.1', self.server.server_port, timeout=5)
-        conn.request(method, path, body, {'Content-Type': content_type})
-        response = conn.getresponse()
-        status, data = response.status, response.read()
-        conn.close()
-        return status, data
+    def complete_questionnaire(self, answer='computer science'):
+        for step in range(5):
+            response = self.post(f'/questionnaire/{step}', {'answer': answer})
+            self.assertEqual(response.status_code, 200)
+        return self.client.get('/questionnaire/results')
 
-    def test_catalog_and_search(self):
-        status, data = self.request('GET', '/api/programs')
-        self.assertEqual(status, 200)
-        self.assertEqual(len(json.loads(data)['programs']), 15)
-        status, data = self.request('POST', '/api/search', json.dumps({'question': 'computer science'}))
-        self.assertEqual(status, 200)
-        self.assertEqual(len(json.loads(data)['rows']), 3)
-
-    def test_invalid_requests(self):
-        for body in ('{', '[]', '{}', '{"question": 12}', '{"question":" "}', json.dumps({'question': 'x' * 12001})):
-            with self.subTest(body=body[:40]):
-                self.assertEqual(self.request('POST', '/api/search', body)[0], 400)
-        self.assertEqual(self.request('POST', '/api/search', '{}', 'text/plain')[0], 415)
-        self.assertEqual(self.request('POST', '/api/search', 'x' * 65537)[0], 413)
-        self.assertEqual(self.request('POST', '/api/missing', '{}')[0], 404)
-
-    def test_public_assets_only(self):
-        for path in ('/.git/config', '/backend/server.py', '/assets/../backend/server.py', '/assets/%2e%2e/backend/server.py', '/assets/', '/missing'):
+    def test_pages_and_static_assets(self):
+        for path in ['/', '/explore', '/questionnaire', '/profile', '/settings', '/programs/demo-1', '/static/js/forms.js']:
             with self.subTest(path=path):
-                self.assertEqual(self.request('GET', path)[0], 404)
-        self.assertEqual(self.request('GET', '/')[0], 200)
-        self.assertIn(b'true', self.request('GET', '/assets/js/backend-config.js')[1])
-        self.assertEqual(self.request('GET', '/api/health')[0], 200)
+                response = self.client.get(path, follow_redirects=True)
+                self.assertEqual(response.status_code, 200)
+                response.close()
+        for path in ['/.git/config', '/degree_path/routes.py', '/data/demo_programs.json', '/static/../routes.py', '/programs/missing']:
+            self.assertEqual(self.client.get(path).status_code, 404)
+
+    def test_chat_without_javascript_and_reload(self):
+        response = self.post('/', {'question': 'computer science'})
+        self.assertIn(b'3 demo programs matched.', response.data)
+        self.assertIn(b'/programs/demo-1', response.data)
+        self.assertEqual(self.client.get('/').data.count(b'3 demo programs matched.'), 1)
+        self.assertNotIn(b'3 demo programs matched.', self.app.test_client().get('/').data)
+        self.assertNotIn(b'3 demo programs matched.', self.post('/chat/reset', {}).data)
+
+    def test_validation_and_escaping(self):
+        for value in ['', ' ', 'a' * 2001]:
+            self.assertEqual(self.post('/', {'question': value}).status_code, 400)
+        response = self.post('/', {'question': '<script>alert(1)</script>'})
+        self.assertNotIn(b'<script>alert(1)</script>', response.data)
+        self.assertIn(b'&lt;script&gt;', response.data)
+        self.assertEqual(self.post('/questionnaire/0', {'answer': ' '}).status_code, 400)
+
+    def test_csrf_and_no_state_mutation(self):
+        self.client.get('/')
+        for token in ['', 'wrong', 'é']:
+            response = self.client.post('/', data={'question': 'computer science', 'csrf_token': token})
+            self.assertEqual(response.status_code, 400)
+        self.assertNotIn(b'3 demo programs matched.', self.client.get('/').data)
+
+    def test_questionnaire_review_edit_filter_reset(self):
+        self.assertEqual(self.client.get('/questionnaire/results').status_code, 302)
+        response = self.complete_questionnaire()
+        self.assertIn(b'3 demo programs matched.', response.data)
+        self.assertIn(b'computer science', self.client.get('/questionnaire/review').data)
+        filtered = self.client.get('/questionnaire/results?format=Online')
+        self.assertIn(b'Pinecrest Demo College', filtered.data)
+        self.assertNotIn(b'Harbor Demo University', filtered.data)
+        # A changed answer is included in the newly calculated result.
+        self.post('/questionnaire/0', {'answer': 'computer science in Texas'})
+        self.assertIn(b'No demo programs match', self.client.get('/questionnaire/results').data)
+        self.post('/questionnaire/reset', {})
+        self.assertEqual(self.client.get('/questionnaire/results').status_code, 302)
+
+    def test_large_answers_stay_out_of_cookie(self):
+        response = self.complete_questionnaire('computer science ' + 'x' * 1900)
+        self.assertEqual(response.status_code, 200)
+        with self.client.session_transaction() as session:
+            self.assertEqual(set(session), {'csrf', 'demo_id'})
+        other = self.app.test_client()
+        self.assertEqual(other.get('/questionnaire/results').status_code, 302)
+
+    def test_explore_filter_and_sort(self):
+        response = self.client.get('/explore?q=computer+science&format=Online')
+        self.assertIn(b'Pinecrest Demo College', response.data)
+        self.assertNotIn(b'Harbor Demo University', response.data)
+        response = self.client.get('/explore?q=computer+science&sort=tuition&direction=desc')
+        self.assertLess(response.data.index(b'Pinecrest Demo College'), response.data.index(b'Harbor Demo University'))
+        self.assertIn(b'No programs match', self.client.get('/explore?q=unmatchable').data)
+        self.assertEqual(self.client.get('/explore?sort=invalid').status_code, 200)
+
+    def test_legacy_links(self):
+        self.assertEqual(self.client.get('/index.html?mode=guided').location, '/questionnaire')
+        self.assertEqual(self.client.get('/explore.html').location, '/explore')
+        self.assertEqual(self.client.get('/profile.html').location, '/profile')
+
+    def test_api_contract(self):
+        self.assertEqual(self.client.get('/api/health').json['framework'], 'flask')
+        self.assertEqual(len(self.client.get('/api/programs').json['programs']), 15)
+        response = self.client.post('/api/search', json={'question': 'computer science'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json['rows']), 3)
+        self.assertTrue(response.json['demo'])
+
+    def test_api_errors_are_json(self):
+        for body in [[], {}, {'question': 12}, {'question': ' '}, {'question': 'x' * 12001}]:
+            response = self.client.post('/api/search', json=body)
+            self.assertEqual(response.status_code, 400)
+            self.assertIn('error', response.json)
+        response = self.client.post('/api/search', data='{', content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.client.post('/api/search', data='{}').status_code, 415)
+        self.assertEqual(self.client.post('/api/search', data='x' * 65537, content_type='application/json').status_code, 413)
+        self.assertEqual(self.client.get('/api/missing').status_code, 404)
 
 
 if __name__ == '__main__':

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} | Degree Path Explorer</title>
+<link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+{% for file in ['chat-interface.css', 'chat-shell.css', 'chat-warm-theme.css', 'flask-pages.css'] %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/' ~ file) }}">
+{% endfor %}
+<script src="{{ url_for('static', filename='js/chat-shell.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>
+{% block extra_head %}{% endblock %}
+</head>
+<body class="chat-app">
+<a class="skip-link" href="#page-title">Skip to content</a>
+<aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
+  <a class="app-brand" href="{{ url_for('web.chat') }}"><span class="brand-icon" aria-hidden="true">D</span><span>Degree Path Explorer</span></a>
+  <p class="sidebar-label">Your workspace</p>
+  <nav aria-label="Workspace navigation">
+  {% for endpoint, label in [('web.chat','Chat'),('web.questionnaire','Find my major'),('web.explore','Explore programs')] %}
+    <a class="sidebar-link" href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint or (endpoint == 'web.questionnaire' and request.path.startswith('/questionnaire')) %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+  </nav>
+  <a class="sidebar-profile" href="{{ url_for('web.profile') }}"><span class="profile-avatar" aria-hidden="true">○</span><span>Profile</span></a>
+</aside>
+<button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
+<main class="app-main">
+<header class="app-topbar"><div><button id="sidebar-toggle" class="menu-button" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" type="button">☰</button><strong>{{ title }}</strong></div>
+<nav class="global-nav" aria-label="Global navigation"><a href="{{ url_for('web.explore') }}">Explore</a><a href="{{ url_for('web.profile') }}">Profile</a><a href="{{ url_for('web.settings') }}">Settings</a></nav></header>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

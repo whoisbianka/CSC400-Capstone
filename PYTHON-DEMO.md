@@ -1,58 +1,86 @@
-# Python demo backend
+# Python-first Flask demo
 
-This experimental branch connects the existing website to a Python backend using the same 15 fictional programs. No PostgreSQL database, credentials, packages, or AI service are required. Your teammate can continue developing PostgreSQL independently.
+This branch uses Python, Flask, and WTForms for page routing, search, questionnaire steps and validation, results, catalog filtering/sorting, and program lookup. Jinja templates render HTML with the existing warm theme. Small JavaScript files support the mobile menu, Enter-to-submit, and the existing optional Clerk profile UI. Core searches, forms, filters, and result pages work without JavaScript.
 
 ## Run locally
 
-Requires Python 3.10 or newer. From the repository folder:
+Requires Python 3.10 or newer. From this branch's repository folder:
 
 ```sh
-python3 backend/server.py
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python app.py
 ```
 
-Open http://127.0.0.1:8000 in your browser. Stop with Ctrl+C. If that port is busy, run `python3 backend/server.py --port 8001` and open http://127.0.0.1:8001.
+On Windows, activate with `.venv\Scripts\activate` instead. Open http://127.0.0.1:8000. Stop with Ctrl+C. For another port, use `python app.py --port 8001`.
 
-The chat footer should say **Python backend**. Ask a question or complete **Find my major**. Both send searches to Python. Explore also loads the program catalog from Python. Program matching remains deterministic keyword/filter matching, not an AI assessment.
+The previous `python backend/server.py` command remains a compatibility entry point. You can also use `python -m flask --app degree_path run --port 8000`.
 
-Opening the files directly or using static hosting (including GitHub Pages) retains browser-based demo matching. Static hosting cannot run the Python backend. The footer says **Browser search** in that mode. Once Python mode is enabled, failed searches show an error and preserve input so you can retry; they never silently fall back to browser matching.
+This is now a server-rendered application. Opening HTML files directly, `python -m http.server`, and GitHub Pages cannot run it. Use the Flask command above.
 
-## Try these searches
+## Architecture
 
-- Which colleges offer computer science? → 3 programs.
-- Show nursing programs in Connecticut → 1 program.
-- Show online business programs under $20,000 → 1 program.
-- Show computer science programs in Texas → no matches.
-- Show all programs → 15 programs.
+```text
+app.py                         Local launcher
+requirements.txt               Flask and WTForms dependencies
+ degree_path/
+   __init__.py                 Application factory, form protection, errors
+   forms.py                    WTForms input validation
+   routes.py                   Page routes and compatible JSON API
+   services/
+     search.py                 Keyword/filter matching
+     questionnaire.py          Questions, validation, matching
+     catalog.py                Filtering and sorting
+   repositories/programs.py    Demo data access; future PostgreSQL boundary
+   data/demo_programs.json      The same 15 fictional programs
+   templates/                  Shared layout and server-rendered pages
+   static/css/                 Existing theme plus form layout
+   static/js/                  Menu, keyboard convenience, optional Clerk UI
+ tests/test_backend.py          Search and Flask integration tests
+```
 
-For the questionnaire, try “coding”, “programming”, “technology”, “software”, and “computer science”. The matches should include the three computer science programs. Edit an answer and finish again to recalculate.
+## Try it
 
-## API and files
+- Ask “Which colleges offer computer science?”: 3 matches.
+- Ask “Show online business programs under $20,000”: 1 match.
+- Ask “Show computer science programs in Texas”: no matches.
+- Complete Find my major, review/edit answers, then view results.
+- Use Explore to filter by text and study format, and sort by tuition.
+- Open a program: the URL uses its ID, for example `/programs/demo-1`.
 
-- `GET /api/health` reports the Python engine and demo status.
-- `GET /api/programs` returns `{ "programs": [...], "demo": true }`.
-- `POST /api/search` accepts JSON such as `{ "question": "computer science" }` and returns `rows`, `terms`, `filters`, `message`, `demo`, and `engine`.
-- `backend/search.py` loads fixtures and implements matching.
-- `backend/server.py` serves the API and public website files on localhost.
-- `assets/js/program-api.js` connects the interface to the API.
-- `assets/js/backend-config.js` defaults to static mode; the Python server serves this script with Python mode enabled.
+All colleges, programs, and tuition figures remain fictional. Matching is deterministic, not AI or an assessment of admission chances. Unsupported cases include negation and conversational follow-ups. Chat displays the last ten successful searches, but each search is independent. Results sort by matched topics and tuition; the catalog table has its own user-selected sort.
 
-The single fixture remains `assets/data/demo-programs.js`. Its array is now formatted as JSON-compatible data (double-quoted strings, no trailing commas). Python parses only the data after `window.demoPrograms = ` using `json.loads`; it does not execute JavaScript. Restart the Python server after editing fixtures.
+## Data and sessions
 
-Search supports subjects, named colleges, states, Public/Private, Online/Campus/Hybrid, and tuition limits. Results sort by matched topic count, then tuition. Natural-language negation and conversational follow-ups remain unsupported. Questionnaire answers are joined into one query; this is a demo, not a learned recommendation system. Answers remain in browser session storage and are sent to the local backend for matching when you finish. The server does not persist them or log request bodies.
+No database setup or migrations are included. Replace `DemoProgramRepository` with an implementation of `all()` and `get(program_id)` after agreeing on the PostgreSQL schema. Set it in the application factory; preserve the normalized program fields expected by the services/templates. Database credentials belong on the server.
 
-## Test
+Questionnaire answers and recent searches are held in server memory, scoped to an opaque browser session ID. Tabs in the same browser share a session. They expire after two hours of inactivity, server restart, or eviction when more than 256 demo sessions exist. They are not saved to a Clerk account or PostgreSQL. Cookies contain only a session identifier and form-protection token, not answers. Form POSTs use CSRF tokens, and templates escape user input.
+
+This is a local, single-process demo. Production deployment needs a shared durable session store, server-side account verification where required, HTTPS cookie configuration, and a production WSGI server. An optional `SECRET_KEY` environment variable controls Flask signing; otherwise a random key is generated on startup. Do not commit secrets.
+
+The existing Clerk profile UI is retained and still requires JavaScript and a working Clerk configuration. It does not authenticate Flask routes. Demo routes remain public. Live Clerk sign-in was not exercised during this migration.
+
+## API
+
+- `GET /api/health`: `status`, `engine`, `framework`, `demo`.
+- `GET /api/programs`: `{ "programs": [...], "demo": true }`.
+- `POST /api/search`: JSON `{ "question": "computer science" }`; returns `rows`, `terms`, `filters`, `message`, `demo`, `engine`.
+
+The JSON API remains compatible with the earlier demo. Current HTML pages submit directly to Flask. Old page URLs redirect to their Flask equivalents; old program-detail snapshot links go to Explore because URL fragments never reach the server.
+
+## Verification
 
 ```sh
-python3 -m unittest discover -s tests -v
-node --test tests/test_program_api.cjs
-node --check assets/js/chat-interface.js
-node --check assets/js/program-api.js
+python -m unittest discover -s tests -v
 ```
 
-The Python tests cover documented searches, tuition boundaries, missing tuition, campus/state matching, API validation, and public-file restrictions. JavaScript tests cover static fallback, Python request/response handling, and API failure behavior. Node is optional and used only for these checks.
+Tests cover demo searches, tuition boundaries, missing costs, routes, templates, static-file restrictions, form validation/escaping, CSRF, session isolation, large answers, questionnaire editing/reset, catalog filtering/sorting, old URL redirects, and API compatibility/errors. Optional JavaScript syntax checks:
 
-## Future PostgreSQL integration
+```sh
+node --check degree_path/static/js/forms.js
+node --check degree_path/static/js/chat-shell.js
+node --check degree_path/static/js/profile-auth.js
+```
 
-Replace fixture loading/search with database queries after agreeing on your teammate's schema. Keep the frontend API response structure stable. This branch creates no database tables or migrations. The standard-library server is a local development demo; production hosting, database access, authentication, and deployment configuration are separate future work.
-
-This branch starts from committed `landingpage` revision `969040d`. Uncommitted sign-in/interface edits in the original checkout were intentionally preserved there and are not included in this experiment.
+This branch derives from committed `landingpage` revision `969040d` and preserves the later Python demo branch commits. Local uncommitted interface/sign-in edits from the original checkout were not included in this migration.

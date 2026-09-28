@@ -1,0 +1,14 @@
+<article class="message assistant result-message">
+<p role="status">{{ result.message }}</p>
+{% if result.filters %}<p>Filters: {{ result.filters|join(' · ') }}</p>{% endif %}
+{% for college, programs in result.rows|college_groups %}
+<article class="college-result-card">
+<header class="college-card-header"><div><h3>{{ college }}</h3><p>{{ programs[0].state }} · {{ programs[0].type }}</p></div></header>
+{% for program in programs %}
+<div class="program-entry"><h4>{{ program.major }}</h4><p>Annual tuition: {{ program.tuition|money }} · {{ program.format }}</p>
+{% if program.matched %}<p>Related to: {{ program.matched|join(', ') }}</p>{% endif %}
+<a href="{{ url_for('web.program_details', program_id=program.id) }}">View {{ program.major }} details →</a></div>
+{% endfor %}
+</article>
+{% endfor %}
+</article>

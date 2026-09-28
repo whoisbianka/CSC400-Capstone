@@ -1,33 +1,9 @@
-# Demo program search
+# Demo program data
 
-All 15 records in `assets/data/demo-programs.js` are fictional UI test fixtures. The browser matcher in `assets/js/demo-search.js` and optional Python matcher in `backend/search.py` are deterministic, not AI or real database integrations. See [Python demo setup](PYTHON-DEMO.md). Replace it with the team's backend query results later. No rankings, ratings, admission odds, or verified salary claims are supplied.
+The 15 records in `degree_path/data/demo_programs.json` are fictional UI fixtures. They are read by `degree_path/repositories/programs.py` and matched by `degree_path/services/search.py`. No rankings, admission odds, reviews, or verified salary claims are supplied.
 
-## Sample questions and expected results
+Supported filters: major/keywords/careers, college names, US state names (or fixture state codes such as CT), Public/Private, Online/Campus/Hybrid, and tuition limits such as “under $20,000” or “up to 20k.” Multiple subjects and locations use OR; different filter types use AND. Each search is independent. Negation, conversational follow-ups, and arbitrary natural-language constraints are unsupported.
 
-- Which colleges offer computer science? — 3 computer science rows.
-- Show nursing programs in Connecticut — 1 nursing row.
-- Show online business programs under $20,000 — 1 business row.
-- Compare psychology and sociology — 3 rows across both majors.
-- Show public engineering programs under $20,000 — 1 mechanical engineering row.
-- I enjoy drawing and graphic design — 1 graphic design row.
-- Show computer science programs in Texas — no matches (no Texas fixtures).
-- Show all programs — 15 rows.
+Annual tuition values are test values, not total cost of attendance. Matching orders records by matched topic count, then tuition; results are not ranked by college quality. The questionnaire joins its five answers into a demo search.
 
-Filters: full US state names (or CT, NY, MA, CA), Public/Private, Online/Campus/Hybrid, and tuition limits written as “under $20,000” or “up to 20k.” Multiple subjects or locations are OR matches; different filter types are AND matches. Each query is independent. Negation, ambiguous place names, conversational follow-ups, real-time facts, and arbitrary natural-language constraints are not supported by this demo. The optional guided questionnaire combines answers into a demo search; a full recommendation system remains future work.
-
-The table reports annual tuition test values, not total cost of attendance. Results are ordered by matched topic count and then tuition, not by college quality.
-
-## Data-driven prompts and card integration
-
-Responses now group matching programs into college cards with major tags, location, college type, tuition, study format, and expandable program details. No invented grades, reviews, or rankings are displayed.
-
-`assets/js/program-catalog.js` owns the active records. Suggested prompts are derived from the majors and formats actually present in those records; they are not fixed in HTML. For integration, normalize API records to the fixture field names and call:
-
-```js
-window.programCatalog.setPrograms(apiRecords, { demo: false });
-```
-
-This replaces the active search records and refreshes the suggested prompts, including the empty-data state. `college` and `major` are required strings. Optional fields are `state`, `stateCode`, `type`, `format`, `tuition` (annual numeric value or null), `keywords` and `careers` (string arrays). Missing costs display “Not available,” never zero. Normalize formats to Online, Campus, or Hybrid. Historical response cards retain the data and demo label from the time the question was asked. Replace `demoSearch` with backend natural-language retrieval separately; the adapter does not itself connect a database or implement AI.
-
-## Program detail tabs
-Each college card links to one detail page per matching program. The URL fragment contains a snapshot of the selected public program record, so new tabs do not rely on session storage or window.opener. Do not include private user information or credentials in program records. The detail page displays existing fields and optional `overview`, `degree`, `duration`, `courses` (string array), `admissions`, `outlook`, and `url`. Missing information is labeled unavailable. A future backend can replace the snapshot URL with a persistent program ID.
+Program details use persistent demo IDs, for example `/programs/demo-1`. Missing information is labeled unavailable. See [Python demo setup](PYTHON-DEMO.md) for sample queries and implementation details.

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-workspace"><section class="workspace-page">
+<h1 id="page-title">Review your answers</h1><p>You can edit any answer before viewing your matches.</p>
+<div class="answer-review">
+{% for key, prompt in questions %}<article class="review-answer"><h3>{{ prompt }}</h3><p>{{ answers[key] }}</p><a href="{{ url_for('web.question', step=loop.index0) }}">Edit answer {{ loop.index }}</a></article>{% endfor %}
+</div>
+<a class="primary-link" href="{{ url_for('web.questionnaire_results') }}">Find matching programs →</a>
+<form method="post" action="{{ url_for('web.reset_questionnaire') }}" class="reset-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="secondary-button">Start over</button></form>
+</section></div>
+{% endblock %}
