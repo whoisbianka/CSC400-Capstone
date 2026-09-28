@@ -8,40 +8,10 @@
     <link rel="stylesheet" href="assets/css/chat-interface.css">
     <link rel="stylesheet" href="assets/css/chat-shell.css">
     <link rel="stylesheet" href="assets/css/chat-warm-theme.css">
+    <link rel="stylesheet" href="assets/css/profile.css">
     <script src="assets/js/chat-shell.js" defer></script>
     <script src="assets/js/clerk-config.js" defer></script>
     <script src="assets/js/profile-auth.js" defer></script>
-    <style>
-      #auth-component {
-        margin: 24px 0;
-        max-width: 100%;
-      }
-
-      #auth-component .cl-rootBox, #auth-component .cl-cardBox {
-        max-width: 100%;
-      }
-
-      .account-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        align-items: center;
-        margin: 24px 0;
-      }
-
-      .account-actions button {
-        border: 1px solid currentColor;
-        border-radius: 10px;
-        padding: 10px 16px;
-        background: transparent;
-        color: inherit;
-        cursor: pointer;
-      }
-
-      .account-actions [hidden], #auth-user-button[hidden] {
-        display: none;
-      }
-    </style>
   </head>
 
   <body class="chat-app">
@@ -102,7 +72,7 @@
           <div class="account-actions">
             <button id="auth-retry" type="button" hidden>Try again</button>
             <button id="auth-sign-out" type="button" hidden>Sign out</button>
-            <a class="primary-link" href="explore.html">Explore colleges →</a>
+            
           </div>
         </section>
       </div>

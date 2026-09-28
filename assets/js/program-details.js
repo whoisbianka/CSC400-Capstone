@@ -80,7 +80,8 @@
         ['Study format', p.format],
         ['Annual tuition (USD)', tuition],
         ['Degree', p.degree],
-        ['Duration', p.duration]
+        ['Duration', p.duration],
+        ['Acceptance Rate', p.acceptanceRate]
       ].forEach(([label, value]) => {
         const group = document.createElement('div'),
           dt = document.createElement('dt'),

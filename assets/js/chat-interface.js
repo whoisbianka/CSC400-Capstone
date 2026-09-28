@@ -97,12 +97,6 @@
     } catch {
       storageAvailable = false;
     }
-
-    // Tell the user if answers cannot be saved after a page refresh.
-    if (!storageAvailable) {
-      $('connection-note').textContent =
-        'Sample questionnaire. Browser storage is unavailable: answers remain only on this page until it is refreshed. Nothing is sent to a database.';
-    }
   }
 
   // Updates the Guided mode progress bar and answer count label.

@@ -8,8 +8,9 @@
       ['state', 'Location'],
       ['major', 'Major'],
       ['type', 'College type'],
-      ['format', 'Study format'],
-      ['tuition', 'Annual tuition']
+      ['format', 'Program format'],
+      ['tuition', 'Annual tuition'],
+      ['acceptance', 'Acceptance rate']
     ];
     if (options.showMatches) columns.push(['matched', 'Related to your answers']);
     let sortKey = 'college',
