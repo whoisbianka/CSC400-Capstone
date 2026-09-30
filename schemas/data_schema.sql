@@ -8,7 +8,7 @@ DROP TABLE IF EXISTS program_rank_crit CASCADE;
 
 --Create Tables--
 CREATE TABLE schools(
-    school_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     unitid INT UNIQUE NOT NULL,
     opeid6 INT NOT NULL,
     instnm TEXT NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE schools(
 );
 
 CREATE TABLE majors(
-    major_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     cipcode INT UNIQUE NOT NULL,
     cipdesc TEXT NOT NULL
 );
@@ -38,7 +38,7 @@ CREATE TABLE programs(
 );
 
 CREATE TABLE adm_crit(
-    crit_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     unitid INT NOT NULL,
     adm_rate DECIMAL(6,4),
     satmt25 INT,
@@ -57,7 +57,7 @@ CREATE TABLE adm_crit(
 );
 
 CREATE TABLE cost_info(
-    cost_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     unitid INT NOT NULL,
     npt4 INT,
     npt41 INT,

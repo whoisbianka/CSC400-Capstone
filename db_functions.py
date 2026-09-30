@@ -494,7 +494,41 @@ def get_user_chatlog(user_id):
     for row in result:
         results.append({"Time":row.createdAt,"Text":row.chat_text,"isUser":row.isUser})
     return results
-    
+
+#Page(Integer), Page_count(Integer), Table_Name(String), column_to_sort(String), order(String) "ASC" or "DESC"
+def get_a_page(page,page_count,table_name,column_to_sort,order):
+    allowed_tables=["schools","majors","programs"]
+
+    if table_name not in allowed_tables:
+        raise ValueError(f"Unauthorized table name: '{table_name}'")
+
+    order = "DESC" if order.upper() == "DESC" else "ASC"
+    offset=(page - 1) * page_count
+    with engine.connect() as connection:
+        query=text(f"""
+                SELECT * FROM {table_name}
+                ORDER BY {column_to_sort} {order}, id ASC
+                LIMIT :limit offset :offset""")
+        result=connection.execute(query,{"limit":page_count,"offset":offset})
+
+    results=[]
+    for row in result:
+        results.append(row)
+    return(results)
+
+#Input a table_name and the last_id(the id 1 before the start of the return)
+def paginate(table_name,last_id):
+    with engine.connect() as connection:
+        query=text(f"""
+                SELECT * FROM {table_name}
+                WHERE id>:last_id
+                ORDER BY id ASC
+                LIMIT 10""")
+        result=connection.execute(query,{"last_id":last_id})
+    results=[]
+    for row in result:
+        results.append(row)
+    return(results)
 
 ##UPDATE Functions
 

@@ -14,7 +14,7 @@ DROP TABLE IF EXISTS chatlog CASCADE;
 
 --Create Tables--
 CREATE TABLE users(
-    user_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     fname VARCHAR(50) NOT NULL,
     lname VARCHAR(50) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE users(
 );
 
 CREATE TABLE schools(
-    school_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     unitid INT UNIQUE NOT NULL,
     opeid6 INT NOT NULL,
     instnm TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE schools(
 );
 
 CREATE TABLE majors(
-    major_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     cipcode INT UNIQUE NOT NULL,
     cipdesc TEXT NOT NULL
 );
@@ -53,7 +53,7 @@ CREATE TABLE programs(
 );
 
 CREATE TABLE adm_crit(
-    crit_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     unitid INT NOT NULL,
     adm_rate DECIMAL(6,4),
     satmt25 INT,
@@ -72,7 +72,7 @@ CREATE TABLE adm_crit(
 );
 
 CREATE TABLE cost_info(
-    cost_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     unitid INT NOT NULL,
     npt4 INT,
     npt41 INT,
@@ -94,42 +94,42 @@ CREATE TABLE program_rank_crit(
 );
 
 CREATE TABLE major_rec(
-    mrec_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
 	major_id INT NOT NULL,
-    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(major_id)
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(id)
 );
 
 CREATE TABLE school_rec(
-    srec_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
 	school_id INT NOT NULL,
-    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    CONSTRAINT fk_school FOREIGN KEY(school_id) REFERENCES schools(school_id)
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_school FOREIGN KEY(school_id) REFERENCES schools(id)
 );
 
 CREATE TABLE chatlog(
-    chat_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
     chat_text TEXT,
     isUser BOOLEAN NOT NULL,
     createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE major_fav(
-    mfav_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
 	major_id INT NOT NULL,
-    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(major_id)
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(id)
 );
 
 CREATE TABLE school_fav(
-    sfav_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
 	school_id INT NOT NULL,
-    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    CONSTRAINT fk_school FOREIGN KEY(school_id) REFERENCES schools(school_id)
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_school FOREIGN KEY(school_id) REFERENCES schools(id)
 );
