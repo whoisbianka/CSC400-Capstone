@@ -12,8 +12,12 @@ SELECT p.program_id, p.credlev, s.instnm, s.stabbr, s.city,
 FROM public.programs p
 JOIN public.schools s ON s.unitid = p.unitid
 JOIN public.majors m ON m.cipcode = p.cipcode
-LEFT JOIN public.cost_info c ON c.unitid = p.unitid
-    AND c.cost_id = (SELECT MAX(c2.cost_id) FROM public.cost_info c2 WHERE c2.unitid = p.unitid)
+LEFT JOIN (
+    SELECT unitid, MAX(cost_id) AS cost_id
+    FROM public.cost_info
+    GROUP BY unitid
+) latest_cost ON latest_cost.unitid = p.unitid
+LEFT JOIN public.cost_info c ON c.cost_id = latest_cost.cost_id
 '''
 
 
