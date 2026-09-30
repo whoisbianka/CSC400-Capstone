@@ -524,6 +524,36 @@ def paginate(table_name,last_id):
         result=connection.execute(query,{"last_id":last_id})
     return result.mappings().all()
 
+#input table(String) and a batch size(default=5000) to scan the whole table
+#Each row of the batch will be yielded, allowing for chatbot to analyze each row
+def scan_entire_table(table_name, batch_size=5000):
+    query = text(f"""
+        SELECT * FROM {table_name}
+        WHERE id > :last_id
+        ORDER BY id ASC
+        LIMIT :batch_size
+    """)
+    
+    last_id = 0
+    
+    with engine.connect() as connection:
+        while True:
+            # Fetch a large chunk
+            result = connection.execute(query, {
+                "last_id": last_id, 
+                "batch_size": batch_size
+            }).all()
+            
+            # If no rows are returned, table has been scanned
+            if not result:
+                break
+                
+            # Yield the rows to a loop
+            for row in result:
+                yield row
+                # Update the cursor to the last ID seen in this batch
+                last_id = row.id 
+
 ##UPDATE Functions
 
 ##DELETE Functions
