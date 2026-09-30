@@ -12,7 +12,7 @@ cipc2=3008
 # res=db_functions.get_best_progs_from_cip(n,cipc1,crit)
 # close_connector()
 
-print(db_functions.get_page(1,10,"schools","instnm",order="ASC"))
+print(db_functions.get_a_page(1,10,"schools","instnm",order="ASC"))
 close_connector()
 # db_functions.add_user(1,"Bryan", "Begley", "begley.bryan3@gmail.com", "blahblah")
 

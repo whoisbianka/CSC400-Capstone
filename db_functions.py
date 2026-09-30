@@ -511,10 +511,7 @@ def get_a_page(page,page_count,table_name,column_to_sort,order):
                 LIMIT :limit offset :offset""")
         result=connection.execute(query,{"limit":page_count,"offset":offset})
 
-    results=[]
-    for row in result:
-        results.append(row)
-    return(results)
+    return result.mappings().all()
 
 #Input a table_name and the last_id(the id 1 before the start of the return)
 def paginate(table_name,last_id):
@@ -525,10 +522,7 @@ def paginate(table_name,last_id):
                 ORDER BY id ASC
                 LIMIT 10""")
         result=connection.execute(query,{"last_id":last_id})
-    results=[]
-    for row in result:
-        results.append(row)
-    return(results)
+    return result.mappings().all()
 
 ##UPDATE Functions
 
