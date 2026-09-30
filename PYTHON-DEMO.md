@@ -1,4 +1,4 @@
-# Python-first Flask demo
+# Python-first Flask application
 
 This branch uses Python, Flask, and WTForms for page routing, search, questionnaire steps and validation, results, catalog filtering/sorting, and program lookup. Jinja templates render HTML with the existing warm theme. Small JavaScript files support the mobile menu, Enter-to-submit, and the existing optional Clerk profile UI. Core searches, forms, filters, and result pages work without JavaScript.
 
@@ -51,11 +51,11 @@ requirements.txt               Flask and WTForms dependencies
 - Use Explore to filter by text and study format, and sort by tuition.
 - Open a program: the URL uses its ID, for example `/programs/demo-1`.
 
-All colleges, programs, and tuition figures remain fictional. Matching is deterministic, not AI or an assessment of admission chances. Unsupported cases include negation and conversational follow-ups. Chat displays the last ten successful searches, but each search is independent. Results sort by matched topics and tuition; the catalog table has its own user-selected sort.
+The examples above describe automated test fixtures. Normal app launches use the Cloud SQL catalog. Matching is deterministic, not AI or an assessment of admission chances. Unsupported cases include negation and conversational follow-ups. Chat displays the last ten successful searches, but each search is independent. Results sort by matched topics and tuition; the catalog table has its own user-selected sort.
 
 ## Data and sessions
 
-No database setup or migrations are run. A read-only `PostgresProgramRepository` now implements `all()` and `get(program_id)` against `database-branch`. Select demo, direct PostgreSQL, or Cloud SQL via configuration. See [database connection setup](DATABASE-CONNECTION.md). Database credentials belong on the server.
+No database setup or migrations are run. A read-only `PostgresProgramRepository` now implements `all()` and `get(program_id)` against `database-branch`. Cloud SQL is the default; direct PostgreSQL is also supported. Demo fixtures are restricted to automated tests. See [database connection setup](DATABASE-CONNECTION.md). Database credentials belong on the server.
 
 Questionnaire answers and recent searches are held in server memory, scoped to an opaque browser session ID. Tabs in the same browser share a session. They expire after two hours of inactivity, server restart, or eviction when more than 256 demo sessions exist. They are not saved to a Clerk account or PostgreSQL. Cookies contain only a session identifier and form-protection token, not answers. Form POSTs use CSRF tokens, and templates escape user input.
 

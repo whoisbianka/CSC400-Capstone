@@ -1,21 +1,16 @@
-# Prepared PostgreSQL connection
+# Cloud SQL catalog integration
 
-The connection code is ready on this branch. No cloud account, database, schema, or records were changed. Live PostgreSQL/Cloud SQL access has not been verified because credentials and permission have not been supplied.
-
-## Keep using demo data
-
-The default is `PROGRAM_DATA_SOURCE=demo`. No database dependencies, credentials, or network connection are needed for demo mode. Install the normal `requirements.txt` and run `python app.py` as before.
+Cloud SQL is the default on `test/python-cloudsql-integration`. Fictional fixtures are restricted to automated tests. The app never falls back to them when a connection fails.
 
 ## Enable a database when access is available
 
 From an activated virtual environment in the project folder:
 
 ```sh
-python -m pip install -r requirements-database.txt
-cp .env.example .env
+python -m pip install -r requirements.txt
 ```
 
-Copy the example only when you do not already have a `.env`; otherwise edit the existing file. `.env` is ignored by Git. The application reads this file from the repository root; exported environment variables take priority. Restart Flask after changing settings. Keep passwords in `.env` locally, not in source code or chat.
+Create `.env` using `.env.example` as a reference only when you do not already have one; otherwise edit the existing file. `.env` is ignored by Git. The application reads this file from the repository root; exported environment variables take priority. Restart Flask after changing settings. Keep passwords in `.env` locally, not in source code or chat.
 
 Choose one connection method:
 
@@ -63,7 +58,7 @@ python -m flask --app degree_path check-database
 python app.py
 ```
 
-The check executes a read-only joined catalog query with at most one result, verifying connectivity and the expected schema without displaying records or connection secrets. It exits unsuccessfully on configuration, access, or schema errors. In demo mode it clearly reports that no database connection was attempted. `/api/health` is only application liveness; a successful health response does not prove database connectivity.
+The check executes a read-only joined catalog query with at most one result, verifying connectivity and the expected schema without displaying records or connection secrets. It exits unsuccessfully on configuration, access, or schema errors. `/api/health` is only application liveness; a successful health response does not prove database connectivity.
 
 Open http://127.0.0.1:8000/explore. Database mode says **Database catalog**, and tuition explicitly says in-state or out-of-state. Start with a major name shown in Explore; the current matcher recognizes catalog major names but does not yet have a database-backed synonym/career dictionary.
 
@@ -97,3 +92,16 @@ python -m unittest discover -s tests -v
 ```
 
 Adapter tests execute the catalog SELECT against a small SQLite fixture with matching table/column names (removing only the PostgreSQL `public.` qualifier). Connection tests mock SQLAlchemy/Google networking and check read-only transactions, configuration, parameter binding, error handling, and credential redaction. These tests do not replace a real PostgreSQL connection check. Connection-specific tests skip when optional database dependencies are absent.
+
+## macOS certificate troubleshooting
+
+In the activated environment, use the installed certificate bundle in the same terminal before starting Flask:
+
+```sh
+export SSL_CERT_FILE="$(python -m certifi)"
+export REQUESTS_CA_BUNDLE="$SSL_CERT_FILE"
+python -m flask --app degree_path check-database
+python app.py
+```
+
+If this works on a hotspot but fails on eduroam, use the working network for local testing and ask campus IT about certificate requirements. Keep TLS verification enabled.

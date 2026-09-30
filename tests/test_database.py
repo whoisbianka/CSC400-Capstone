@@ -92,6 +92,22 @@ class ConnectionTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0)
             self.assertIn('no database connection', result.output)
 
+    def test_cloudsql_is_default_and_demo_is_test_only(self):
+        with patch('degree_path.dotenv_values', return_value={}), patch.dict('os.environ', {}, clear=True):
+            app = create_app()
+        self.assertFalse(app.extensions['program_repository'].is_demo)
+        self.assertEqual(app.config['PROGRAM_DATA_SOURCE'], 'cloudsql')
+        with self.assertRaisesRegex(ValueError, 'automated tests'):
+            create_app({'PROGRAM_DATA_SOURCE': 'demo'})
+
+    def test_malformed_instance_name_is_actionable(self):
+        config = dict(PROGRAM_DATA_SOURCE='cloudsql', DB_USER='user', DB_PASS='secret',
+                      DB_NAME='db', INSTANCE_CONNECTION_NAME='project:instance')
+        db = Database(config)
+        self.addCleanup(db.close)
+        with self.assertRaisesRegex(DatabaseUnavailable, 'project:region:instance'):
+            db.select('SELECT 1')
+
     def test_missing_credentials_503_and_cli_failure(self):
         app = create_app({'TESTING': True, 'PROGRAM_DATA_SOURCE':'cloudsql', 'DB_USER':'', 'DB_PASS':'', 'DB_NAME':'', 'INSTANCE_CONNECTION_NAME':''})
         client = app.test_client()

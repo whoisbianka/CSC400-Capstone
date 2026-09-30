@@ -29,6 +29,8 @@ class Database:
                 raise DatabaseUnavailable('Missing database settings: ' + ', '.join(missing))
             options = dict(pool_size=5, max_overflow=2, pool_timeout=10, pool_pre_ping=True, hide_parameters=True)
             if cfg['PROGRAM_DATA_SOURCE'] == 'cloudsql':
+                if len(cfg['INSTANCE_CONNECTION_NAME'].split(':')) != 3 or not all(cfg['INSTANCE_CONNECTION_NAME'].split(':')):
+                    raise DatabaseUnavailable('INSTANCE_CONNECTION_NAME must use project:region:instance format.')
                 from google.cloud.sql.connector import Connector, IPTypes
                 private = str(cfg.get('PRIVATE_IP', 'false')).lower()
                 if private not in ('true', 'false'):

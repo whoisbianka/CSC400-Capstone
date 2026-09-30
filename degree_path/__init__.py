@@ -23,12 +23,14 @@ def create_app(test_config=None):
     for key in ('PROGRAM_DATA_SOURCE', 'TUITION_BASIS', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_SSLMODE', 'INSTANCE_CONNECTION_NAME', 'PRIVATE_IP'):
         if settings.get(key) is not None:
             app.config[key] = settings[key]
-    app.config.setdefault('PROGRAM_DATA_SOURCE', 'demo')
+    app.config.setdefault('PROGRAM_DATA_SOURCE', 'cloudsql')
     app.config.setdefault('TUITION_BASIS', 'in_state')
     if test_config:
         app.config.update(test_config)
     source = app.config['PROGRAM_DATA_SOURCE']
     if source == 'demo':
+        if not app.testing:
+            raise ValueError('Demo fixtures are available only during automated tests. Use cloudsql or postgres.')
         app.extensions['program_repository'] = DemoProgramRepository()
     elif source in ('postgres', 'cloudsql'):
         from .repositories.postgres import PostgresProgramRepository
