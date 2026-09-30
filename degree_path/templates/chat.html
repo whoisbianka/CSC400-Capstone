@@ -1,9 +1,14 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="chat-workspace">
+<div class="chat-workspace {% if history %}has-history{% endif %}">
 <div class="conversation-body">
-<section class="chat-welcome"><h1 id="page-title">Don't stress. Just chat!</h1><p>Your next chapter doesn't need to be figured out.<br>Ask about majors, colleges, and careers—or complete our free questionnaire!</p></section>
-<div class="chat-modes"><a class="primary-link" href="{{ url_for('web.questionnaire') }}">Find my major →</a></div>
+<section class="chat-welcome">
+<div class="assistant-mark" aria-hidden="true">✦</div>
+<p class="eyebrow">Meet your degree path assistant</p>
+<h1 id="page-title">Big future.<br><span>Start with a little chat.</span></h1>
+<p>College plans can feel overwhelming. Let's make them a conversation.<br class="desktop-break"> Ask about majors, discover colleges, and explore what comes next.</p>
+<div class="welcome-tags"><span>Explore majors</span><span>Discover colleges</span><span>Compare programs</span></div>
+</section>
 <div class="messages" aria-label="Conversation">
 {% for entry in history %}
 <article class="message user"><p class="message-author">You</p><p>{{ entry.question }}</p></article>
@@ -15,16 +20,19 @@
 {% if history %}<form method="post" action="{{ url_for('web.reset_chat') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="secondary-button">Clear conversation</button></form>{% endif %}
 </div>
 <div class="composer-dock">
-{% if not history %}<div class="query-starters" aria-label="Suggested searches">
-{% for prompt in suggestions %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button name="question" value="{{ prompt }}">{{ prompt }}</button></form>{% endfor %}
+{% if not history %}
+<p class="starter-label">A little inspiration to get you started</p>
+<div class="query-starters" aria-label="Suggested searches">
+{% for prompt in suggestions %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button name="question" value="{{ prompt }}"><span class="starter-icon" aria-hidden="true">{{ ['✧', '⌕', '↗'][loop.index0 % 3] }}</span><span>{{ prompt }}</span><span class="starter-arrow" aria-hidden="true">↗</span></button></form>{% endfor %}
 </div>{% endif %}
 <form method="post" class="composer">
 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <label for="chat-message" class="sr-only">Your question</label>
-<textarea id="chat-message" name="question" rows="2" maxlength="2000" required data-enter-submit placeholder="What would you like to know?">{{ question }}</textarea>
-<button class="primary-link" type="submit">Search programs</button>
+<textarea id="chat-message" name="question" rows="2" maxlength="2000" required data-enter-submit placeholder="Ask me about a major or college…">{{ question }}</textarea>
+<div class="composer-footer"><span>Curiosity looks good on you.</span><button class="primary-link" type="submit">Let’s chat <span aria-hidden="true">↑</span></button></div>
 </form>
 {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+<p class="guided-alternative">Not sure where to start? <a href="{{ url_for('web.questionnaire') }}">Find my major <span aria-hidden="true">↗</span></a></p>
 <p class="connection-note">{{ source_note }} Matching uses keywords and filters.</p>
 </div></div>
 {% endblock %}
