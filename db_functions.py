@@ -520,7 +520,7 @@ def paginate(table_name,last_id):
                 SELECT * FROM {table_name}
                 WHERE id>:last_id
                 ORDER BY id ASC
-                LIMIT 10""")
+                LIMIT 2000""")
         result=connection.execute(query,{"last_id":last_id})
     return result.mappings().all()
 
