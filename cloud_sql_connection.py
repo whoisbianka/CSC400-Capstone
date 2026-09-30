@@ -3,8 +3,16 @@ from google.cloud.sql.connector import Connector, IPTypes
 import pg8000
 import sqlalchemy
 from dotenv import load_dotenv
+import certifi
+import sys
 
 load_dotenv()
+
+try:
+    os.environ["SSL_CERT_FILE"] = certifi.where()
+    os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
+except ImportError:
+    print("Warning: 'certifi' package not found. SSL verification might fail.", file=sys.stderr)
 
 _connector=Connector(refresh_strategy="LAZY")
 
