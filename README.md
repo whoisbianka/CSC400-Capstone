@@ -2,14 +2,14 @@
 
 This branch runs the Flask college and major explorer against the populated PostgreSQL catalog on Google Cloud SQL. Cloud SQL is the default; fictional data is available only to automated tests. Connection failures display an error and never substitute demo records.
 
-## Run locally
+## Here is how you run locally
 
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 gcloud auth application-default login
-python -m flask --app degree_path check-database
+python -m flask --app degree_path check-database (optional, you can just go straight to running python app.py)
 python app.py
 ```
 
