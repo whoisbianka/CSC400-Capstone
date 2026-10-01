@@ -554,6 +554,63 @@ def scan_entire_table(table_name, batch_size=5000):
                 # Update the cursor to the last ID seen in this batch
                 last_id = row.id 
 
+##Get a page of schools
+#Operator should be a string of one of the following: "<",">","<=",">=", or "="
+#Criteria should be the name of a column from schools(s), cost_info(c), or adm_crit(a)
+#Criteria should be in the form of "s.criteria", "c.criteria", or "a.criteria" 
+#depending on which table that criteria is from
+#Threshhold is the value to evaluate the criteria based on
+#Column to sort should follow the same syntax as criteria but with column names instead of criteria
+#"s.column_name","c.column_name","a.column_name"
+#order should be "ASC" or "DESC" depending on which way to order to sort that column
+#Error catching will be added
+def get_page_schools(page,page_count,column_to_sort,order,criteria,operator,threshhold):
+    order = "DESC" if order.upper() == "DESC" else "ASC"
+    offset=(page - 1) * page_count
+    with engine.connect() as connection:
+        query=text(f"""
+                SELECT * 
+                FROM schools s
+                JOIN cost_info c ON c.unitid = s.unitid
+                JOIN adm_crit a ON a.unitid = s.unitid
+                WHERE {criteria} {operator} :threshhold
+                ORDER BY {column_to_sort} {order}, s.id {order}
+                LIMIT :limit offset :offset""")
+        result=connection.execute(query,{"threshhold":threshhold,"limit":page_count,"offset":offset})
+
+    return result.mappings().all()
+
+##Get a page of schools
+#Operator should be a string of one of the following: "<",">","<=",">=", or "="
+#Criteria should be the name of a column from programs(p), or program_rank_crit(r)
+#Criteria should be in the form of "p.criteria" or "r.criteria"
+#depending on which table that criteria is from
+#Threshhold is the value to evaluate the criteria based on
+#Column to sort should follow the same syntax as criteria but with column names instead of criteria
+#"p.column_name","r.column_name"
+#order should be "ASC" or "DESC" depending on which way to order to sort that column
+#Error catching will be added
+def get_page_programs(page,page_count,column_to_sort,order,criteria,operator,threshhold):
+    order = "DESC" if order.upper() == "DESC" else "ASC"
+    offset=(page - 1) * page_count
+    with engine.connect() as connection:
+        query=text(f"""
+                SELECT * 
+                FROM programs p
+                JOIN program_rank_crit r ON r.program_id = p.program_id
+                WHERE {criteria} {operator} :threshhold
+                ORDER BY {column_to_sort} {order}, p.program_id {order}
+                LIMIT :limit offset :offset""")
+        result=connection.execute(query,{"threshhold":threshhold,"limit":page_count,"offset":offset})
+
+    return result.mappings().all()
+
+##Get a page of majors
+#will add when there is more criteria to search through majors based on
+#for now use get_a_page function
+def get_page_majors(page,page_count,column_to_sort,order,criteria,operator,threshhold):
+    pass
+
 ##UPDATE Functions
 
 ##DELETE Functions
