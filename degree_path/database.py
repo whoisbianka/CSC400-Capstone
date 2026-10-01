@@ -1,5 +1,6 @@
 """Lazy, read-only PostgreSQL access; no schema creation or data imports."""
 import atexit
+import os
 import ssl
 from threading import Lock
 
@@ -31,6 +32,9 @@ class Database:
             if cfg['PROGRAM_DATA_SOURCE'] == 'cloudsql':
                 if len(cfg['INSTANCE_CONNECTION_NAME'].split(':')) != 3 or not all(cfg['INSTANCE_CONNECTION_NAME'].split(':')):
                     raise DatabaseUnavailable('INSTANCE_CONNECTION_NAME must use project:region:instance format.')
+                import certifi
+                os.environ.setdefault('SSL_CERT_FILE', certifi.where())
+                os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
                 from google.cloud.sql.connector import Connector, IPTypes
                 private = str(cfg.get('PRIVATE_IP', 'false')).lower()
                 if private not in ('true', 'false'):

@@ -53,7 +53,9 @@ def chat():
             data['history'].append({'question': question.strip(), 'result': search(question, repository().all(), **search_options())})
             data['history'] = data['history'][-10:]
             return redirect(url_for('web.chat', _anchor='latest-result'), code=303)
-    majors = list(dict.fromkeys(p['major'] for p in repository().all()))[:3]
+    repo = repository()
+    majors = (list(dict.fromkeys(p['major'] for p in repo.all()))[:3]
+              if repo.is_demo else repo.suggested_majors())
     return render_template('chat.html', title='Degree Path Assistant', history=data['history'], question=question,
                            error=error, suggestions=[f'Which colleges offer {m}?' for m in majors]), 400 if error else 200
 
@@ -66,7 +68,21 @@ def reset_chat():
 
 @web.get('/explore')
 def explore():
-    return render_template('explore.html', title='Explore', **table_context(repository().all()))
+    repo = repository()
+    if repo.is_demo:
+        return render_template('explore.html', title='Explore', **table_context(repo.all()))
+    page = request.args.get('page', 1, type=int)
+    if not 1 <= page <= 1000000:
+        abort(400, description='Invalid page number.')
+    result = repo.page(page=page, query=request.args.get('q', ''),
+                       sort=request.args.get('sort', 'college'), direction=request.args.get('direction', 'asc'),
+                       study_format=request.args.get('format', ''))
+    args = {key: request.args[key] for key in ('q', 'sort', 'direction', 'format') if key in request.args}
+    pagination = {'page': page, 'has_next': result['has_next'],
+                  'previous': url_for('web.explore', **dict(args, page=page - 1)) if page > 1 else None,
+                  'next': url_for('web.explore', **dict(args, page=page + 1)) if result['has_next'] else None}
+    return render_template('explore.html', title='Explore', rows=result['rows'],
+                           sorts=SORTS, formats=(), pagination=pagination)
 
 
 @web.get('/programs/<program_id>')

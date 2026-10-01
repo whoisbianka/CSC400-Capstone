@@ -15,13 +15,13 @@ class SqliteCatalog:
         self.connection = sqlite3.connect(':memory:')
         self.connection.row_factory = sqlite3.Row
         self.connection.executescript('''
-        CREATE TABLE programs(program_id INTEGER, unitid INTEGER, cipcode INTEGER, credlev INTEGER);
-        CREATE TABLE schools(unitid INTEGER, instnm TEXT, stabbr TEXT, city TEXT);
-        CREATE TABLE majors(cipcode INTEGER, cipdesc TEXT);
-        CREATE TABLE cost_info(cost_id INTEGER, unitid INTEGER, tuitionfee_in INTEGER, tuitionfee_out INTEGER);
-        INSERT INTO schools VALUES (10, 'Test College', 'CT', 'New Haven');
-        INSERT INTO majors VALUES (1107, 'Computer Science');
-        INSERT INTO programs VALUES (1,10,1107,3), (2,10,1107,2);
+        CREATE TABLE programs(id INTEGER PRIMARY KEY, program_id INTEGER, unitid INTEGER, cipcode INTEGER, credlev INTEGER);
+        CREATE TABLE schools(id INTEGER PRIMARY KEY, unitid INTEGER, instnm TEXT, stabbr TEXT, city TEXT);
+        CREATE TABLE majors(id INTEGER PRIMARY KEY, cipcode INTEGER, cipdesc TEXT);
+        CREATE TABLE cost_info(id INTEGER, unitid INTEGER, tuitionfee_in INTEGER, tuitionfee_out INTEGER);
+        INSERT INTO schools VALUES (1,10, 'Test College', 'CT', 'New Haven');
+        INSERT INTO majors VALUES (1,1107, 'Computer Science');
+        INSERT INTO programs VALUES (1,1,10,1107,3), (3,2,10,1107,2);
         INSERT INTO cost_info VALUES (1,10,100,200),(2,10,12000,24000);
         ''')
 
@@ -59,6 +59,53 @@ class RepositoryTests(unittest.TestCase):
         self.assertNotIn('demo', result['message'])
         self.assertIn('in-state', result['filters'][-1])
         self.assertIn('unavailable', search('online computer science', self.repo.all(), demo=False)['message'])
+
+    def test_pages_filter_sort_and_scan_without_skipping_ids(self):
+        first = self.repo.page(page_size=1)
+        second = self.repo.page(page=2, page_size=1)
+        self.assertTrue(first['has_next'])
+        self.assertFalse(second['has_next'])
+        self.assertEqual([first['rows'][0]['id'], second['rows'][0]['id']], ['1', '2'])
+        self.assertEqual(len(self.repo.page(query='Connecticut')['rows']), 2)
+        self.assertEqual(self.repo.page(query='%')['rows'], [])
+        self.assertEqual(self.repo.page(study_format='Online')['rows'], [])
+        self.assertEqual([r['id'] for r in self.repo.scan_entire_catalog(1)], ['1', '2'])
+        self.assertEqual(self.repo.suggested_majors(), ['Computer Science'])
+        self.database.connection.execute("INSERT INTO schools VALUES (2,20,'Other College','MA','Boston')")
+        self.database.connection.execute('INSERT INTO programs VALUES (4,3,20,1107,3)')
+        for direction in ('asc', 'desc'):
+            self.assertIsNone(self.repo.page(sort='tuition', direction=direction)['rows'][-1]['tuition'])
+
+    def test_catalog_helpers_validate_identifiers_and_scan_gaps(self):
+        from degree_path.repositories.tables import CatalogTables
+        tables = CatalogTables(self.database)
+        self.assertEqual(tables.get_a_page(2, 1, 'programs', 'program_id')[0]['id'], 3)
+        self.assertEqual([r['id'] for r in tables.paginate('programs', 1)], [3])
+        self.assertEqual([r['id'] for r in tables.scan_entire_table('programs', 1)], [1, 3])
+        for args in [(1, 2, 'users', 'id'), (1, 2, 'programs', 'id; DROP TABLE programs'),
+                     (0, 2, 'programs', 'id'), (1, 5001, 'programs', 'id')]:
+            with self.assertRaises(ValueError):
+                tables.get_a_page(*args)
+        with self.assertRaises(ValueError):
+            list(tables.scan_entire_table('users'))
+        with self.assertRaises(ValueError):
+            tables.paginate('programs', -1)
+
+    def test_browse_and_home_do_not_load_entire_catalog(self):
+        app = create_app({'TESTING': True, 'PROGRAM_DATA_SOURCE': 'demo'})
+        app.extensions['program_repository'] = self.repo
+        client = app.test_client()
+        with patch.object(self.repo, 'all', side_effect=AssertionError('Full scan')):
+            self.assertEqual(client.get('/').status_code, 200)
+            self.assertIn('on page 1', client.get('/explore').text)
+            self.assertEqual(client.get('/explore?endpoint=bad&_external=true').status_code, 200)
+            self.assertEqual(client.get('/explore?page=0').status_code, 400)
+            self.assertEqual(client.get('/explore?page=1000001').status_code, 400)
+        with patch.object(self.repo, 'page', return_value={'rows': [], 'has_next': True}):
+            page = client.get('/explore?page=2&q=computer&sort=tuition&direction=desc').text
+            self.assertIn('page=3', page)
+            self.assertIn('q=computer', page)
+            self.assertIn('direction=desc', page)
 
     def test_flask_adapter_pages_and_api(self):
         app = create_app({'TESTING': True, 'PROGRAM_DATA_SOURCE': 'demo'})

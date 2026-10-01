@@ -72,7 +72,7 @@ Open http://127.0.0.1:8000/explore. Database mode says **Database catalog**, and
 - `cost_info.tuitionfee_in` or `tuitionfee_out` → institution-level annual tuition and fees.
 - `programs.credlev` → associate's/bachelor's label for codes 2/3.
 
-Choose `TUITION_BASIS=in_state` or `out_of_state`. Missing or negative costs stay unavailable; there is no automatic switch to another cost basis. Net price is not substituted for tuition. Because `cost_info.unitid` is not unique in the schema, the adapter selects the highest `cost_id` per institution to avoid duplicate program cards. That is an insertion-order rule, not proof of the newest reporting year.
+Choose `TUITION_BASIS=in_state` or `out_of_state`. Missing or negative costs stay unavailable; there is no automatic switch to another cost basis. Net price is not substituted for tuition. Because `cost_info.unitid` is not unique in the schema, the adapter selects the highest `id` per institution to avoid duplicate program cards. That is an insertion-order rule, not proof of the newest reporting year.
 
 The schema has no college ownership, study format, keywords, or careers. The adapter leaves these unavailable; it does not invent values. Study-format dropdown options are omitted in database mode and natural-language public/private/format filters explain that those fields are unavailable.
 
@@ -82,7 +82,7 @@ Connections are lazy and pooled. Every query starts a read-only transaction with
 
 Do not run the branch's `db_setup.py` just to connect: its schema scripts drop and recreate tables. Have your teammate supply a populated test database or a catalog-only export if testing locally.
 
-The repository still loads the catalog for Python matching/filtering, as the demo architecture does. Large production datasets need pagination, database-side filtering, and suitable indexes; those are outside this connection preparation. Questionnaire sessions remain temporary server memory and are not written to the database.
+Explore filters and sorts in PostgreSQL and displays 50 programs per page. The home page fetches only three suggestion names. Chat searches, questionnaire matching, and the legacy full-catalog API still assemble the catalog in memory, now fetched in batches of 2,000; these paths can still be slower on large datasets. Questionnaire sessions remain temporary server memory and are not written to the database.
 
 ## Offline tests
 
@@ -105,3 +105,26 @@ python app.py
 ```
 
 If this works on a hotspot but fails on eduroam, use the working network for local testing and ask campus IT about certificate requirements. Keep TLS verification enabled.
+
+## Database branch synchronization (2026-10-01)
+
+Adapted changes through database-branch commit `19bfcba`: uniform primary-key `id` columns, certificate defaults, page queries, cursor pagination, and batched scanning. This expects the updated deployed schema; no schema scripts are executed. Program URLs continue to use `program_id`, while scans advance by the internal `programs.id`.
+
+`degree_path.repositories.tables.CatalogTables` exposes `get_a_page`, `paginate`, and `scan_entire_table` for schools, majors, and programs. The signatures follow the teammate's helpers; results consistently use mapping rows (`row['id']`). Only allowlisted table/column names are accepted; page sizes and cursor values are validated. Each batch uses the existing read-only transaction and query timeout. Batches do not represent a single database snapshot if the catalog changes during a scan.
+
+For Python exploration without editing files:
+
+```python
+from degree_path import create_app
+from degree_path.repositories.tables import CatalogTables
+app = create_app()
+db = app.extensions['program_repository'].database
+tables = CatalogTables(db)
+print(tables.get_a_page(1, 10, 'schools', 'instnm', 'ASC'))
+for row in tables.scan_entire_table('schools'):
+    if row['stabbr'] == 'CT':
+        print(row['instnm'])
+db.close()
+```
+
+The Cloud SQL connector defaults to certifi for TLS certificates, without replacing explicitly set `SSL_CERT_FILE` or `REQUESTS_CA_BUNDLE` values. The manual certificate commands above remain useful for diagnosing campus network issues.
