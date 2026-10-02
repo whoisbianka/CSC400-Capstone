@@ -2,15 +2,26 @@
 import secrets
 import time
 from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
-from .services.questionnaire import QUESTIONS, next_step
-from .forms import validate_text
+from .services.search import search
+from .services.catalog import filter_programs, SORTS, FORMATS
+from .services.questionnaire import QUESTIONS, next_step, results, validate_text
 
 web = Blueprint('web', __name__)
 
 
+def repository():
+    return current_app.extensions['program_repository']
+
+
+def search_options():
+    repo = repository()
+    return {'demo': repo.is_demo, 'tuition_label': repo.tuition_label}
+
+
 def state():
-    
-    store = current_app.extensions['ui_states']
+    # Local demo only: opaque browser cookie, answers/history in process memory.
+    # Expire inactive sessions after two hours and retain at most 256 browsers.
+    store = current_app.extensions['demo_states']
     now = time.monotonic()
     for key, value in list(store.items()):
         if now - value['seen'] > 7200:
@@ -25,6 +36,10 @@ def state():
         store.popitem(last=False)
     store[sid]['seen'] = now
     return store[sid]
+
+
+def table_context(programs):
+    return {'rows': filter_programs(programs, request.args), 'sorts': SORTS, 'formats': FORMATS if repository().is_demo else ()}
 
 
 @web.route('/', methods=['GET', 'POST'])

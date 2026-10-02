@@ -31,7 +31,16 @@ def connect_with_connector() -> sqlalchemy.engine.base.Engine:
     db_pass = os.environ["DB_PASS"]  # e.g. 'my-db-password'
     db_name = os.environ["DB_NAME"]  # e.g. 'my-database'
 
-    ip_type = IPTypes.PRIVATE if os.environ.get("PRIVATE_IP") else IPTypes.PUBLIC
+    private_ip = os.environ.get("PRIVATE_IP", "false").strip().lower()
+
+    if private_ip not in ("true", "false"):
+        raise ValueError("PRIVATE_IP must be true or false")
+
+    ip_type = (
+        IPTypes.PRIVATE
+        if private_ip == "true"
+        else IPTypes.PUBLIC
+    )
 
     def getconn() -> pg8000.dbapi.Connection:
         conn: pg8000.dbapi.Connection = _connector.connect(
