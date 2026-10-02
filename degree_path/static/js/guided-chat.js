@@ -1,191 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
+(() => {
+  function escapeText(value) {
+    const node = document.createElement('span');
+    node.textContent = value;
+    return node.innerHTML;
+  }
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>Degree Path Explorer Chatbot</title>
-
-  <link href="assets/img/favicon.png" rel="icon">
-  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-  <link href="assets/css/main.css" rel="stylesheet">
-
-  <style>
-    .chat-container {
-      max-width: 800px;
-      margin-top: 30px;
-      background: #ffffff;
-      border-radius: 15px;
-      padding: 20px;
-      box-shadow: 0 4px 15px rgba(34, 93, 229, 0.10);
-    }
-
-    .chat-messages {
-      height: 350px;
-      overflow-y: auto;
-      padding: 10px;
-      margin-bottom: 20px;
-    }
-
-    .bot-message {
-      background: #eef4ff;
-      color: #14213b;
-      padding: 12px 16px;
-      margin-bottom: 12px;
-      border-radius: 12px;
-      max-width: 75%;
-    }
-
-    .user-message {
-      background: #225de5;
-      color: #ffffff;
-      padding: 12px 16px;
-      margin: 12px 0 12px auto;
-      border-radius: 12px;
-      max-width: 75%;
-      text-align: right;
-    }
-
-    .chat-input {
-      display: flex;
-      gap: 10px;
-      border-top: 1px solid #dce4f0;
-      padding-top: 15px;
-    }
-
-    .chat-input input {
-      flex: 1;
-      padding: 12px;
-      border: 1px solid #b7cbee;
-      border-radius: 20px;
-      font-size: 16px;
-    }
-
-    .chat-input input:focus {
-      outline: none;
-      border-color: #225de5;
-    }
-
-    .chat-input button {
-      padding: 10px 22px;
-      border: none;
-      border-radius: 20px;
-      background: #225de5;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    .chat-input button:hover {
-      opacity: 0.85;
-    }
-
-    /* Match the existing modern blue palette without changing layout. */
-    body {
-      --background-color: #f5f8ff;
-      --default-color: #14213b;
-      --heading-color: #14213b;
-      --accent-color: #225de5;
-      --surface-color: #ffffff;
-      --contrast-color: #ffffff;
-      background-color: #f5f8ff;
-      color: #14213b;
-    }
-    .light-background {
-      --background-color: #f5f8ff;
-      --surface-color: #ffffff;
-    }
-    .header {
-      --background-color: #101d35;
-      --heading-color: #eef4ff;
-      --default-color: #eef4ff;
-      background-color: #101d35;
-    }
-    .header .logo .sitename { color: #eef4ff; }
-    .content > p { color: #5f6d83; }
-    .bot-message strong { color: #225de5; }
-    .chat-input input { background-color: #ffffff; color: #14213b; }
-    .chat-input input::placeholder { color: #5f6d83; }
-    .chat-input button:hover { background-color: #1747b5; opacity: 1; }
-    .chat-input input:focus-visible { outline-color: #225de5; }
-    .read-more { background-color: #225de5; color: #ffffff; }
-    .read-more:hover { background-color: #1747b5; color: #ffffff; }
-  </style>
-</head>
-
-<body>
-
-  <header class="header d-flex align-items-center">
-    <div class="container">
-
-      <a href="index.html" class="logo d-flex align-items-center">
-        <h1 class="sitename">Degree Path Explorer</h1>
-      </a>
-
-    </div>
-  </header>
-
-  <main>
-
-    <section class="section about light-background">
-
-      <div class="container content">
-
-        <h2>Explore Your Path</h2>
-
-        <p>
-          Chat with Degree Path Explorer to discover majors, careers,
-          and college options based on your interests and goals.
-        </p>
-
-        <div class="chat-container">
-
-          <div class="chat-messages" id="chatMessages">
-
-            <div class="bot-message">
-              <strong>Degree Path Explorer:</strong>
-              Hi! I'm here to help you explore possible college majors,
-              careers, and schools.
-            </div>
-
-            <div class="bot-message">
-              <strong>Degree Path Explorer:</strong>
-              Let's start simple. What's your first name?
-            </div>
-
-          </div>
-
-          <div class="chat-input">
-
-            <input
-              type="text"
-              id="userInput"
-              placeholder="Type your message..."
-              autocomplete="off"
-            >
-
-            <button id="sendButton" type="button">
-              Send
-            </button>
-
-          </div>
-
-        </div>
-
-        <br>
-
-        <a href="index.html" class="read-more">
-          Back to home
-        </a>
-
-      </div>
-
-    </section>
-
-  </main>
-
-  <script>
 
   // Connect JavaScript to the chatbot elements
   const userInput = document.getElementById("userInput");
@@ -489,7 +308,7 @@
 
       addBotMessage(
         "Nice to meet you, " +
-        userProfile.name +
+        escapeText(userProfile.name) +
         "! " +
         questions[0]
       );
@@ -514,7 +333,7 @@
 
       addBotMessage(
         "Thanks, " +
-        userProfile.name +
+        escapeText(userProfile.name) +
         "! I have enough information to start exploring some areas that may match your interests and preferences."
       );
 
@@ -643,8 +462,5 @@
 
   });
 
-</script>
 
-</body>
-
-</html>
+})();

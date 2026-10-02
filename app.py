@@ -1,4 +1,3 @@
-"""Start the Flask demo with python3 app.py (or flask --app degree_path run)."""
 import argparse
 from degree_path import create_app
 

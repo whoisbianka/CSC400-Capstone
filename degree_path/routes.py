@@ -95,8 +95,7 @@ def program_details(program_id):
 
 @web.get('/questionnaire')
 def questionnaire():
-    step = next_step(state()['answers'])
-    return redirect(url_for('web.review' if step is None else 'web.question', **({} if step is None else {'step': step})))
+    return render_template('guided_chat.html', title='Find my major')
 
 
 @web.route('/questionnaire/<int:step>', methods=['GET', 'POST'])
@@ -111,7 +110,8 @@ def question(step):
         error = validate_text(answer)
         if not error:
             answers[key] = answer.strip()
-            return redirect(url_for('web.questionnaire'), code=303)
+            step = next_step(answers)
+            return redirect(url_for('web.review') if step is None else url_for('web.question', step=step), code=303)
     return render_template('questionnaire.html', title='Find my major', step=step, prompt=prompt,
                            answer=answer, error=error, completed=len(answers), total=len(QUESTIONS)), 400 if error else 200
 
@@ -152,7 +152,7 @@ def settings():
 @web.get('/<page>.html')
 def legacy_page(page):
     targets = {'index': 'web.chat', 'explore': 'web.explore', 'program-details': 'web.explore',
-               'profile': 'web.profile', 'settings': 'web.settings'}
+               'profile': 'web.profile', 'settings': 'web.settings', 'chatbot': 'web.questionnaire'}
     if page not in targets:
         abort(404)
     target = 'web.questionnaire' if page == 'index' and request.args.get('mode') == 'guided' else targets[page]

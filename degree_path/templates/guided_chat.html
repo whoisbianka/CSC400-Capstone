@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/guided-chat.css') }}">
+<script src="{{ url_for('static', filename='js/guided-chat.js') }}" defer></script>
+{% endblock %}
+{% block content %}
+<div class="page-workspace"><div class="workspace-page" id="guided-chat">
+
+
+    <section class="section about light-background">
+
+      <div class="container content">
+
+        <h1 id="page-title">Find my major</h1>
+
+        <p>
+          Chat with Degree Path Explorer to discover majors, careers,
+          and college options based on your interests and goals.
+        </p>
+
+        <div class="chat-container">
+
+          <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Conversation">
+
+            <div class="bot-message">
+              <strong>Degree Path Explorer:</strong>
+              Hi! I'm here to help you explore possible college majors,
+              careers, and schools.
+            </div>
+
+            <div class="bot-message">
+              <strong>Degree Path Explorer:</strong>
+              Let's start simple. What's your first name?
+            </div>
+
+          </div>
+
+          <p class="small-note">This guided conversation suggests areas to explore. It does not query the college database. Answers reset when you reload.</p>
+          <div class="chat-input">
+
+            <label for="userInput" class="sr-only">Your answer</label>
+            <input
+              type="text"
+              id="userInput"
+              placeholder="Type your message..."
+              autocomplete="off"
+            >
+
+            <button id="sendButton" type="button">
+              Send
+            </button>
+
+          </div>
+
+        </div>
+
+        <br>
+
+        <a href="{{ url_for('web.chat') }}" class="read-more">
+          Back to home
+        </a>
+
+      </div>
+
+    </section>
+
+  
+</div></div>
+{% endblock %}
