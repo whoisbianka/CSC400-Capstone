@@ -1,2 +1,0 @@
-# Compatibility entry point; database support is installed by default.
--r requirements.txt
