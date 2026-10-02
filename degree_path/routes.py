@@ -1,6 +1,7 @@
 """Page routes and the compatible public demo API."""
 import secrets
 import time
+from . import db_functions
 from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
 from .services.search import search
 from .services.catalog import filter_programs, SORTS, FORMATS
