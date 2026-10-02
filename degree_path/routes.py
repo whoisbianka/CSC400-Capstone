@@ -19,8 +19,6 @@ def search_options():
 
 
 def state():
-    # Local demo only: opaque browser cookie, answers/history in process memory.
-    # Expire inactive sessions after two hours and retain at most 256 browsers.
     store = current_app.extensions['demo_states']
     now = time.monotonic()
     for key, value in list(store.items()):
