@@ -8,18 +8,19 @@
 <header class="explore-hero">
 <p class="eyebrow">Find your next chapter</p>
 <h1 id="page-title">Explore college programs</h1>
-<p>Discover what you could study and where you could go. Explore programs, then take a closer look at the colleges behind them.</p>
-<a class="explore-guide-link" href="{{ url_for('web.questionnaire') }}">Not sure where to start? Find your major <span aria-hidden="true">→</span></a>
-</header>
+<p>Look through our massive database of college programs in the US. Use the filters to narrow your search to find schools that fit your criteria.</p>
+
 <div class="explore-layout">
 <aside class="explore-sidebar" aria-labelledby="browse-title">
 <div class="sidebar-heading"><h2 id="browse-title">Filter programs</h2><a href="{{ url_for('web.explore') }}">Reset</a></div>
+
 <form id="degree-filter-form" method="get" class="degree-filters">
 <input type="hidden" name="degree_form" value="1">
 <fieldset><legend>Degree level</legend>
 {% for value, label in [(2, 'Associate degree'), (3, "Bachelor’s degree")] %}
 <label><input type="checkbox" class="degree-choice" name="degree" value="{{ value }}" {% if value in degrees %}checked{% endif %}> {{ label }}</label>
 {% endfor %}
+
 </fieldset>
 <input type="hidden" name="degrees" id="degree-values" value="{{ degree_query }}">
 {% if cipcode %}<input type="hidden" name="cipcode" value="{{ cipcode }}">{% endif %}
@@ -34,14 +35,15 @@
 <label for="filter-{{ name }}">{{ label }}</label>
 <input id="filter-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ filters.get(name, '') }}" placeholder="Any" {% if type == 'number' %}min="0" max="{{ 100 if name.startswith('acceptance_') else 2147483647 }}"{% elif name == 'state' %}maxlength="3"{% else %}maxlength="100"{% endif %}>
 {% endfor %}
-{% if heading == 'Annual cost' %}<p class="small-note">Net price is the average cost after financial aid.</p>{% endif %}
+{% if heading == 'Annual cost' %}{% endif %}
 </details>
 {% endfor %}
 <noscript><button type="submit" class="secondary-button">Update results</button></noscript>
 </form>
 </aside>
+
 <section class="explore-results" aria-labelledby="results-title">
-<div class="results-heading"><div><p class="results-kicker">YOUR POSSIBILITIES</p><h2 id="results-title">{% if cipcode %}{% for major in majors if major.cipcode == cipcode %}{{ major.name }}{% endfor %}{% else %}College programs{% endif %}</h2></div><span class="page-badge">Page {{ data.page }}</span></div>
+<div class="results-heading"><div><p class="results-kicker">RESULTS</p><h2 id="results-title">{% if cipcode %}{% for major in majors if major.cipcode == cipcode %}{{ major.name }}{% endfor %}{% else %}Programs found{% endif %}</h2></div><span class="page-badge">Page {{ data.page }}</span></div>
 <p class="results-count" role="status">{% if data.rows %}Showing {{ (data.page - 1) * 25 + 1 }}–{{ (data.page - 1) * 25 + data.rows|length }} programs{% else %}No programs on this page{% endif %}</p>
 <div class="program-cards">
 {% for program in data.rows %}
@@ -62,8 +64,7 @@
 {% if facts.get(key+'25') is not none and facts.get(key+'75') is not none %}<div><dt>{{ label }} range</dt><dd>{{ facts[key+'25'] }}–{{ facts[key+'75'] }}</dd></div>{% endif %}
 {% endfor %}
 </dl>
-{% if facts.get('npt4') is not none or facts.get('satmt25') is not none or facts.get('satvr25') is not none %}<p class="card-facts-note">{% if facts.get('npt4') is not none %}Net price is the average after financial aid. {% endif %}{% if facts.get('satmt25') is not none or facts.get('satvr25') is not none %}Scores show the 25th–75th percentiles.{% endif %}</p>{% endif %}
-<div class="program-card-footer"><span>Explore costs, earnings &amp; admissions</span><a href="{{ url_for('web.program_details', program_id=program.id) }}">View program <span aria-hidden="true">→</span></a></div>
+<div class="program-card-footer"><a href="{{ url_for('web.program_details', program_id=program.id) }}">View program <span aria-hidden="true">→</span></a></div>
 </div>
 </article>
 {% else %}
