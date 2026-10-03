@@ -1,0 +1,22 @@
+/* Shared design tokens: the homepage and every application page use one palette. */
+:root {
+  color-scheme: dark;
+  --background: #0c1017;
+  --surface: #151c27;
+  --surface-raised: #1c2735;
+  --text: #f0f2f6;
+  --muted: #adb8ca;
+  --accent: #a6c6ff;
+  --mint: #9ae1ca;
+  --border: #ffffff13;
+  --panel: linear-gradient(135deg, #1c2735, #151c27);
+  --glow: radial-gradient(ellipse at 18% 15%, #314d792a, transparent 48%), radial-gradient(ellipse at 90% 65%, #276a5e20, transparent 45%);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); background-image: var(--glow); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6; }
+a { color: var(--accent); }
+a:hover { color: var(--mint); }
+button, input, select, textarea { font: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+[hidden] { display: none !important; }
+::selection { background: #a6c6ff35; }

@@ -1,12 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title }} | Degree Path Explorer</title>
 <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}">
-{% for file in ['chat-interface.css', 'chat-shell.css', 'chat-warm-theme.css', 'flask-pages.css', 'chat-modern.css'] %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/' ~ file) }}">
-{% endfor %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 <script src="{{ url_for('static', filename='js/chat-shell.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>
 {% block extra_head %}{% endblock %}

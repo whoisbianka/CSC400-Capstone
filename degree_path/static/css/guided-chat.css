@@ -1,104 +1,18 @@
-
-#guided-chat .chat-container {
-      max-width: 800px;
-      margin-top: 30px;
-      background: #ffffff;
-      border-radius: 15px;
-      padding: 20px;
-      box-shadow: 0 4px 15px rgba(34, 93, 229, 0.10);
-    }
-#guided-chat .chat-messages {
-      height: 350px;
-      overflow-y: auto;
-      padding: 10px;
-      margin-bottom: 20px;
-    }
-#guided-chat .bot-message {
-      background: #eef4ff;
-      color: #14213b;
-      padding: 12px 16px;
-      margin-bottom: 12px;
-      border-radius: 12px;
-      max-width: 75%;
-    }
-#guided-chat .user-message {
-      background: #225de5;
-      color: #ffffff;
-      padding: 12px 16px;
-      margin: 12px 0 12px auto;
-      border-radius: 12px;
-      max-width: 75%;
-      text-align: right;
-    }
-#guided-chat .chat-input {
-      display: flex;
-      gap: 10px;
-      border-top: 1px solid #dce4f0;
-      padding-top: 15px;
-    }
-#guided-chat .chat-input input {
-      flex: 1;
-      padding: 12px;
-      border: 1px solid #b7cbee;
-      border-radius: 20px;
-      font-size: 16px;
-    }
-#guided-chat .chat-input input:focus {
-      outline: none;
-      border-color: #225de5;
-    }
-#guided-chat .chat-input button {
-      padding: 10px 22px;
-      border: none;
-      border-radius: 20px;
-      background: #225de5;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-    }
-#guided-chat .chat-input button:hover {
-      opacity: 0.85;
-    }
-#guided-chat /* Match the existing modern blue palette without changing layout. */
-    body {
-      --background-color: #f5f8ff;
-      --default-color: #14213b;
-      --heading-color: #14213b;
-      --accent-color: #225de5;
-      --surface-color: #ffffff;
-      --contrast-color: #ffffff;
-      background-color: #f5f8ff;
-      color: #14213b;
-    }
-#guided-chat .light-background {
-      --background-color: #f5f8ff;
-      --surface-color: #ffffff;
-    }
-#guided-chat .header {
-      --background-color: #101d35;
-      --heading-color: #eef4ff;
-      --default-color: #eef4ff;
-      background-color: #101d35;
-    }
-#guided-chat .header .logo .sitename { color: #eef4ff; }
-#guided-chat .content > p { color: #5f6d83; }
-#guided-chat .bot-message strong { color: #225de5; }
-#guided-chat .chat-input input { background-color: #ffffff; color: #14213b; }
-#guided-chat .chat-input input::placeholder { color: #5f6d83; }
-#guided-chat .chat-input button:hover { background-color: #1747b5; opacity: 1; }
-#guided-chat .chat-input input:focus-visible { outline-color: #225de5; }
-#guided-chat .read-more { background-color: #225de5; color: #ffffff; }
-#guided-chat .read-more:hover { background-color: #1747b5; color: #ffffff; }
-  
-#guided-chat { max-width: 900px; margin: 0 auto; }
-#guided-chat .chat-container { margin: 24px 0; max-width: none; }
-#guided-chat .chat-input input { min-width: 0; }
-#guided-chat .chat-messages { height: clamp(250px, 45vh, 480px); }
-#guided-chat .bot-message, #guided-chat .user-message { overflow-wrap: anywhere; }
-#guided-chat .read-more { display: inline-block; padding: 10px 18px; border-radius: 10px; }
+/* Guided conversation uses the same panels, blue accents, and mint highlights as home. */
+#guided-chat { max-width: 960px; margin: 0 auto; }
+#guided-chat .chat-container { margin: 24px 0 0; padding: 20px; border: 1px solid var(--border); border-radius: 20px; background: var(--background); }
+#guided-chat .chat-messages { height: clamp(250px, 45vh, 480px); overflow-y: auto; padding: 10px; margin-bottom: 20px; scrollbar-color: #394b65 transparent; }
+#guided-chat .bot-message, #guided-chat .user-message { padding: 14px 18px; margin-bottom: 12px; border-radius: 16px; max-width: 85%; overflow-wrap: anywhere; }
+#guided-chat .bot-message { background: var(--panel); border: 1px solid var(--border); color: var(--text); }
+#guided-chat .bot-message strong { color: var(--mint); }
+#guided-chat .user-message { background: #a6c6ff18; border: 1px solid #a6c6ff25; color: var(--text); margin-left: auto; }
+#guided-chat .chat-input { display: flex; gap: 10px; border-top: 1px solid var(--border); padding-top: 16px; }
+#guided-chat .chat-input input { flex: 1; min-width: 0; }
+#guided-chat button { padding: 10px 18px; border: 0; border-radius: 12px; background: var(--accent); color: #10203b; cursor: pointer; font-weight: 650; }
+#guided-chat button:hover { background: var(--mint); }
 @media (max-width: 600px) {
   #guided-chat .chat-container { padding: 12px; }
   #guided-chat .bot-message, #guided-chat .user-message { max-width: 95%; }
   #guided-chat .chat-input { gap: 6px; }
-  #guided-chat .chat-input button { padding: 10px 14px; }
+  #guided-chat .chat-input button { padding: 10px 12px; }
 }
