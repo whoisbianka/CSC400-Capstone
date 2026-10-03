@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='2') }}">
 <script src="{{ url_for('static', filename='js/explore.js') }}" defer></script>
 {% endblock %}
 {% block content %}
@@ -10,6 +10,7 @@
 <h1 id="page-title">Explore college programs</h1>
 <p>Look through our massive database of college programs in the US. Use the filters to narrow your search to find schools that fit your criteria.</p>
 
+</header>
 <div class="explore-layout">
 <aside class="explore-sidebar" aria-labelledby="browse-title">
 <div class="sidebar-heading"><h2 id="browse-title">Filter programs</h2><a href="{{ url_for('web.explore') }}">Reset</a></div>
