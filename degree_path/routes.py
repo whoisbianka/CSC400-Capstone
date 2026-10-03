@@ -178,6 +178,17 @@ def program_details(program_id):
         abort(404, description='Program not found.')
     return render_template('program_details.html', title=details['major'], program=details)
 
+@web.get('/start/<destination>')
+def start(destination):
+    destinations = {'questionnaire': ('web.questionnaire', 'Find my path'),
+                    'explore': ('web.explore', 'Explore majors')}
+    if destination not in destinations:
+        abort(404)
+    endpoint, label = destinations[destination]
+    return render_template('start.html', title='Choose how to continue',
+                           destination_url=url_for(endpoint), destination_label=label)
+
+
 @web.get('/profile')
 def profile():
     return render_template('profile.html', title='Profile')

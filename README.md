@@ -14,4 +14,6 @@ python app.py
 
 Keep connection settings in the private `.env` beside `app.py`; use `.env.example` for the required names. Do not commit credentials. The instance connection name has the form `project:region:instance`.
 
+Homepage cards offer sign-in or guest access before continuing to the selected destination. Clerk authentication is separate from catalog access; favorites and chat persistence are not integrated.
+
 UPDATE October 3rd, 2026 — Changes from this date reflect feedback from the October 1 class meeting.
