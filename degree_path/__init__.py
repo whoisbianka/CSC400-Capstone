@@ -6,7 +6,7 @@ from pathlib import Path
 from flask import Flask, render_template, request, session, abort, jsonify
 from flask.cli import load_dotenv
 from werkzeug.exceptions import HTTPException
-from .services.database_ui import DatabaseUI, DataAccessError # type: ignore
+
 
 
 
@@ -27,7 +27,6 @@ def create_app(test_config=None):
     )
     if test_config:
         app.config.update(test_config)
-    app.extensions['database_ui'] = DatabaseUI()
 
     @app.before_request
     def protect_forms(): #helping to protect site from CRSF attacks
@@ -51,14 +50,6 @@ def create_app(test_config=None):
     def money(value):
         return f'${value:,.0f}' if value is not None else 'Not available'
 
-    
-    @app.errorhandler(DataAccessError)
-    def database_error(error):
-        message = 'Database unavailable. Check Google authentication, certificates, connection settings, and schema.'
-        if request.path.startswith('/api/'):
-            return jsonify(error=message), 503
-        return render_template('error.html', title='Database unavailable', error=message), 503
-    
     @app.errorhandler(HTTPException)
     def http_error(error):
         if request.path.startswith('/api/'):
