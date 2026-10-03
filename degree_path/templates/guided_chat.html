@@ -4,7 +4,7 @@
 <script src="{{ url_for('static', filename='js/guided-chat.js') }}" defer></script>
 {% endblock %}
 {% block content %}
-<div class="page-workspace"><div class="workspace-page" id="guided-chat">
+<div class="page-workspace"><div class="workspace-page" id="guided-chat" data-recommendations-url="{{ url_for('web.recommendations_api') }}" data-explore-url="{{ url_for('web.explore') }}" data-csrf="{{ csrf_token }}">
 
 
     <section class="section about light-background">
