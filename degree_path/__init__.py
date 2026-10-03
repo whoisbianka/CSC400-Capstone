@@ -24,6 +24,8 @@ def create_app(test_config=None):
         SECRET_KEY=os.environ.get('SECRET_KEY') or secrets.token_hex(32),
         SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
         MAX_CONTENT_LENGTH=65536,
+        # Reload edited HTML templates without restarting the local server.
+        TEMPLATES_AUTO_RELOAD=True,
     )
     if test_config:
         app.config.update(test_config)
@@ -32,7 +34,7 @@ def create_app(test_config=None):
     def protect_forms(): #helping to protect site from CRSF attacks
         if request.method == 'POST':
             expected = session.get('csrf', '')
-            actual = request.form.get('X-CRSF_Token', '') if request.is_json else request.form.get('csrf_token', '')
+            actual = request.headers.get('X-CSRF-Token', '') if request.is_json else request.form.get('csrf_token', '')
             if not expected or not secrets.compare_digest(expected.encode(), actual.encode()):
                 abort(400, description='Reload the page and try again.')
 

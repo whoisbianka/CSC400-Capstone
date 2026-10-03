@@ -4,7 +4,7 @@ from functools import wraps
 from werkzeug.exceptions import HTTPException
 
 def database_errors(function):
-    """Return an unavailable response, never substitute sample records."""
+    """Return an unavailable response when a database query fails."""
     @wraps(function)
     def wrapped(*args, **kwargs):
         try:

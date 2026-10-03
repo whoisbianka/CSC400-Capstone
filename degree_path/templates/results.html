@@ -1,9 +1,0 @@
-{% extends 'base.html' %}
-{% block content %}<div class="page-workspace"><section class="workspace-page">
-<h1 id="page-title">Programs related to your answers</h1><p role="status">{{ result.message }}</p>
-{% if result.terms %}<p>Related to: {{ result.terms|join(', ') }}</p>{% endif %}
-{% if result.filters %}<p>Filters: {{ result.filters|join(', ') }}</p>{% endif %}
-<p>These matches use keywords and filters from your answers, not an AI assessment of your fit.</p>
-<a class="primary-link" href="{{ url_for('web.review') }}">Edit your answers</a>
-{% include '_table.html' %}
-</section></div>{% endblock %}

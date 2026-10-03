@@ -20,3 +20,12 @@ button, input, select, textarea { font: inherit; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
 [hidden] { display: none !important; }
 ::selection { background: #a6c6ff35; }
+
+/* One compact, responsive header across all routes. */
+.site-navigation { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px max(24px, calc((100vw - 1100px) / 2)); background: #0c101799; border-bottom: 1px solid var(--border); backdrop-filter: blur(18px); }
+.site-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
+.site-brand span { display: grid; place-items: center; width: 32px; height: 32px; background: var(--accent); color: #10203b; border-radius: 10px; }
+.site-navigation nav { display: flex; gap: 24px; }
+.site-navigation nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
+.site-navigation nav a:hover, .site-navigation nav a[aria-current] { color: var(--accent); }
+@media (max-width: 600px) { .site-navigation { padding: 18px 16px; } .site-navigation nav { gap: 16px; } }

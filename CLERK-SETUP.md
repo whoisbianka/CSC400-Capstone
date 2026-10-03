@@ -1,4 +1,4 @@
-> Flask branch: use the server instructions in [PYTHON-DEMO.md](PYTHON-DEMO.md). The profile page is `/profile`; this browser integration does not authenticate Flask routes.
+> Flask branch: use the server instructions in [README.md](README.md). The profile page is `/profile`; this browser integration does not authenticate Flask routes.
 
 # Connect Clerk
 
