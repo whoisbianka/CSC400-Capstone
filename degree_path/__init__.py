@@ -6,7 +6,7 @@ from pathlib import Path
 from flask import Flask, render_template, request, session, abort, jsonify
 from flask.cli import load_dotenv
 from werkzeug.exceptions import HTTPException
-from .services.database_ui import DatabaseUI, DataAccessError
+from .services.database_ui import DatabaseUI, DataAccessError # type: ignore
 
 
 
