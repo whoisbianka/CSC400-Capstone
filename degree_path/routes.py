@@ -33,12 +33,32 @@ def catalog_majors():
 
 
 @database_errors
-def program_page(page=1, cipcode=None):
+def program_page(page=1, cipcode=None, degrees=None):
     import db_functions
     size = 25
     if type(page) is not int or not 1 <= page <= 100000:
         raise ValueError('Invalid page number.')
-    if cipcode is None:
+    if degrees is not None:
+        from sqlalchemy import text
+        if not degrees:
+            return {'rows': [], 'page': page, 'has_next': False}
+        if any(degree not in (2, 3) for degree in degrees):
+            raise ValueError('Invalid degree level.')
+        # Apply degree and major selections before selecting a bounded page.
+        conditions = ['credlev IN (' + ', '.join(f':degree_{i}' for i in range(len(degrees))) + ')']
+        params = {f'degree_{i}': degree for i, degree in enumerate(degrees)}
+        if cipcode is not None:
+            conditions.append('cipcode = :cipcode')
+            params['cipcode'] = cipcode
+        params.update(limit=size + 1, offset=(page - 1) * size)
+        query = text('SELECT program_id, unitid, cipcode FROM programs WHERE '
+                     + ' AND '.join(conditions)
+                     + ' ORDER BY program_id ASC LIMIT :limit OFFSET :offset')
+        with db_functions.engine.connect() as connection:
+            matches = connection.execute(query, params).mappings().all()
+        records = matches[:size]
+        more = len(matches) > size
+    elif cipcode is None:
         records = db_functions.get_a_page(page, size, 'programs', 'program_id', 'ASC')
         # One extra bounded lookup establishes whether Next should appear.
         more = bool(db_functions.get_a_page(page * size + 1, 1, 'programs', 'program_id', 'ASC'))
@@ -168,8 +188,16 @@ def questionnaire():
 def explore():
     page = positive_arg('page', 1, 100000)
     cipcode = positive_arg('cipcode')
-    data = program_page(page, cipcode)
-    return render_template('explore.html', title='Explore programs', data=data, majors=catalog_majors(), cipcode=cipcode)
+    # An absent selection defaults to both degrees; an empty selection means neither.
+    degree_values = (request.args.getlist('degree') if 'degree_form' in request.args
+                     else request.args.get('degrees', '2,3').split(','))
+    if any(value not in ('', '2', '3') for value in degree_values):
+        abort(400, description='Invalid degree level.')
+    degrees = tuple(sorted({int(value) for value in degree_values if value}))
+    data = program_page(page, cipcode, degrees)
+    return render_template('explore.html', title='Explore programs', data=data,
+                           majors=catalog_majors(), cipcode=cipcode, degrees=degrees,
+                           degree_query=','.join(map(str, degrees)))
 
 @web.get('/programs/<int:program_id>')
 def program_details(program_id):

@@ -1,22 +1,24 @@
-const programTable = document.getElementById('program-table');
-if (programTable) {
-  const headers = [...programTable.querySelectorAll('.table-sort')];
-  const body = programTable.tBodies[0];
-  const status = document.getElementById('program-sort-status');
-  const pageStatus = status.textContent.split('. ')[0];
-  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-  headers.forEach(button => {
-    button.addEventListener('click', () => {
-      const column = Number(button.dataset.column);
-      const descending = button.closest('th').getAttribute('aria-sort') === 'ascending';
-      const rows = [...body.rows].filter(row => row.cells.length === headers.length);
-      rows.sort((a, b) => collator.compare(a.cells[column].textContent.trim(), b.cells[column].textContent.trim()) * (descending ? -1 : 1));
-      rows.forEach(row => body.appendChild(row));
-      headers.forEach(header => {
-        header.closest('th').setAttribute('aria-sort', header === button ? (descending ? 'descending' : 'ascending') : 'none');
-        header.querySelector('span').textContent = header === button ? (descending ? '↓' : '↑') : '↕';
-      });
-      status.textContent = `${pageStatus}. This page sorted by ${button.childNodes[0].textContent.trim()}, ${descending ? 'descending' : 'ascending'}.`;
+const majorSearch = document.getElementById('major-search');
+if (majorSearch) {
+  document.getElementById('major-search-controls').hidden = false;
+  const options = [...document.querySelectorAll('[data-major]')];
+  const empty = document.getElementById('major-search-empty');
+  majorSearch.addEventListener('input', () => {
+    const query = majorSearch.value.trim().toLocaleLowerCase();
+    let matches = 0;
+    options.forEach(option => {
+      option.hidden = !option.dataset.major.toLocaleLowerCase().includes(query);
+      if (!option.hidden) matches += 1;
     });
+    empty.hidden = matches > 0;
   });
+}
+
+const degreeForm = document.getElementById('degree-filter-form');
+if (degreeForm) {
+  const choices = [...degreeForm.querySelectorAll('.degree-choice')];
+  choices.forEach(choice => choice.addEventListener('change', () => {
+    document.getElementById('degree-values').value = choices.filter(input => input.checked).map(input => input.value).join(',');
+    degreeForm.requestSubmit();
+  }));
 }
