@@ -10,6 +10,8 @@ DROP TABLE IF EXISTS school_fav CASCADE;
 DROP TABLE IF EXISTS major_fav CASCADE;
 DROP TABLE IF EXISTS major_rec CASCADE;
 DROP TABLE IF EXISTS school_rec CASCADE;
+DROP TABLE IF EXISTS program_rec CASCADE;
+DROP TABLE IF EXISTS program_fav CASCADE;
 DROP TABLE IF EXISTS chatlog CASCADE;
 
 --Create Tables--
@@ -39,7 +41,8 @@ CREATE TABLE schools(
 CREATE TABLE majors(
     id SERIAL PRIMARY KEY,
     cipcode INT UNIQUE NOT NULL,
-    cipdesc TEXT NOT NULL
+    cipdesc TEXT NOT NULL,
+    mdn_earnings INT
 );
 
 CREATE TABLE programs(
@@ -101,12 +104,12 @@ CREATE TABLE major_rec(
     CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(id)
 );
 
-CREATE TABLE school_rec(
+CREATE TABLE program_rec(
     id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
-	school_id INT NOT NULL,
+	program_id INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_school FOREIGN KEY(school_id) REFERENCES schools(id)
+    CONSTRAINT fk_program FOREIGN KEY(program_id) REFERENCES programs(program_id)
 );
 
 CREATE TABLE chatlog(
@@ -126,10 +129,10 @@ CREATE TABLE major_fav(
     CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(id)
 );
 
-CREATE TABLE school_fav(
+CREATE TABLE program_fav(
     id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
-	school_id INT NOT NULL,
+	program_id INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_school FOREIGN KEY(school_id) REFERENCES schools(id)
+    CONSTRAINT fk_program FOREIGN KEY(program_id) REFERENCES programs(program_id)
 );

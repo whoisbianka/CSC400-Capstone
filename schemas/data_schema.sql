@@ -24,7 +24,8 @@ CREATE TABLE schools(
 CREATE TABLE majors(
     id SERIAL PRIMARY KEY,
     cipcode INT UNIQUE NOT NULL,
-    cipdesc TEXT NOT NULL
+    cipdesc TEXT NOT NULL,
+    mdn_earnings INT
 );
 
 CREATE TABLE programs(

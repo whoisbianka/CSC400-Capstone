@@ -68,6 +68,25 @@ adm_crit_df=institution_df[['UNITID','ADM_RATE','SATMT25','SATMT75','SATVR25','S
 cost_info_df=institution_df[['UNITID','NPT4','NPT41','NPT42','NPT43','NPT44','NPT45','TUITIONFEE_IN','TUITIONFEE_OUT']].rename(columns=str.lower)
 program_rank_crit=prog_df[['program_id','EARN_COUNT_WNE_4YR_NAT','EARN_MDN_4YR_NAT']].rename(columns=str.lower)
 
+#Add Median Earnings for each Major based on all programs
+majors=[]
+earnings_mdn=[]
+earnings_avg=[]
+for major in majors_df['cipcode']:
+    mdn_earnings=prog_df[["CIPCODE","EARN_MDN_4YR_NAT"]]
+    mdn_earnings=mdn_earnings[mdn_earnings["CIPCODE"]==major]
+    majors.append(major)
+    earn_mdn=mdn_earnings["EARN_MDN_4YR_NAT"].median()
+    earnings_mdn.append(earn_mdn)
+majors1={
+    "cipcode":majors,
+    "mdn_earnings":earnings_mdn
+}
+
+majors1_df=pd.DataFrame(majors1)
+majors_df=majors_df.merge(majors1_df[['cipcode','mdn_earnings']], on='cipcode', how='left')
+
+
 schools_df.to_csv("./tables/schools.csv", index=False)
 program_rank_crit.to_csv("./tables/program_rank_crit.csv", index=False)
 majors_df.to_csv("./tables/majors.csv", index=False)
