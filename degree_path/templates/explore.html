@@ -1,15 +1,12 @@
 {% extends 'base.html' %}
+{% block extra_head %}<script src="{{ url_for('static', filename='js/explore.js') }}" defer></script>{% endblock %}
 {% block content %}
 <div class="page-workspace"><section class="workspace-page">
 <h1 id="page-title">Majors &amp; colleges</h1>
 <p>Browse real catalog programs!</p>
-<form method="get" class="catalog-filters">
-<label>Major<select name="cipcode"><option value="">All majors</option>{% for major in majors %}<option value="{{ major.cipcode }}" {% if major.cipcode == cipcode %}selected{% endif %}>{{ major.name }}</option>{% endfor %}</select></label>
-<button class="primary-link" type="submit">Apply</button><a href="{{ url_for('web.explore') }}">Clear</a>
-</form>
-<p role="status">{{ data.rows|length }} programs on page {{ data.page }}.</p>
-<div class="tbl-scroll" role="region" aria-label="Programs" tabindex="0"><table>
-<thead><tr><th>College</th><th>City</th><th>State</th><th>Major</th></tr></thead>
+<p id="program-sort-status" role="status">{{ data.rows|length }} programs on page {{ data.page }}. Click a column header to sort this page.</p>
+<div class="tbl-scroll" role="region" aria-label="Programs" tabindex="0"><table id="program-table">
+<thead><tr>{% for label in ['College', 'City', 'State', 'Major'] %}<th scope="col" aria-sort="none"><button type="button" class="table-sort" data-column="{{ loop.index0 }}">{{ label }} <span aria-hidden="true">↕</span></button></th>{% endfor %}</tr></thead>
 <tbody>{% for program in data.rows %}<tr><td>{{ program.college }}</td><td>{{ program.city or 'Not available' }}</td><td>{{ program.state or 'Not available' }}</td><td><a href="{{ url_for('web.program_details', program_id=program.id) }}">{{ program.major }}</a></td></tr>{% else %}<tr><td colspan="4">No programs on this page.</td></tr>{% endfor %}</tbody>
 </table></div>
 <nav class="catalog-filters" aria-label="Catalog pages">

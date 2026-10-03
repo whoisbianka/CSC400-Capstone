@@ -47,3 +47,7 @@ tbody tr:hover { background: #a6c6ff05; }
   .catalog-filters label { flex-basis: 100%; }
   .composer-footer { flex-wrap: wrap; }
 }
+
+.table-sort { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.table-sort:hover { color: var(--mint); }
+.table-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 2px; }
