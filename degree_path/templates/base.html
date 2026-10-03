@@ -14,7 +14,7 @@
 <body class="chat-app">
 <a class="skip-link" href="#page-title">Skip to content</a>
 <aside class="app-sidebar" id="app-sidebar" aria-label="Workspace navigation">
-  <a class="app-brand" href="{{ url_for('web.chat') }}"><span class="brand-icon" aria-hidden="true">✦</span><span>Degree Path<small>Your next chapter starts here</small></span></a>
+  <a class="app-brand" href="{{ url_for('web.home') }}"><span class="brand-icon" aria-hidden="true">✦</span><span>Degree Path<small>Your next chapter starts here</small></span></a>
   <p class="sidebar-label">Your workspace</p>
   <nav aria-label="Workspace navigation">
   {% for endpoint, label in [('web.chat','Chat with Degree Path'),('web.questionnaire','Find my major'),('web.explore','Explore programs')] %}

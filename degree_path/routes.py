@@ -40,7 +40,15 @@ def table_context(programs):
     return {'rows': filter_programs(programs, request.args), 'sorts': SORTS, 'formats': FORMATS if repository().is_demo else ()}
 
 
-@web.route('/', methods=['GET', 'POST'])
+# The landing page is the entry point; the assistant keeps its own /chat route.
+@web.get('/')
+def home():
+    return render_template('home.html', title='Find your path')
+
+
+# Preserve older forms that submitted chat questions to the root URL.
+@web.post('/')
+@web.route('/chat', methods=['GET', 'POST'])
 def chat():
     data = state()
     question, error = '', None
@@ -149,7 +157,7 @@ def settings():
 
 @web.get('/<page>.html')
 def legacy_page(page):
-    targets = {'index': 'web.chat', 'explore': 'web.explore', 'program-details': 'web.explore',
+    targets = {'index': 'web.home', 'explore': 'web.explore', 'program-details': 'web.explore',
                'profile': 'web.profile', 'settings': 'web.settings', 'chatbot': 'web.questionnaire'}
     if page not in targets:
         abort(404)
