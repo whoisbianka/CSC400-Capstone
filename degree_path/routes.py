@@ -1,5 +1,6 @@
 from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
 import re
+import secrets
 from functools import wraps
 from werkzeug.exceptions import HTTPException
 
@@ -33,27 +34,52 @@ def catalog_majors():
 
 
 @database_errors
-def program_page(page=1, cipcode=None, degrees=None):
+def program_page(page=1, cipcode=None, degrees=None, filters=None, shuffle_seed=None):
     import db_functions
     size = 25
     if type(page) is not int or not 1 <= page <= 100000:
         raise ValueError('Invalid page number.')
     if degrees is not None:
         from sqlalchemy import text
-        if not degrees:
-            return {'rows': [], 'page': page, 'has_next': False}
         if any(degree not in (2, 3) for degree in degrees):
             raise ValueError('Invalid degree level.')
         # Apply degree and major selections before selecting a bounded page.
-        conditions = ['credlev IN (' + ', '.join(f':degree_{i}' for i in range(len(degrees))) + ')']
+        conditions = (['p.credlev IN (' + ', '.join(f':degree_{i}' for i in range(len(degrees))) + ')']
+                      if degrees else ['1 = 1'])
         params = {f'degree_{i}': degree for i, degree in enumerate(degrees)}
         if cipcode is not None:
-            conditions.append('cipcode = :cipcode')
+            conditions.append('p.cipcode = :cipcode')
             params['cipcode'] = cipcode
+        filters = filters or {}
+        for key, column in [('state', 's.stabbr'), ('city', 's.city')]:
+            if filters.get(key):
+                conditions.append(f'LOWER({column}) = LOWER(:{key})')
+                params[key] = filters[key]
+        for table, alias, join, specs in [
+            ('cost_info', 'c', 'c.unitid = p.unitid',
+             [('net_price_max', 'npt4', '<='), ('tuition_in_max', 'tuitionfee_in', '<='),
+              ('tuition_out_max', 'tuitionfee_out', '<=')]),
+            ('adm_crit', 'a', 'a.unitid = p.unitid',
+             [('acceptance_min', 'adm_rate', '>='), ('acceptance_max', 'adm_rate', '<=')])
+        ]:
+            clauses = []
+            for key, column, operator in specs:
+                if key in filters:
+                    clauses.append(f'{alias}.{column} {operator} :{key}')
+                    params[key] = filters[key] / 100 if key.startswith('acceptance_') else filters[key]
+            if clauses:
+                conditions.append(f'EXISTS (SELECT 1 FROM {table} {alias} WHERE {join} AND '
+                                  + ' AND '.join(clauses) + ')')
         params.update(limit=size + 1, offset=(page - 1) * size)
-        query = text('SELECT program_id, unitid, cipcode FROM programs WHERE '
+        ordering = 'p.program_id ASC'
+        if shuffle_seed is not None:
+            params['shuffle_seed'] = shuffle_seed
+            # A seeded hash shuffles the whole result set consistently across pages.
+            ordering = "md5(CAST(p.program_id AS TEXT) || :shuffle_seed), p.program_id ASC"
+        query = text('SELECT p.program_id, p.unitid, p.cipcode FROM programs p '
+                     'JOIN schools s ON s.unitid = p.unitid WHERE '
                      + ' AND '.join(conditions)
-                     + ' ORDER BY program_id ASC LIMIT :limit OFFSET :offset')
+                     + ' ORDER BY ' + ordering + ' LIMIT :limit OFFSET :offset')
         with db_functions.engine.connect() as connection:
             matches = connection.execute(query, params).mappings().all()
         records = matches[:size]
@@ -69,6 +95,23 @@ def program_page(page=1, cipcode=None, degrees=None):
         offset = (page - 1) * size
         records = matches[offset:offset + size]
         more = len(matches) > offset + size
+    # Fetch card facts for this page in one bounded query; omit absent values.
+    facts = {}
+    if degrees is not None and records:
+        from sqlalchemy import bindparam, text
+        columns = ['p.program_id', 'p.credlev']
+        for table, alias, fields in [
+            ('cost_info', 'c', ('npt4', 'tuitionfee_in', 'tuitionfee_out')),
+            ('adm_crit', 'a', ('adm_rate', 'satmt25', 'satmt75', 'satvr25', 'satvr75')),
+        ]:
+            columns.extend(f'(SELECT {alias}.{field} FROM {table} {alias} '
+                           f'WHERE {alias}.unitid = p.unitid ORDER BY {alias}.id LIMIT 1) AS {field}'
+                           for field in fields)
+        query = text('SELECT ' + ', '.join(columns)
+                     + ' FROM programs p WHERE p.program_id IN :ids').bindparams(bindparam('ids', expanding=True))
+        with db_functions.engine.connect() as connection:
+            facts = {int(row['program_id']): dict(row) for row in
+                     connection.execute(query, {'ids': [record['program_id'] for record in records]}).mappings()}
     names = {m['cipcode']: m['name'] for m in catalog_majors()}
     schools = {}
     rows = []
@@ -83,6 +126,7 @@ def program_page(page=1, cipcode=None, degrees=None):
             'major': names.get(record['cipcode'], f"CIP {record['cipcode']}"),
             'college': school.get('instnm', 'Not available'),
             'city': school.get('city'), 'state': school.get('stabbr'),
+            'facts': facts.get(int(record['program_id']), {}),
         })
     return {'rows': rows, 'page': page, 'has_next': more}
 
@@ -188,16 +232,39 @@ def questionnaire():
 def explore():
     page = positive_arg('page', 1, 100000)
     cipcode = positive_arg('cipcode')
-    # An absent selection defaults to both degrees; an empty selection means neither.
+    # No selected degrees means no degree restriction.
     degree_values = (request.args.getlist('degree') if 'degree_form' in request.args
-                     else request.args.get('degrees', '2,3').split(','))
+                     else request.args.get('degrees', '').split(','))
     if any(value not in ('', '2', '3') for value in degree_values):
         abort(400, description='Invalid degree level.')
     degrees = tuple(sorted({int(value) for value in degree_values if value}))
-    data = program_page(page, cipcode, degrees)
+    filters = {}
+    for key in ('state', 'city'):
+        value = request.args.get(key, '').strip()
+        if value:
+            if len(value) > (3 if key == 'state' else 100):
+                abort(400, description='Invalid location filter.')
+            filters[key] = value
+    for key in ('net_price_max', 'tuition_in_max', 'tuition_out_max',
+                'acceptance_min', 'acceptance_max'):
+        value = request.args.get(key, '').strip()
+        if value:
+            try:
+                number = int(value)
+            except ValueError:
+                abort(400, description='Filters must use whole numbers.')
+            if not 0 <= number <= (100 if key.startswith('acceptance_') else 2147483647):
+                abort(400, description='Filter value is out of range.')
+            filters[key] = number
+    for prefix in ('acceptance',):
+        if filters.get(prefix + '_min', 0) > filters.get(prefix + '_max', 2147483647):
+            abort(400, description='Minimum must not exceed maximum.')
+    if 'explore_shuffle_seed' not in session:
+        session['explore_shuffle_seed'] = secrets.token_hex(16)
+    data = program_page(page, cipcode, degrees, filters, session['explore_shuffle_seed'])
     return render_template('explore.html', title='Explore programs', data=data,
                            majors=catalog_majors(), cipcode=cipcode, degrees=degrees,
-                           degree_query=','.join(map(str, degrees)))
+                           degree_query=','.join(map(str, degrees)), filters=filters)
 
 @web.get('/programs/<int:program_id>')
 def program_details(program_id):
