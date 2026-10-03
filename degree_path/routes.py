@@ -171,11 +171,6 @@ def explore():
     data = program_page(page, cipcode)
     return render_template('explore.html', title='Explore programs', data=data, majors=catalog_majors(), cipcode=cipcode)
 
-
-@web.get('/questionnaire')
-def questionnaire():
-    return render_template('guided_chat.html', title='Find my major')
-
 @web.get('/programs/<int:program_id>')
 def program_details(program_id):
     details = program(program_id)

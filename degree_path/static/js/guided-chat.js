@@ -125,7 +125,7 @@
   }
 
 
-  // Creates temporary major recommendations
+  // Suggests exploration terms; college records come from the database
   // based on the answers the user gave
   function generateRecommendations() {
 
@@ -260,8 +260,11 @@
     }
 
 
+    if (userProfile.majorInterest && !isUnsure(userProfile.majorInterest)) {
+      recommendations.unshift(userProfile.majorInterest);
+    }
     // Remove duplicate recommendations
-    recommendations = [...new Set(recommendations)];
+    recommendations = [...new Set(recommendations)].slice(0, 20);
 
 
     // If the chatbot could not find a match
@@ -285,7 +288,7 @@
     recommendations.forEach(function(major) {
 
       recommendationMessage +=
-        "• " + major + "<br>";
+        "• " + escapeText(major) + "<br>";
 
     });
 
@@ -297,8 +300,63 @@
 
     // Show recommendations
     addBotMessage(recommendationMessage);
+    loadDatabaseExamples(recommendations);
   }
 
+
+
+  async function loadDatabaseExamples(majors) {
+    const root = document.getElementById('guided-chat');
+    const box = document.createElement('div');
+    box.className = 'bot-message';
+    box.textContent = 'Looking up college examples…';
+    chatMessages.appendChild(box);
+    try {
+      const response = await fetch(root.dataset.recommendationsUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': root.dataset.csrf},
+        body: JSON.stringify({majors})
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error('Lookup failed');
+      box.replaceChildren();
+      const paragraph = (text) => {
+        const node = document.createElement('p');
+        node.textContent = text;
+        box.appendChild(node);
+      };
+      paragraph(result.note);
+      if (!result.majors.length) paragraph('No catalog major names matched. Try the Explore programs menu.');
+      for (const major of result.majors) {
+        const title = document.createElement('h3');
+        title.textContent = major.name;
+        box.appendChild(title);
+        if (!major.programs.length) paragraph('No ranked programs returned for this major.');
+        for (const program of major.programs) {
+          const value = Number(program.earnings);
+          const earnings = program.earnings !== null && Number.isFinite(value) && value >= 0
+            ? new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0}).format(value)
+            : 'Not available';
+          paragraph(`${program.college} — ${program.major}. Reported median earnings: ${earnings}`);
+        }
+        const link = document.createElement('a');
+        const url = new URL(root.dataset.exploreUrl, window.location.origin);
+        url.searchParams.set('cipcode', major.cipcode);
+        link.href = url.href;
+        link.textContent = 'Explore programs for this major';
+        box.appendChild(link);
+      }
+      if (result.has_more) paragraph('Showing six matching majors. Use Explore programs for the full catalog.');
+    } catch (_) {
+      box.textContent = 'Database lookup unavailable. Check the connection or reload if your session expired. ';
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.textContent = 'Retry lookup';
+      retry.addEventListener('click', () => {box.remove(); loadDatabaseExamples(majors);});
+      box.appendChild(retry);
+    }
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
 
   // Ask the next normal/core question
   function nextQuestion() {
@@ -338,13 +396,12 @@
       );
 
 
-      // Generate temporary recommendations
+      // Resolve suggested names against the live catalog
       generateRecommendations();
 
 
-      // Show the completed profile in Developer Tools
-      console.log("Completed User Profile:");
-      console.log(userProfile);
+      userInput.disabled = true;
+      sendButton.disabled = true;
 
     }
   }
@@ -357,7 +414,7 @@
 
 
     // Don't allow empty messages
-    if (message === "") {
+    if (currentQuestion >= 7 || message === "" || message.length > 200) {
 
       return;
 
@@ -452,7 +509,7 @@
   // Send when Enter is pressed
   userInput.addEventListener("keydown", function(event) {
 
-    if (event.key === "Enter") {
+    if (event.key === "Enter" && !event.isComposing) {
 
       event.preventDefault();
 
