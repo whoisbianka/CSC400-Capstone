@@ -4,7 +4,7 @@
 <div class="page-workspace program-details">
 <a class="details-back" href="{{ url_for('web.explore') }}">← Explore programs</a>
 <header class="details-hero">
-<p class="eyebrow">Your next chapter</p>
+
 <h1 id="page-title">{{ program.major }}</h1>
 <div class="details-college"><span class="details-monogram" aria-hidden="true">{{ program.college[:1] }}</span><div><h2>{{ program.college }}</h2><p>{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p></div></div>
 <a class="primary-link" href="{{ url_for('web.explore', cipcode=program.cipcode) }}">Compare programs in this major →</a>
