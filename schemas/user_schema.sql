@@ -4,6 +4,7 @@ DROP TABLE IF EXISTS major_rec CASCADE;
 DROP TABLE IF EXISTS program_rec CASCADE;
 DROP TABLE IF EXISTS program_fav CASCADE;
 DROP TABLE IF EXISTS chatlog CASCADE;
+DROP TABLE IF EXISTS user_keywords CASCADE;
 
 CREATE TABLE users(
     id SERIAL PRIMARY KEY,
@@ -17,9 +18,9 @@ CREATE TABLE users(
 CREATE TABLE major_rec(
     id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
-	major_id INT NOT NULL,
+	cipcode INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(id)
+    CONSTRAINT fk_major FOREIGN KEY(cipcode) REFERENCES majors(cipcode)
 );
 
 CREATE TABLE program_rec(
@@ -42,9 +43,9 @@ CREATE TABLE chatlog(
 CREATE TABLE major_fav(
     id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
-	major_id INT NOT NULL,
+	cipcode INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(id)
+    CONSTRAINT fk_major FOREIGN KEY(cipcode) REFERENCES majors(cipcode)
 );
 
 CREATE TABLE program_fav(
@@ -53,4 +54,12 @@ CREATE TABLE program_fav(
 	program_id INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_program FOREIGN KEY(program_id) REFERENCES programs(program_id)
+);
+
+CREATE TABLE user_keywords(
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    keyword_id INT NOT NULL,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_kwd_id FOREIGN KEY (keyword_id) REFERENCES keywords(id)
 );

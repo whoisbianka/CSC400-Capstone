@@ -28,22 +28,20 @@ def add_user(user_id,fname,lname,email,google_auth):
 #Add a given major(by cipcode) to a user's favorites
 def add_major_fav(user_id,cipcode):
     with engine.begin() as connection:
-        major_id=get_major_id_from_cipcode(cipcode)
         query=text("""
-                INSERT INTO major_fav(user_id,major_id)
-                VALUES (:user_id, :major_id)
+                INSERT INTO major_fav(user_id,cipcode)
+                VALUES (:user_id, :cipcode)
                 """)
-        connection.execute(query,{"user_id":user_id,"major_id":major_id})
+        connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
 
 #Add a given major(by cipcode) to a user's recommendation list
 def add_major_rec(user_id,cipcode):
     with engine.begin() as connection:
-        major_id=get_major_id_from_cipcode(cipcode)
         query=text("""
-                INSERT INTO major_rec(user_id,major_id)
-                VALUES (:user_id, :major_id)
+                INSERT INTO major_rec(user_id,cipcode)
+                VALUES (:user_id, :cipcode)
                 """)
-        connection.execute(query,{"user_id":user_id,"major_id":major_id})
+        connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
 
 #Add a given school(by unitid) to a user's favorites
 def add_program_fav(user_id,program_id):
@@ -70,6 +68,39 @@ def add_to_chat_to_log(user_id,chat_text,isUser):
                 INSERT INTO chatlog(user_id, chat_text, isUser)
                 VALUES(:user_id, :chat_text, :isUser)""")
         connection.execute(query,{"user_id":user_id,"chat_text":chat_text,"isUser":isUser})
+
+#Add a keyword for user
+def add_user_keyword(user_id,keyword_id):
+    query=text("""
+            INSERT INTO user_keywords(user_id, keyword_id)
+            VALUES(:user_id, keyword_id)
+            """)
+    params={"user_id":user_id,"keyword_id":keyword_id}
+    with engine.begin() as connection:
+        connection.execute(query,params)
+
+#Helper Function: Get keyword_id from keyword
+def get_a_keyword_id_from_keyword(keyword):
+    query=text("""
+                SELECT id
+                FROM keywords
+                WHERE keyword=:keyword""")
+    params={"keyword":keyword}
+    with engine.connect() as connection:
+        result=engine.execute(query,params)
+        out=result.one()
+    return out
+
+def get_a_keyword_from_keyword_id(keyword_id):
+    query=text("""
+                SELECT keyword
+                FROM keywords
+                WHERE id=:keyword_id""")
+    params={"keyword_id":keyword_id}
+    with engine.connect() as connection:
+        result=connection.execute(query,params)
+        out=result.one()
+    return out
 
 ##READ Functions
 #Get all admission criteria for a school(by unitid)
@@ -679,7 +710,7 @@ def get_page_major_recs(user_id,page=1,page_count=10,column_to_sort="mr.id",orde
     query=text(f"""
                 SELECT *
                 FROM major_rec mr
-                JOIN majors m ON mr.major_id = m.id
+                JOIN majors m ON mr.cipcode = m.cipcode
                 WHERE mr.user_id=:user_id AND {criteria} {operator} :threshhold
                 ORDER BY {column_to_sort} {order}, mr.id {order}
                 LIMIT :limit OFFSET :offset""")
@@ -710,11 +741,23 @@ def get_page_major_favs(user_id,page=1,page_count=10,column_to_sort="mf.id",orde
     query=text(f"""
                 SELECT *
                 FROM major_fav mf
-                JOIN majors m ON mf.major_id = m.id
+                JOIN majors m ON mf.cipcode = m.cipcode
                 WHERE mf.user_id=:user_id AND {criteria} {operator} :threshhold
                 ORDER BY {column_to_sort} {order}, mr.id {order}
                 LIMIT :limit OFFSET :offset""")
     params={"user_id":user_id,"threshhold":threshhold,"limit":page_count,"offset":offset}
+    with engine.connect() as connection:
+        result=connection.execute(query,params)
+    return result.mappings().all()
+
+#get a user's keywords
+def get_user_keywords(user_id):
+    query=text("""
+            SELECT *
+            FROM user_keywords uk
+            JOIN keywords k ON uk.keyword_id = k.id
+            WHERE uk.user_id=:user_id""")
+    params={"user_id":user_id}
     with engine.connect() as connection:
         result=connection.execute(query,params)
     return result.mappings().all()
@@ -731,22 +774,22 @@ def remove_user(user_id):
         connection.execute(query,{"user_id":user_id})
 
 #Remove a major from user's favorites
-def remove_from_major_fav(user_id,major_id):
+def remove_from_major_fav(user_id,cipcode):
     with engine.begin() as connection:
         query=text("""
                 DELETE from major_fav
-                WHERE user_id=:user_id AND major_id=:major_id
+                WHERE user_id=:user_id AND cipcode=:cipcode
                 """)
-        connection.execute(query,{"user_id":user_id,"major_id":major_id})
+        connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
 
 #Remove a major from user's recommendations
-def remove_major_rec(user_id,major_id):
+def remove_major_rec(user_id,cipcode):
     with engine.begin() as connection:
         query=text("""
                 DELETE from major_rec
-                WHERE user_id=:user_id AND major_id=:major_id
+                WHERE user_id=:user_id AND cipcode=:cipcode
                 """)
-        connection.execute(query,{"user_id":user_id,"major_id":major_id})
+        connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
 
 #Remove a school from user's favorites
 def remove_school_fav(user_id,program_id):
@@ -774,3 +817,11 @@ def delete_chatlog(user_id):
                 WHERE user_id=:user_id""")
         connection.execute(query,{"user_id":user_id})
 
+#Remove a user keyword
+def remove_user_keyword(user_id,keyword_id):
+    query=text("""
+                DELETE from user_keyword
+                WHERE user_id=:user_id AND keyword_id=:keyword_id""")
+    params={"user_id":user_id,"keyword_id":keyword_id}
+    with engine.begin() as connection:
+        connection.execute(query, params)

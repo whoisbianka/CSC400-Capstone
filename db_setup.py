@@ -68,7 +68,7 @@ adm_crit_df=institution_df[['UNITID','ADM_RATE','SATMT25','SATMT75','SATVR25','S
 cost_info_df=institution_df[['UNITID','NPT4','NPT41','NPT42','NPT43','NPT44','NPT45','TUITIONFEE_IN','TUITIONFEE_OUT']].rename(columns=str.lower)
 program_rank_crit=prog_df[['program_id','EARN_COUNT_WNE_4YR_NAT','EARN_MDN_4YR_NAT']].rename(columns=str.lower)
 
-#Add Median Earnings for each Major based on all programs
+#Add major_info table
 majors=[]
 earnings_mdn=[]
 earnings_avg=[]
@@ -84,7 +84,12 @@ majors1={
 }
 
 majors1_df=pd.DataFrame(majors1)
-majors_df=majors_df.merge(majors1_df[['cipcode','mdn_earnings']], on='cipcode', how='left')
+major_info_df=pd.read_csv("./tables/base_major_info.csv", low_memory=False)
+major_info_df=major_info_df.merge(majors1_df[['cipcode','mdn_earnings']], on='cipcode', how='left')
+
+#Add keywords tables
+kwd_df=pd.read_csv("./tables/kwd_list.csv",low_memory=False)
+major_kwds_df=pd.read_csv("./tables/major_keywords.csv",low_memory=False)
 
 
 schools_df.to_csv("./tables/schools.csv", index=False)
@@ -93,6 +98,7 @@ majors_df.to_csv("./tables/majors.csv", index=False)
 programs_df.to_csv("./tables/programs.csv", index=False)
 cost_info_df.to_csv("./tables/cost_info.csv", index=False)
 adm_crit_df.to_csv("./tables/adm_crit.csv", index=False)
+major_info_df.to_csv("./tables/major_info.csv",index=False)
 
 with engine.begin() as connection:
     with open("./schemas/all_schema.sql", "r") as f:
@@ -102,6 +108,7 @@ with engine.begin() as connection:
             if statement.strip():
                 connection.execute(text(statement))
 
+
 #If running this, reset database by running schema first
 upload=[
     ("schools", schools_df),
@@ -109,7 +116,10 @@ upload=[
     ("programs", programs_df),
     ("adm_crit",adm_crit_df),
     ("cost_info",cost_info_df),
-    ("program_rank_crit",program_rank_crit)
+    ("program_rank_crit",program_rank_crit),
+    ("major_info",major_info_df),
+    ("keywords",kwd_df),
+    ("major_keywords",major_kwds_df)
 ]
 
 for table_name, df in upload:

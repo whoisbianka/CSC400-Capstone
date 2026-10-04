@@ -6,13 +6,15 @@ DROP TABLE IF EXISTS programs CASCADE;
 DROP TABLE IF EXISTS adm_crit CASCADE;
 DROP TABLE IF EXISTS cost_info CASCADE;
 DROP TABLE IF EXISTS program_rank_crit CASCADE;
-DROP TABLE IF EXISTS school_fav CASCADE;
 DROP TABLE IF EXISTS major_fav CASCADE;
 DROP TABLE IF EXISTS major_rec CASCADE;
-DROP TABLE IF EXISTS school_rec CASCADE;
 DROP TABLE IF EXISTS program_rec CASCADE;
 DROP TABLE IF EXISTS program_fav CASCADE;
 DROP TABLE IF EXISTS chatlog CASCADE;
+DROP TABLE IF EXISTS major_info CASCADE;
+DROP TABLE IF EXISTS keywords CASCADE;
+DROP TABLE IF EXISTS major_keywords CASCADE;
+DROP TABLE IF EXISTS user_keywords CASCADE;
 
 --Create Tables--
 CREATE TABLE users(
@@ -41,8 +43,29 @@ CREATE TABLE schools(
 CREATE TABLE majors(
     id SERIAL PRIMARY KEY,
     cipcode INT UNIQUE NOT NULL,
-    cipdesc TEXT NOT NULL,
-    mdn_earnings INT
+    cipdesc TEXT NOT NULL
+);
+
+CREATE TABLE major_info(
+    id SERIAL PRIMARY KEY,
+    cipcode INT UNIQUE NOT NULL,
+    mdn_earnings INT,
+    major_description TEXT,
+    description_source TEXT,
+    CONSTRAINT fk_cipcode FOREIGN KEY (cipcode) REFERENCES majors(cipcode)
+);
+
+CREATE TABLE keywords(
+    id SERIAL PRIMARY KEY,
+    keyword TEXT
+);
+
+CREATE TABLE major_keywords(
+    id SERIAL PRIMARY KEY,
+    cipcode INT NOT NULL,
+    keyword_id INT NOT NULL,
+    CONSTRAINT fk_major_id FOREIGN KEY (cipcode) REFERENCES majors(cipcode),
+    CONSTRAINT fk_kwd_id FOREIGN KEY (keyword_id) REFERENCES keywords(id)
 );
 
 CREATE TABLE programs(
@@ -99,9 +122,9 @@ CREATE TABLE program_rank_crit(
 CREATE TABLE major_rec(
     id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
-	major_id INT NOT NULL,
+	cipcode INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(id)
+    CONSTRAINT fk_major FOREIGN KEY(cipcode) REFERENCES majors(cipcode)
 );
 
 CREATE TABLE program_rec(
@@ -124,9 +147,9 @@ CREATE TABLE chatlog(
 CREATE TABLE major_fav(
     id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
-	major_id INT NOT NULL,
+	cipcode INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_major FOREIGN KEY(major_id) REFERENCES majors(id)
+    CONSTRAINT fk_major FOREIGN KEY(cipcode) REFERENCES majors(cipcode)
 );
 
 CREATE TABLE program_fav(
@@ -135,4 +158,12 @@ CREATE TABLE program_fav(
 	program_id INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_program FOREIGN KEY(program_id) REFERENCES programs(program_id)
+);
+
+CREATE TABLE user_keywords(
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    keyword_id INT NOT NULL,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_kwd_id FOREIGN KEY (keyword_id) REFERENCES keywords(id)
 );

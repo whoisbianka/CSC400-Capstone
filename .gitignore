@@ -7,3 +7,4 @@ instance/
 # Generated database import files
 /data/
 /tables/
+/testoutput
