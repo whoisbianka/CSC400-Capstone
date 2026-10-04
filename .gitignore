@@ -3,3 +3,7 @@ __pycache__/
 .venv/
 .env
 instance/
+
+# Generated database import files
+/data/
+/tables/

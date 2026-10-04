@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
 import re
 import secrets
+from urllib.parse import urlsplit
 from functools import wraps
 from werkzeug.exceptions import HTTPException
 
@@ -18,6 +19,27 @@ def database_errors(function):
 
 def normalize(value):
     return ' '.join(re.sub(r'[^a-z0-9]+', ' ', value.lower()).split())
+
+def college_website_url(value):
+    if not value:
+        return None
+    value = str(value).strip()
+    if any(character.isspace() for character in value):
+        return None
+    if '://' not in value and not value.startswith('//'):
+        if ':' in value:
+            return None
+        value = 'https://' + value
+    elif value.startswith('//'):
+        value = 'https:' + value
+    try:
+        parts = urlsplit(value)
+        if parts.scheme.lower() in ('http', 'https') and parts.hostname and not parts.username and not parts.password:
+            return value
+    except ValueError:
+        pass
+    return None
+
 
 @database_errors
 def catalog_majors():
@@ -99,10 +121,11 @@ def program_page(page=1, cipcode=None, degrees=None, filters=None, shuffle_seed=
     facts = {}
     if degrees is not None and records:
         from sqlalchemy import bindparam, text
-        columns = ['p.program_id', 'p.credlev']
+        columns = ['p.program_id', 'p.credlev',
+                   '(SELECT s.insturl FROM schools s WHERE s.unitid = p.unitid LIMIT 1) AS website']
         for table, alias, fields in [
             ('cost_info', 'c', ('npt4', 'tuitionfee_in', 'tuitionfee_out')),
-            ('adm_crit', 'a', ('adm_rate', 'satmt25', 'satmt75', 'satvr25', 'satvr75')),
+            ('adm_crit', 'a', ('adm_rate', 'satmt25', 'satmt75', 'satvr25', 'satvr75', 'actmt25', 'actmt75', 'acten25', 'acten75')),
         ]:
             columns.extend(f'(SELECT {alias}.{field} FROM {table} {alias} '
                            f'WHERE {alias}.unitid = p.unitid ORDER BY {alias}.id LIMIT 1) AS {field}'
@@ -112,6 +135,8 @@ def program_page(page=1, cipcode=None, degrees=None, filters=None, shuffle_seed=
         with db_functions.engine.connect() as connection:
             facts = {int(row['program_id']): dict(row) for row in
                      connection.execute(query, {'ids': [record['program_id'] for record in records]}).mappings()}
+    for fact in facts.values():
+        fact['website'] = college_website_url(fact.get('website'))
     names = {m['cipcode']: m['name'] for m in catalog_majors()}
     schools = {}
     rows = []

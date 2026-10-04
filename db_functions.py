@@ -26,7 +26,7 @@ def add_user(user_id,fname,lname,email,google_auth):
                                   "google_auth":google_auth})
 
 #Add a given major(by cipcode) to a user's favorites
-def add_major_to_favorite(user_id,cipcode):
+def add_major_fav(user_id,cipcode):
     with engine.begin() as connection:
         major_id=get_major_id_from_cipcode(cipcode)
         query=text("""
@@ -46,24 +46,22 @@ def add_major_rec(user_id,cipcode):
         connection.execute(query,{"user_id":user_id,"major_id":major_id})
 
 #Add a given school(by unitid) to a user's favorites
-def add_fav_school(user_id,unitid):
+def add_program_fav(user_id,program_id):
     with engine.begin() as connection:
-        school_id=get_school_id_from_unitid(unitid)
         query=text("""
-                INSERT INTO school_fav(user_id,school_id)
-                VALUES (:user_id, :school_id)
+                INSERT INTO school_fav(user_id,program_id)
+                VALUES (:user_id, :program_id)
                 """)
-        connection.execute(query,{"user_id":user_id,"school_id":school_id})
+        connection.execute(query,{"user_id":user_id,"school_id":program_id})
 
 #Add a given school(by unitid) to a user's recommendation list
-def add_school_rec(user_id,unitid):
+def add_program_rec(user_id,program_id):
     with engine.begin() as connection:
-        school_id=get_school_id_from_unitid(unitid)
         query=text("""
                 INSERT INTO school_rec(user_id,school_id)
-                VALUES (:user_id, :school_id)
+                VALUES (:user_id, :program_id)
                 """)
-        connection.execute(query,{"user_id":user_id,"school_id":school_id})
+        connection.execute(query,{"user_id":user_id,"school_id":program_id})
 
 #Add a chat to a user's chatlog
 def add_to_chat_to_log(user_id,chat_text,isUser):
@@ -254,7 +252,7 @@ def get_school_adm_crit(unitid):
 def get_school_list_from_satscores(math_sat_score,reading_sat_score):
     with engine.connect() as connection:
         query=text("""
-        SELECT a.unitid, s.instnm 
+        SELECT a.unitid, s.instnm
         FROM adm_crit a
         JOIN schools s ON a.unitid = s.unitid
         WHERE satmt25 <= :thresholdmt AND satvr25 <= :thresholdvr""")
@@ -368,21 +366,6 @@ def get_best_progs_from_cip(x,cip,criteria):
             i+=1
     return results
 
-#Get user's favorited majors
-def get_user_fav_majors(user_id):
-    with engine.connect() as connection:
-        query=text("""
-                    SELECT m.cipdesc, m.cipcode
-                    FROM major_fav f
-                    JOIN majors m ON m.major_id = f.major_id
-                    WHERE f.user_id=:user_id""")
-        result=connection.execute(query,{"user_id":user_id})
-        results=[]
-        for row in result:
-            print(f"\nMajor: {row.cipdesc}\nCIPCODE: {row.cipcode}")
-            results.append({"cipdesc":row.cipdesc,"cipcode":row.cipcode})
-    return results
-
 #Helper Function: Get a major_id from a cipcode
 def get_major_id_from_cipcode(cipcode):
     with engine.connect() as connection:
@@ -434,51 +417,6 @@ def get_unitid_from_school_id(school_id):
         for row in result:
             results.append(row.unitid)
     return results[0]
-
-#Get user's favorited schools
-def get_user_fav_schools(user_id):
-    with engine.connect() as connection:
-        query=text("""
-                    SELECT s.instnm, s.unitid
-                    FROM school_fav sf
-                    JOIN schools s ON s.school_id = sf.school_id
-                    WHERE sf.user_id=:user_id""")
-        result=connection.execute(query,{"user_id":user_id})
-        results=[]
-        for row in result:
-            print(f"\nSchool: {row.instnm}\nUnitId: {row.unitid}")
-            results.append({"instnm":row.instnm,"unitid":row.unitid})
-    return results
-
-#Get user's recommended majors
-def get_user_major_recs(user_id):
-    with engine.connect() as connection:
-        query=text("""
-                    SELECT m.cipdesc, m.cipcode
-                    FROM major_rec mr
-                    JOIN majors m ON m.major_id = mr.major_id
-                    WHERE mr.user_id=:user_id""")
-        result=connection.execute(query,{"user_id":user_id})
-        results=[]
-        for row in result:
-            print(f"\nMajor: {row.cipdesc}\nCipcode: {row.cipcode}")
-            results.append({"cipdesc":row.cipdesc,"cipcode":row.cipcode})
-    return results
-
-#Get user's recommended schools
-def get_user_school_recs(user_id):
-    with engine.connect() as connection:
-        query=text("""
-                    SELECT s.instnm, s.unitid
-                    FROM school_rec sr
-                    JOIN schools s ON s.school_id = sr.school_id
-                    WHERE sr.user_id=:user_id""")
-        result=connection.execute(query,{"user_id":user_id})
-        results=[]
-        for row in result:
-            print(f"\nSchool: {row.instnm}\nUnitId: {row.unitid}")
-            results.append({"instnm":row.instnm,"unitid":row.unitid})
-    return results
 
 #Get user's chatlog
 def get_user_chatlog(user_id):
@@ -533,83 +471,253 @@ def scan_entire_table(table_name, batch_size=5000):
         ORDER BY id ASC
         LIMIT :batch_size
     """)
-    
+
     last_id = 0
-    
+
     with engine.connect() as connection:
         while True:
             # Fetch a large chunk
             result = connection.execute(query, {
-                "last_id": last_id, 
+                "last_id": last_id,
                 "batch_size": batch_size
             }).all()
-            
+
             # If no rows are returned, table has been scanned
             if not result:
                 break
-                
+
             # Yield the rows to a loop
             for row in result:
                 yield row
                 # Update the cursor to the last ID seen in this batch
-                last_id = row.id 
+                last_id = row.id
 
 ##Get a page of schools
-#Operator should be a string of one of the following: "<",">","<=",">=", or "="
-#Criteria should be the name of a column from schools(s), cost_info(c), or adm_crit(a)
-#Criteria should be in the form of "s.criteria", "c.criteria", or "a.criteria" 
-#depending on which table that criteria is from
-#Threshhold is the value to evaluate the criteria based on
-#Column to sort should follow the same syntax as criteria but with column names instead of criteria
-#"s.column_name","c.column_name","a.column_name"
-#order should be "ASC" or "DESC" depending on which way to order to sort that column
-#Error catching will be added
-def get_page_schools(page,page_count,column_to_sort,order,criteria,operator,threshhold):
+#page: an Integer representing the page number to display(default=1)
+#page count: an Integer representing the amount items on each page(default=10)
+#
+##SORTING(optional inputs, by default sorts based on m.id, in ascending order)
+#column_to_sort: a String that is the name of a column from one of the tables being joined, beginning with an abbreviation
+#schools(s.column_to_sort), cost_info(c.column_to_sort), adm_crit(a.column_to_sort)
+#
+#order: a String, either "ASC" or "DESC" depending on how the list should be sorted
+#
+#FILTERING(optional, by default applies no filter)
+#criteria: a String, should be a column name to be filtered(same syntax as column_to_sort)
+#threshhold: a String containing a value to filter the criteria column based on
+#operator: a String, representing how to filter the criteria column in regards to the threshhold
+#operator should be one of the following: ">", ">=", "<", "<=", "="
+def get_page_schools(page=1,page_count=10,column_to_sort="s.id",order="ASC",criteria="s.id",operator=">=",threshhold=0):
     order = "DESC" if order.upper() == "DESC" else "ASC"
     offset=(page - 1) * page_count
     with engine.connect() as connection:
         query=text(f"""
-                SELECT * 
+                SELECT *
                 FROM schools s
                 JOIN cost_info c ON c.unitid = s.unitid
                 JOIN adm_crit a ON a.unitid = s.unitid
                 WHERE {criteria} {operator} :threshhold
                 ORDER BY {column_to_sort} {order}, s.id {order}
-                LIMIT :limit offset :offset""")
+                LIMIT :limit OFFSET :offset""")
         result=connection.execute(query,{"threshhold":threshhold,"limit":page_count,"offset":offset})
 
     return result.mappings().all()
 
-##Get a page of schools
-#Operator should be a string of one of the following: "<",">","<=",">=", or "="
-#Criteria should be the name of a column from programs(p), or program_rank_crit(r)
-#Criteria should be in the form of "p.criteria" or "r.criteria"
-#depending on which table that criteria is from
-#Threshhold is the value to evaluate the criteria based on
-#Column to sort should follow the same syntax as criteria but with column names instead of criteria
-#"p.column_name","r.column_name"
-#order should be "ASC" or "DESC" depending on which way to order to sort that column
-#Error catching will be added
-def get_page_programs(page,page_count,column_to_sort,order,criteria,operator,threshhold):
+##Get a page of programs
+#page: an Integer representing the page number to display(default=1)
+#page count: an Integer representing the amount items on each page(default=10)
+#
+##SORTING(optional inputs, by default sorts based on m.id, in ascending order)
+#column_to_sort: a String that is the name of a column from one of the tables being joined, beginning with an abbreviation
+#programs(p.column_to_sort), program_rank_crit(r.column_to_sort)
+#schools(s.column_to_sort), cost_info(c.column_to_sort), adm_crit(a.column_to_sort)
+#
+#order: a String, either "ASC" or "DESC" depending on how the list should be sorted
+#
+#FILTERING(optional, by default applies no filter)
+#criteria: a String, should be a column name to be filtered(same syntax as column_to_sort)
+#threshhold: a value to filter the criteria column based on
+#operator: a String, representing how to filter the criteria column in regards to the threshhold
+#operator should be one of the following: ">", ">=", "<", "<=", "="
+def get_page_programs(page=1,page_count=10,column_to_sort="p.id",order="ASC",criteria="p.id",operator=">=",threshhold=0):
     order = "DESC" if order.upper() == "DESC" else "ASC"
     offset=(page - 1) * page_count
     with engine.connect() as connection:
         query=text(f"""
-                SELECT * 
+                SELECT *
                 FROM programs p
                 JOIN program_rank_crit r ON r.program_id = p.program_id
+                JOIN schools s ON s.unitid = p.unitid
+                JOIN cost_info c ON c.unitid = p.unitid
+                JOIN adm_crit a ON a.unitid = p.unitid
                 WHERE {criteria} {operator} :threshhold
                 ORDER BY {column_to_sort} {order}, p.program_id {order}
-                LIMIT :limit offset :offset""")
+                LIMIT :limit OFFSET :offset""")
         result=connection.execute(query,{"threshhold":threshhold,"limit":page_count,"offset":offset})
 
     return result.mappings().all()
 
 ##Get a page of majors
-#will add when there is more criteria to search through majors based on
-#for now use get_a_page function
-def get_page_majors(page,page_count,column_to_sort,order,criteria,operator,threshhold):
-    pass
+#Inputs:
+#page: an Integer representing the page number to display(default=1)
+#page count: an Integer representing the amount items on each page(default=10)
+#
+##SORTING(optional inputs, by default sorts based on m.id, in ascending order)
+#column_to_sort: a String that is the name of a column from one of the tables being joined, beginning with an abbreviation
+#m.column_to_sort(majors table is currently the only table)
+#
+#order: a String, either "ASC" or "DESC" depending on how the list should be sorted
+#
+#FILTERING(optional, by default applies no filter)
+#criteria: a String, should be a column name to be filtered(same syntax as column_to_sort)
+#threshhold: a value to filter the criteria column based on
+#operator: a String, representing how to filter the criteria column in regards to the threshhold
+#operator should be one of the following: ">", ">=", "<", "<=", "="
+def get_page_majors(page=1,page_count=10,column_to_sort="m.id",order="ASC",criteria="m.id",operator=">=",threshhold="0"):
+    order = "DESC" if order.upper() == "DESC" else "ASC"
+    offset=(page - 1) * page_count
+    with engine.connect() as connection:
+        query=text(f"""
+                SELECT *
+                FROM majors m
+                WHERE {criteria} {operator} :threshhold
+                ORDER BY {column_to_sort} {order}, m.id {order}
+                LIMIT :limit offset :offset""")
+        result=connection.execute(query,{"threshhold":threshhold,"limit":page_count,"offset":offset})
+
+    return result.mappings().all()
+
+##Get a page of program recommendations for a given user
+#Inputs:
+#user_id: the current user's id
+#
+#page: an Integer representing the page number to display(default=1)
+#page count: an Integer representing the amount items on each page(default=10)
+#
+#column_to_sort: a String that is the name of a column from one of the tables being joined, beginning with an abbreviation
+#program_rec(prec.column_to_sort), programs(p.column_to_sort), program_rank_crit(r.column_to_sort)
+#schools(s.column_to_sort), cost_info(c.column_to_sort), adm_crit(a.column_to_sort)
+#
+#order: a String, either "ASC" or "DESC" depending on how the list should be sorted
+#criteria: a String, should be a column name to be filtered(same syntax as column_to_sort)
+#threshhold: a value to filter the criteria column based on
+#operator: a String, representing how to filter the criteria column in regards to the threshhold
+#operator should be one of the following: ">", ">=", "<", "<=", "="
+def get_page_program_recs(user_id,page=1,page_count=10,column_to_sort="prec.id",order="ASC",criteria="prec.id",operator=">=",threshhold=0):
+    order = "DESC" if order.upper() == "DESC" else "ASC"
+    offset=(page - 1) * page_count
+    query=text(f"""
+                SELECT *
+                FROM program_rec prec
+                JOIN programs p ON prec.program_id=p.program_id
+                JOIN program_rank_crit r ON prec.program_id = r.program_id
+                JOIN schools s ON s.unitid = p.unitid
+                JOIN cost_info c ON c.unitid = p.unitid
+                JOIN adm_crit a ON a.unitid = p.unitid
+                WHERE prec.user_id=:user_id AND {criteria} {operator} :threshhold
+                ORDER BY {column_to_sort} {order}, prec.id {order}
+                LIMIT :limit OFFSET :offset""")
+    params={"user_id":user_id,"threshhold":threshhold,"limit":page_count,"offset":offset}
+    with engine.connect() as connection:
+        result=connection.execute(query,params)
+    return result.mappings().all()
+
+##Get a page of program favorites for a given user
+#Inputs:
+#user_id: the current user's id
+#
+#page: an Integer representing the page number to display(default=1)
+#page count: an Integer representing the amount items on each page(default=10)
+#
+#column_to_sort: a String that is the name of a column from one of the tables being joined, beginning with an abbreviation
+#program_fav(pf.column_to_sort), programs(p.column_to_sort), program_rank_crit(r.column_to_sort)
+#schools(s.column_to_sort), cost_info(c.column_to_sort), adm_crit(a.column_to_sort)
+#
+#order: a String, either "ASC" or "DESC" depending on how the list should be sorted
+#criteria: a String, should be a column name to be filtered(same syntax as column_to_sort)
+#threshhold: a value to filter the criteria column based on
+#operator: a String, representing how to filter the criteria column in regards to the threshhold
+#operator should be one of the following: ">", ">=", "<", "<=", "="
+def get_page_program_favs(user_id,page=1,page_count=10,column_to_sort="pf.id",order="ASC",criteria="pf.id",operator=">=",threshhold="0"):
+    order = "DESC" if order.upper() == "DESC" else "ASC"
+    offset=(page - 1) * page_count
+    query=text(f"""
+                SELECT *
+                FROM program_fav pf
+                JOIN programs p ON pf.program_id=p.program_id
+                JOIN program_rank_crit r ON pf.program_id = r.program_id
+                JOIN schools s ON s.unitid = p.unitid
+                JOIN cost_info c ON c.unitid = p.unitid
+                JOIN adm_crit a ON a.unitid = p.unitid
+                WHERE pf.user_id=:user_id AND {criteria} {operator} :threshhold
+                ORDER BY {column_to_sort} {order}, prec.id {order}
+                LIMIT :limit OFFSET :offset""")
+    params={"user_id":user_id,"threshhold":threshhold,"limit":page_count,"offset":offset}
+    with engine.connect() as connection:
+        result=connection.execute(query,params)
+    return result.mappings().all()
+
+
+##Get a page of major recommendations for a given user
+#Inputs:
+#user_id: the current user's id
+#
+#page: an Integer representing the page number to display(default=1)
+#page count: an Integer representing the amount items on each page(default=10)
+#
+#column_to_sort: a String that is the name of a column from one of the tables being joined, beginning with an abbreviation
+#major_rec(mr.column_to_sort), majors(m.column_to_sort)
+#
+#order: a String, either "ASC" or "DESC" depending on how the list should be sorted
+#criteria: a String, should be a column name to be filtered(same syntax as column_to_sort)
+#threshhold: a value to filter the criteria column based on
+#operator: a String, representing how to filter the criteria column in regards to the threshhold
+#operator should be one of the following: ">", ">=", "<", "<=", "="
+def get_page_major_recs(user_id,page=1,page_count=10,column_to_sort="mr.id",order="ASC",criteria="mr.id",operator=">=",threshhold="0"):
+    order = "DESC" if order.upper() == "DESC" else "ASC"
+    offset=(page - 1) * page_count
+    query=text(f"""
+                SELECT *
+                FROM major_rec mr
+                JOIN majors m ON mr.major_id = m.id
+                WHERE mr.user_id=:user_id AND {criteria} {operator} :threshhold
+                ORDER BY {column_to_sort} {order}, mr.id {order}
+                LIMIT :limit OFFSET :offset""")
+    params={"user_id":user_id,"threshhold":threshhold,"limit":page_count,"offset":offset}
+    with engine.connect() as connection:
+        result=connection.execute(query,params)
+    return result.mappings().all()
+
+
+##Get a page of major recommendations for a given user
+#Inputs:
+#user_id: the current user's id
+#
+#page: an Integer representing the page number to display(default=1)
+#page count: an Integer representing the amount items on each page(default=10)
+#
+#column_to_sort: a String that is the name of a column from one of the tables being joined, beginning with an abbreviation
+#major_fav(mf.column_to_sort), majors(m.column_to_sort)
+#
+#order: a String, either "ASC" or "DESC" depending on how the list should be sorted
+#criteria: a String, should be a column name to be filtered(same syntax as column_to_sort)
+#threshhold: a value to filter the criteria column based on
+#operator: a String, representing how to filter the criteria column in regards to the threshhold
+#operator should be one of the following: ">", ">=", "<", "<=", "="
+def get_page_major_favs(user_id,page=1,page_count=10,column_to_sort="mf.id",order="ASC",criteria="mf.id",operator=">=",threshhold="0"):
+    order = "DESC" if order.upper() == "DESC" else "ASC"
+    offset=(page - 1) * page_count
+    query=text(f"""
+                SELECT *
+                FROM major_fav mf
+                JOIN majors m ON mf.major_id = m.id
+                WHERE mf.user_id=:user_id AND {criteria} {operator} :threshhold
+                ORDER BY {column_to_sort} {order}, mr.id {order}
+                LIMIT :limit OFFSET :offset""")
+    params={"user_id":user_id,"threshhold":threshhold,"limit":page_count,"offset":offset}
+    with engine.connect() as connection:
+        result=connection.execute(query,params)
+    return result.mappings().all()
 
 ##UPDATE Functions
 
@@ -641,22 +749,22 @@ def remove_major_rec(user_id,major_id):
         connection.execute(query,{"user_id":user_id,"major_id":major_id})
 
 #Remove a school from user's favorites
-def remove_school_fav(user_id,school_id):
+def remove_school_fav(user_id,program_id):
     with engine.begin() as connection:
         query=text("""
-                DELETE from school_fav
-                WHERE user_id=:user_id AND school_id=:school_id
+                DELETE from program_fav
+                WHERE user_id=:user_id AND program_id=:program_id
                 """)
-        connection.execute(query,{"user_id":user_id,"school_id":school_id})
+        connection.execute(query,{"user_id":user_id,"school_id":program_id})
 
 #Remove a school from user's recommendations
-def remove_school_rec(user_id,school_id):
+def remove_program_rec(user_id,program_id):
     with engine.begin() as connection:
         query=text("""
-                DELETE from school_rec
-                WHERE user_id=:user_id AND school_id=:school_id
+                DELETE from program_rec
+                WHERE user_id=:user_id AND program_id=:program_id
                 """)
-        connection.execute(query,{"user_id":user_id,"school_id":school_id})
+        connection.execute(query,{"user_id":user_id,"program_id":program_id})
 
 #Remove a user's Chatlog
 def delete_chatlog(user_id):

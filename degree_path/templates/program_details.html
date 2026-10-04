@@ -1,22 +1,38 @@
 {% extends 'base.html' %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/program-details.css') }}">{% endblock %}
 {% block content %}
-<div class="page-workspace"><section class="workspace-page">
-<p class="eyebrow">Program details</p><h1 id="page-title">{{ program.major }}</h1><h2>{{ program.college }}</h2>
-<p>{{ program.city or 'City unavailable' }} · {{ program.state or 'State unavailable' }}</p>
-<p>Program ID: {{ program.id }} · CIP: {{ program.cipcode }}</p>
-<h3>Reported median earnings</h3><p>{{ program.earnings|money }}</p>
-<h3>Annual tuition and fees</h3>
-<p>In-state: {{ program.costs.get('tuitionfee_in')|money }}</p>
-<p>Out-of-state: {{ program.costs.get('tuitionfee_out')|money }}</p>
-<h3>Average net price by household income</h3>
-{% for key,label in [('npt4','Overall'),('npt41','$0–30,000'),('npt42','$30,001–48,000'),('npt43','$48,001–75,000'),('npt44','$75,001–110,000'),('npt45','Over $110,000')] %}
-<p>{{ label }}: {{ program.costs.get(key)|money }}</p>
+<div class="page-workspace program-details">
+<a class="details-back" href="{{ url_for('web.explore') }}">← Explore programs</a>
+<header class="details-hero">
+<p class="eyebrow">Your next chapter</p>
+<h1 id="page-title">{{ program.major }}</h1>
+<div class="details-college"><span class="details-monogram" aria-hidden="true">{{ program.college[:1] }}</span><div><h2>{{ program.college }}</h2><p>{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p></div></div>
+<a class="primary-link" href="{{ url_for('web.explore', cipcode=program.cipcode) }}">Compare programs in this major →</a>
+</header>
+<div class="details-overview" aria-label="Program at a glance">
+<div><span>Median annual earnings</span><strong>{{ program.earnings|money }}</strong><p>Four years after program completion</p></div>
+<div><span>Average annual net price</span><strong>{{ program.costs.get('npt4')|money }}</strong><p>College average after financial aid</p></div>
+<div><span>Annual in-state tuition &amp; fees</span><strong>{{ program.costs.get('tuitionfee_in')|money }}</strong><p>Before financial aid</p></div>
+</div>
+<div class="details-columns">
+<section class="details-panel" aria-labelledby="cost-title">
+<div class="details-section-heading"><span class="details-section-number" aria-hidden="true">01</span><div><p class="details-kicker">PLAN YOUR BUDGET</p><h2 id="cost-title">Costs &amp; financial aid</h2></div></div>
+<h3>Annual tuition &amp; fees</h3>
+<dl class="tuition-comparison"><div><dt>In-state</dt><dd>{{ program.costs.get('tuitionfee_in')|money }}</dd></div><div><dt>Out-of-state</dt><dd>{{ program.costs.get('tuitionfee_out')|money }}</dd></div></dl>
+<h3>Net price by household income</h3><p class="details-description">Average annual cost after financial aid, grouped by household income.</p>
+<table class="income-prices"><caption class="sr-only">Average net price by household income</caption><thead><tr><th scope="col">Household income</th><th scope="col">Annual net price</th></tr></thead><tbody>
+{% for key,label in [('npt41','$0–30,000'),('npt42','$30,001–48,000'),('npt43','$48,001–75,000'),('npt44','$75,001–110,000'),('npt45','Over $110,000')] %}<tr><th scope="row">{{ label }}</th><td>{{ program.costs.get(key)|money }}</td></tr>{% endfor %}
+</tbody></table><p class="details-footnote">These are college-level averages. Your personal cost will depend on your financial aid offer.</p>
+</section>
+<section class="details-panel" aria-labelledby="scores-title">
+<div class="details-section-heading"><span class="details-section-number" aria-hidden="true">02</span><div><p class="details-kicker">GET TO KNOW ADMISSIONS</p><h2 id="scores-title">Reported test scores</h2></div></div>
+<p class="details-description">The middle 50% of reported scores, from the 25th to the 75th percentile.</p>
+{% for title,data,keys in [('SAT',program.sat,[('satmt','Math'),('satvr','Reading'),('satwr','Writing')]),('ACT',program.act,[('actmt','Math'),('acten','English'),('actwr','Writing')])] %}
+<h3 class="score-group-title">{{ title }}</h3><dl class="score-list">{% for key,label in keys %}<div><dt>{{ label }}</dt><dd>{% if data.get(key+'25') is not none and data.get(key+'75') is not none %}{{ data[key+'25'] }}<span aria-hidden="true"> — </span><span class="sr-only"> to </span>{{ data[key+'75'] }}{% else %}<span class="score-unavailable">Not reported</span>{% endif %}</dd></div>{% endfor %}</dl>
 {% endfor %}
-<h3>Reported score ranges (25th–75th percentile)</h3>
-{% for data,keys in [(program.sat,[('satmt','SAT Math'),('satvr','SAT Reading'),('satwr','SAT Writing')]),(program.act,[('actmt','ACT Math'),('acten','ACT English'),('actwr','ACT Writing')])] %}
-{% for key,label in keys %}<p>{{ label }}: {% if data.get(key+'25') is not none and data.get(key+'75') is not none %}{{ data[key+'25'] }}–{{ data[key+'75'] }}{% else %}Not available{% endif %}</p>{% endfor %}
-{% endfor %}
-<p class="small-note">Costs are institution-level figures, not a personalized price. Score ranges are not admissions requirements or an admission prediction. {{ source_note }}</p>
-<a class="primary-link" href="{{ url_for('web.explore', cipcode=program.cipcode) }}">More programs in this major →</a>
-</section></div>
+<p class="details-footnote">These ranges describe reported scores. They are not admission requirements or a prediction of acceptance.</p>
+</section>
+</div>
+<footer class="details-source"><p>{{ source_note }}</p><span>Program {{ program.id }} · CIP {{ program.cipcode }}</span></footer>
+</div>
 {% endblock %}

@@ -61,11 +61,11 @@
 {% for key, label in [('npt4', 'Average net price'), ('tuitionfee_in', 'In-state tuition & fees'), ('tuitionfee_out', 'Out-of-state tuition & fees')] %}
 {% if facts.get(key) is not none %}<div><dt>{{ label }}</dt><dd>{{ facts[key]|money }}<span> / year</span></dd></div>{% endif %}
 {% endfor %}
-{% for key, label in [('satmt', 'SAT Math'), ('satvr', 'SAT Reading')] %}
+{% for key, label in [('satmt', 'SAT Math'), ('satvr', 'SAT Reading'), ('actmt', 'ACT Math'), ('acten', 'ACT English')] %}
 {% if facts.get(key+'25') is not none and facts.get(key+'75') is not none %}<div><dt>{{ label }} range</dt><dd>{{ facts[key+'25'] }}–{{ facts[key+'75'] }}</dd></div>{% endif %}
 {% endfor %}
 </dl>
-<div class="program-card-footer"><a href="{{ url_for('web.program_details', program_id=program.id) }}">View program <span aria-hidden="true">→</span></a></div>
+<div class="program-card-footer">{% if facts.get('website') %}<a href="{{ facts.website }}" target="_blank" rel="noopener noreferrer">College website ↗</a>{% endif %}<a href="{{ url_for('web.program_details', program_id=program.id) }}">View program <span aria-hidden="true">→</span></a></div>
 </div>
 </article>
 {% else %}
