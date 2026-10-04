@@ -71,6 +71,39 @@ def add_to_chat_to_log(user_id,chat_text,isUser):
                 VALUES(:user_id, :chat_text, :isUser)""")
         connection.execute(query,{"user_id":user_id,"chat_text":chat_text,"isUser":isUser})
 
+#Add a keyword for user
+def add_user_keyword(user_id,keyword_id):
+    query=text("""
+            INSERT INTO user_keywords(user_id, keyword_id)
+            VALUES(:user_id, keyword_id)
+            """)
+    params={"user_id":user_id,"keyword_id":keyword_id}
+    with engine.begin() as connection:
+        connection.execute(query,params)
+
+#Helper Function: Get keyword_id from keyword
+def get_a_keyword_id_from_keyword(keyword):
+    query=text("""
+                SELECT id
+                FROM keywords
+                WHERE keyword=:keyword""")
+    params={"keyword":keyword}
+    with engine.connect() as connection:
+        result=engine.execute(query,params)
+        out=result.one()
+    return out
+
+def get_a_keyword_from_keyword_id(keyword_id):
+    query=text("""
+                SELECT keyword
+                FROM keywords
+                WHERE id=:keyword_id""")
+    params={"keyword_id":keyword_id}
+    with engine.connect() as connection:
+        result=connection.execute(query,params)
+        out=result.one()
+    return out
+
 ##READ Functions
 #Get all admission criteria for a school(by unitid)
 def get_school_adm_crit(unitid):
@@ -719,6 +752,18 @@ def get_page_major_favs(user_id,page=1,page_count=10,column_to_sort="mf.id",orde
         result=connection.execute(query,params)
     return result.mappings().all()
 
+#get a user's keywords
+def get_user_keywords(user_id):
+    query=text("""
+            SELECT *
+            FROM user_keywords uk
+            JOIN keywords k ON uk.keyword_id = k.id
+            WHERE uk.user_id=:user_id""")
+    params={"user_id":user_id}
+    with engine.connect() as connection:
+        result=connection.execute(query,params)
+    return result.mappings().all()
+
 ##UPDATE Functions
 
 ##DELETE Functions
@@ -774,3 +819,11 @@ def delete_chatlog(user_id):
                 WHERE user_id=:user_id""")
         connection.execute(query,{"user_id":user_id})
 
+#Remove a user keyword
+def remove_user_keyword(user_id,keyword_id):
+    query=text("""
+                DELETE from user_keyword
+                WHERE user_id=:user_id AND keyword_id=:keyword_id""")
+    params={"user_id":user_id,"keyword_id":keyword_id} 
+    with engine.begin() as connection:
+        connection.execute(query, params)
