@@ -28,22 +28,20 @@ def add_user(user_id,fname,lname,email,google_auth):
 #Add a given major(by cipcode) to a user's favorites
 def add_major_fav(user_id,cipcode):
     with engine.begin() as connection:
-        major_id=get_major_id_from_cipcode(cipcode)
         query=text("""
-                INSERT INTO major_fav(user_id,major_id)
-                VALUES (:user_id, :major_id)
+                INSERT INTO major_fav(user_id,cipcode)
+                VALUES (:user_id, :cipcode)
                 """)
-        connection.execute(query,{"user_id":user_id,"major_id":major_id})
+        connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
 
 #Add a given major(by cipcode) to a user's recommendation list
 def add_major_rec(user_id,cipcode):
     with engine.begin() as connection:
-        major_id=get_major_id_from_cipcode(cipcode)
         query=text("""
-                INSERT INTO major_rec(user_id,major_id)
-                VALUES (:user_id, :major_id)
+                INSERT INTO major_rec(user_id,cipcode)
+                VALUES (:user_id, :cipcode)
                 """)
-        connection.execute(query,{"user_id":user_id,"major_id":major_id})
+        connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
 
 #Add a given school(by unitid) to a user's favorites
 def add_program_fav(user_id,program_id):
@@ -712,7 +710,7 @@ def get_page_major_recs(user_id,page=1,page_count=10,column_to_sort="mr.id",orde
     query=text(f"""
                 SELECT *
                 FROM major_rec mr
-                JOIN majors m ON mr.major_id = m.id
+                JOIN majors m ON mr.cipcode = m.cipcode
                 WHERE mr.user_id=:user_id AND {criteria} {operator} :threshhold
                 ORDER BY {column_to_sort} {order}, mr.id {order}
                 LIMIT :limit OFFSET :offset""")
@@ -743,7 +741,7 @@ def get_page_major_favs(user_id,page=1,page_count=10,column_to_sort="mf.id",orde
     query=text(f"""
                 SELECT *
                 FROM major_fav mf
-                JOIN majors m ON mf.major_id = m.id
+                JOIN majors m ON mf.cipcode = m.cipcode
                 WHERE mf.user_id=:user_id AND {criteria} {operator} :threshhold
                 ORDER BY {column_to_sort} {order}, mr.id {order}
                 LIMIT :limit OFFSET :offset""")
@@ -776,22 +774,22 @@ def remove_user(user_id):
         connection.execute(query,{"user_id":user_id})
 
 #Remove a major from user's favorites
-def remove_from_major_fav(user_id,major_id):
+def remove_from_major_fav(user_id,cipcode):
     with engine.begin() as connection:
         query=text("""
                 DELETE from major_fav
-                WHERE user_id=:user_id AND major_id=:major_id
+                WHERE user_id=:user_id AND cipcode=:cipcode
                 """)
-        connection.execute(query,{"user_id":user_id,"major_id":major_id})
+        connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
 
 #Remove a major from user's recommendations
-def remove_major_rec(user_id,major_id):
+def remove_major_rec(user_id,cipcode):
     with engine.begin() as connection:
         query=text("""
                 DELETE from major_rec
-                WHERE user_id=:user_id AND major_id=:major_id
+                WHERE user_id=:user_id AND cipcode=:cipcode
                 """)
-        connection.execute(query,{"user_id":user_id,"major_id":major_id})
+        connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
 
 #Remove a school from user's favorites
 def remove_school_fav(user_id,program_id):
