@@ -45,7 +45,6 @@ def create_app(test_config=None):
             session['csrf'] = secrets.token_urlsafe(24)
         return {
             'csrf_token': session['csrf'],
-            'source_note': 'Database catalog. Confirm current information with the college.',
         }
     
     @app.template_filter('money')

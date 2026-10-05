@@ -169,6 +169,7 @@ def program(program_id):
     unitid, cipcode = identifiers
     names = {m['cipcode']: m['name'] for m in catalog_majors()}
     # Original helpers return dictionaries keyed by the UNITID as a string.
+    major_info = db_functions.get_major_info(cipcode)
     school = db_functions.get_city_state(unitid).get(str(unitid), {})
     costs = db_functions.get_cost_info(unitid).get(str(unitid), {})
     sat = db_functions.get_sat_crit(unitid).get(str(unitid), {})
@@ -184,6 +185,8 @@ def program(program_id):
         'college': school.get('instnm', 'Not available'),
         'city': school.get('city'), 'state': school.get('stabbr'),
         'earnings': earnings, 'costs': costs, 'sat': sat, 'act': act,
+        'description': (major_info.get('major_description') or '').strip(),
+        'description_source': (major_info.get('description_source') or '').strip(),
     }
 
 @database_errors

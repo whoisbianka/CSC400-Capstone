@@ -17,12 +17,12 @@
      <p class="fs-4">We created this website with the intention of 
           <br> helping high school students plan out their future.
           <br>Choose a starting point!</p></div></div></div></header>
-<!-- Cards: real links to the existing questionnaire and majors explorer.
+<!-- Cards: links to the questionnaire and major explorer.
      col-lg-6 places them side by side on large screens and stacks them on phones. -->
 <section class="pt-4 pb-4" aria-label="Choose your starting point"><div class="container px-lg-5"><div class="row gx-lg-5">
 <div class="col-lg-6 mb-5"><a class="feature-card h-100 text-center px-4 px-lg-5 pb-4 pb-lg-5" href="{{ url_for('web.start', destination='questionnaire') }}"><div class="feature" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11"/><path d="m21 11-3 8-7 2 3-8 7-2Z"/></svg></div><h2 class="fs-4 fw-bold">Help me find my path</h2><p>Tell our chatbot your interests and goals and we will recommend you majors that could be a good fit for you.</p><span class="card-link">Start Here <span aria-hidden="true">→</span></span></a></div>
 <div class="col-lg-6 mb-5"><a class="feature-card h-100 text-center px-4 px-lg-5 pb-4 pb-lg-5" href="{{ url_for('web.start', destination='explore') }}"><div class="feature" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 7h8c3 0 3 2 3 2s0-2 3-2h8v18h-8c-3 0-3 2-3 2s0-2-3-2H5V7Zm11 2v18M9 12h3m-3 5h3m8-5h3m-3 5h3"/></svg></div><h2 class="fs-4 fw-bold">Explore majors</h2><p>Have something in mind? Browse our database of majors and programs!</p><span class="card-link">Explore <span aria-hidden="true">→</span></span></a></div>
-</div><p class="hint mb-4">Two ways to begin. One step closer to what’s next.</p></div></section>
+</section>
 </main>
 
 <script src="{{ url_for('static', filename='js/home.js') }}" defer></script>

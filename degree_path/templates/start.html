@@ -8,13 +8,13 @@
 <div class="page-workspace"><section class="workspace-page" aria-labelledby="page-title" id="start-choice" data-destination="{{ destination_url }}">
   <p class="eyebrow">{{ destination_label }}</p>
   <h1 id="page-title">How would you like to continue?</h1>
-  <p>Sign in or create an account, or get started without logging in.</p>
   <div class="account-actions">
     <button id="auth-start" type="button">Sign in / Create account</button>
     <a class="primary-link" href="{{ destination_url }}">Continue without logging in →</a>
   </div>
   <p id="auth-status" role="status" aria-live="polite" hidden></p>
-  <noscript><p>Enable JavaScript to sign in, or continue without logging in above.</p></noscript>
+  
   <div class="account-actions"><button id="auth-retry" type="button" hidden>Try again</button></div>
 </section></div>
+<!-- this was made so that users always have the choice to sign in or continue without logging in no matter what feature they choose-->
 {% endblock %}

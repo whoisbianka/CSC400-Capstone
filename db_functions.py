@@ -825,3 +825,15 @@ def remove_user_keyword(user_id,keyword_id):
     params={"user_id":user_id,"keyword_id":keyword_id}
     with engine.begin() as connection:
         connection.execute(query, params)
+
+
+def get_major_info(cipcode):
+    """Return the catalog description and its attribution for a major."""
+    query = text("""
+        SELECT major_description, description_source
+        FROM major_info
+        WHERE cipcode = :cipcode
+    """)
+    with engine.connect() as connection:
+        row = connection.execute(query, {"cipcode": cipcode}).mappings().first()
+        return dict(row) if row is not None else {}
