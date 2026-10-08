@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
 import re
 import secrets
+import time
 from urllib.parse import urlsplit
 from functools import wraps
 from werkzeug.exceptions import HTTPException
@@ -47,11 +48,16 @@ def catalog_majors():
     import db_functions
     from flask import g
     if 'catalog_majors' not in g:
-        g.catalog_majors = sorted(
-            ({'cipcode': int(row.cipcode), 'name': row.cipdesc}
-             for row in db_functions.scan_entire_table('majors', 5000)),
-            key=lambda row: row['name'].casefold(),
-        )
+        cached = current_app.extensions.get('catalog_majors_cache')
+        if cached is None or time.monotonic() >= cached['expires']:
+            majors = sorted(
+                ({'cipcode': int(row.cipcode), 'name': row.cipdesc}
+                 for row in db_functions.scan_entire_table('majors', 5000)),
+                key=lambda row: row['name'].casefold(),
+            )
+            cached = {'rows': majors, 'expires': time.monotonic() + 300}
+            current_app.extensions['catalog_majors_cache'] = cached
+        g.catalog_majors = cached['rows']
     return g.catalog_majors
 
 
@@ -119,37 +125,47 @@ def program_page(page=1, cipcode=None, degrees=None, filters=None, shuffle_seed=
         more = len(matches) > offset + size
     # Fetch card facts for this page in one bounded query; omit absent values.
     facts = {}
-    if degrees is not None and records:
+    if records:
         from sqlalchemy import bindparam, text
-        columns = ['p.program_id', 'p.credlev',
-                   '(SELECT s.insturl FROM schools s WHERE s.unitid = p.unitid LIMIT 1) AS website']
+        columns = ['p.program_id', 'p.credlev', 's.instnm', 's.city', 's.stabbr',
+                   's.insturl AS website']
+        # Resolve each school's first fact row once, instead of running a
+        # correlated subquery for every field on every program card.
+        joins = []
         for table, alias, fields in [
             ('cost_info', 'c', ('npt4', 'tuitionfee_in', 'tuitionfee_out')),
             ('adm_crit', 'a', ('adm_rate', 'satmt25', 'satmt75', 'satvr25', 'satvr75', 'actmt25', 'actmt75', 'acten25', 'acten75')),
         ]:
-            columns.extend(f'(SELECT {alias}.{field} FROM {table} {alias} '
-                           f'WHERE {alias}.unitid = p.unitid ORDER BY {alias}.id LIMIT 1) AS {field}'
-                           for field in fields)
+            columns.extend(f'{alias}.{field}' for field in fields)
+            joins.append(
+                f'LEFT JOIN (SELECT unitid, MIN(id) AS first_id FROM {table} '
+                f'WHERE unitid IN :unitids GROUP BY unitid) {alias}_first '
+                f'ON {alias}_first.unitid = p.unitid '
+                f'LEFT JOIN {table} {alias} ON {alias}.id = {alias}_first.first_id '
+            )
         query = text('SELECT ' + ', '.join(columns)
-                     + ' FROM programs p WHERE p.program_id IN :ids').bindparams(bindparam('ids', expanding=True))
+                     + ' FROM programs p LEFT JOIN schools s ON s.unitid = p.unitid '
+                     + ' '.join(joins)
+                     + 'WHERE p.program_id IN :ids').bindparams(
+                         bindparam('ids', expanding=True), bindparam('unitids', expanding=True))
         with db_functions.engine.connect() as connection:
             facts = {int(row['program_id']): dict(row) for row in
-                     connection.execute(query, {'ids': [record['program_id'] for record in records]}).mappings()}
+                     connection.execute(query, {
+                         'ids': [record['program_id'] for record in records],
+                         'unitids': sorted({record['unitid'] for record in records}),
+                     }).mappings()}
     for fact in facts.values():
         fact['website'] = college_website_url(fact.get('website'))
     names = {m['cipcode']: m['name'] for m in catalog_majors()}
-    schools = {}
     rows = []
     for record in records:
         unitid = record['unitid']
-        if unitid not in schools:
-            schools[unitid] = db_functions.get_city_state(unitid).get(str(unitid), {})
-        school = schools[unitid]
+        school = facts.get(int(record['program_id']), {})
         rows.append({
             'id': int(record['program_id']), 'unitid': unitid,
             'cipcode': record['cipcode'],
             'major': names.get(record['cipcode'], f"CIP {record['cipcode']}"),
-            'college': school.get('instnm', 'Not available'),
+            'college': school.get('instnm') or 'Not available',
             'city': school.get('city'), 'state': school.get('stabbr'),
             'facts': facts.get(int(record['program_id']), {}),
         })
