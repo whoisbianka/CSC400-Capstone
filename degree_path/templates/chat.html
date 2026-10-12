@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="chat-workspace">
+<div class="conversation-body">
+<section class="chat-welcome">
+<div class="assistant-mark" aria-hidden="true">✦</div>
+<p class="eyebrow">Explore the database</p>
+<h1 id="page-title">Big future.<br><span>Start with a major.</span></h1>
+<p>Enter a major name, such as computer science or nursing, to see database programs ranked by reported median earnings.</p>
+</section>
+{% if result %}
+<article class="message user"><p>{{ question }}</p></article>
+<article class="message assistant">
+<p>{{ result.note }}</p>
+{% for major in result.majors %}
+<article class="college-result-card">
+<h3>{{ major.name }}</h3>
+{% for program in major.programs %}
+<div class="program-entry"><h4>{{ program.college }}</h4><p>{{ program.major }}</p><p>Reported median earnings: {{ program.earnings|money }}</p></div>
+{% else %}<p>No ranked programs were returned for this major.</p>{% endfor %}
+<a href="{{ url_for('web.explore', cipcode=major.cipcode) }}">Browse this major’s programs →</a>
+</article>
+{% else %}<p>No matching major names were found. Try a more specific major or browse the catalog.</p>{% endfor %}
+{% if result.has_more %}<p>Showing six matching majors. Refine the name to narrow your results.</p>{% endif %}
+</article>
+{% endif %}
+</div>
+<div class="composer-dock">
+<form method="post" class="composer">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label for="chat-message" class="sr-only">Major name</label>
+<textarea id="chat-message" name="question" maxlength="200" required rows="2" data-enter-submit placeholder="Enter a major name…">{{ question }}</textarea>
+<div class="composer-footer"><span>Searches actual catalog major names.</span><button class="primary-link" type="submit">Search ↑</button></div>
+</form>
+<p class="guided-alternative">Not sure where to start? <a href="{{ url_for('web.questionnaire') }}">Find my major →</a></p>
+</div></div>
+{% endblock %}

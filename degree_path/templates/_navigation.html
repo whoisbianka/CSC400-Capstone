@@ -1,0 +1,8 @@
+<!-- Shared navigation for every page; the brand returns to the homepage. -->
+<header class="site-navigation">
+  <a class="site-brand" href="{{ url_for('web.home') }}"><span aria-hidden="true">✳</span> Degree Path</a>
+  <nav aria-label="Account navigation">
+    <a href="{{ url_for('web.profile') }}" {% if request.endpoint == 'web.profile' %}aria-current="page"{% endif %}>Profile</a>
+    <a href="{{ url_for('web.settings') }}" {% if request.endpoint == 'web.settings' %}aria-current="page"{% endif %}>Settings</a>
+  </nav>
+</header>

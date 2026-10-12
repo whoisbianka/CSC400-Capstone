@@ -1,0 +1,80 @@
+import os
+import certifi
+import sys
+from google.cloud import secretmanager
+
+try:
+    os.environ["SSL_CERT_FILE"] = certifi.where()
+    os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
+except ImportError:
+    print("Warning: 'certifi' package not found. SSL verification might fail.", file=sys.stderr)
+
+from google.cloud.sql.connector import Connector, IPTypes
+import pg8000
+import sqlalchemy
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def get_database_password():
+    secret_version = os.environ["DB_PASSWORD_SECRET_VERSION"]
+
+    with secretmanager.SecretManagerServiceClient() as client:
+        response = client.access_secret_version(
+            request={"name": secret_version}
+        )
+
+    return response.payload.data.decode("utf-8")
+
+_connector=Connector(refresh_strategy="LAZY")
+
+def connect_with_connector() -> sqlalchemy.engine.base.Engine:
+    """
+    Initializes a connection pool for a Cloud SQL instance of Postgres.
+
+    Uses the Cloud SQL Python Connector package.
+    """
+
+    instance_connection_name = os.environ[
+        "INSTANCE_CONNECTION_NAME"
+    ]  # e.g. 'project:region:instance'
+    db_user = os.environ["DB_USER"]  # e.g. 'my-db-user'
+    db_pass=get_database_password()
+    db_name = os.environ["DB_NAME"]  # e.g. 'my-database'
+
+    private_ip = os.environ.get("PRIVATE_IP", "false").strip().lower()
+
+    if private_ip not in ("true", "false"):
+        raise ValueError("PRIVATE_IP must be true or false")
+
+    ip_type = (
+        IPTypes.PRIVATE
+        if private_ip == "true"
+        else IPTypes.PUBLIC
+    )
+
+    def getconn() -> pg8000.dbapi.Connection:
+        conn: pg8000.dbapi.Connection = _connector.connect(
+            instance_connection_name,
+            "pg8000",
+            user=db_user,
+            db=db_name,
+            password=db_pass,
+            enable_iam_auth=False,
+            ip_type=ip_type,
+        )
+        return conn
+
+    # The Cloud SQL Python Connector can be used with SQLAlchemy
+    # using the 'creator' argument to 'create_engine'
+    pool = sqlalchemy.create_engine(
+        "postgresql+pg8000://",
+        creator=getconn,
+        pool_size=5,
+        max_overflow=2,
+        pool_timeout=30
+    )
+    return pool
+
+def close_connector():
+    _connector.close()

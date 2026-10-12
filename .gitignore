@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+instance/
+
+# Generated database import files
+/data/
+/tables/
+/testoutput
+cloud_admin_connection.py
