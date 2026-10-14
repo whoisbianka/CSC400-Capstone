@@ -1,14 +1,5 @@
 import os
-import certifi
-import sys
 from google.cloud import secretmanager
-
-try:
-    os.environ["SSL_CERT_FILE"] = certifi.where()
-    os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
-except ImportError:
-    print("Warning: 'certifi' package not found. SSL verification might fail.", file=sys.stderr)
-
 from google.cloud.sql.connector import Connector, IPTypes
 import pg8000
 import sqlalchemy
