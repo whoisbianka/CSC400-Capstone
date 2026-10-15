@@ -44,8 +44,27 @@
         await loadScript(`https://${domain}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, key);
       }
       const clerk = window.Clerk;
+      const theme = getComputedStyle(document.documentElement);
+      const color = name => theme.getPropertyValue(name).trim();
       await clerk.load({
         ui: { ClerkUI: window.__internal_ClerkUICtor },
+        appearance: {
+          variables: {
+            colorPrimary: color('--primary'),
+            colorPrimaryForeground: color('--on-primary'),
+            colorBackground: color('--surface'),
+            colorForeground: color('--text'),
+            colorMuted: color('--surface-raised'),
+            colorMutedForeground: color('--muted'),
+            colorInput: color('--background'),
+            colorInputForeground: color('--text'),
+            colorNeutral: color('--text'),
+            colorBorder: color('--border'),
+            colorRing: color('--accent'),
+            borderRadius: '0.75rem',
+            fontFamily: theme.fontFamily,
+          },
+        },
         signInFallbackRedirectUrl: destination,
         signUpFallbackRedirectUrl: destination
       });

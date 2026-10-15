@@ -3,7 +3,7 @@
 .details-hero { max-width: 960px; margin-bottom: 34px; }
 .details-hero h1 { overflow-wrap: anywhere; margin-top: 12px; }
 .details-college { display: flex; align-items: center; gap: 16px; margin: 24px 0; }
-.details-monogram { display: grid; place-items: center; width: 60px; height: 60px; flex-shrink: 0; border-radius: 16px; background: #a6c6ff14; color: var(--mint); font: 600 28px Georgia,serif; }
+.details-monogram { display: grid; place-items: center; width: 60px; height: 60px; flex-shrink: 0; border-radius: 16px; background: var(--accent-soft); color: var(--highlight); font: 600 28px Georgia,serif; }
 .details-college h2 { margin: 0; font-size: 21px; }
 .details-college p { margin: 4px 0 0; font-size: 13px; }
 .details-hero .primary-link { font-size: 13px; }
@@ -11,17 +11,17 @@
 .details-overview > div { padding: 24px; border: 1px solid var(--border); border-radius: 18px; background: var(--panel); }
 .details-overview span { color: var(--muted); font-size: 12px; }
 .details-overview strong { display: block; font-size: clamp(22px,3vw,32px); letter-spacing: -1px; margin: 10px 0 6px; overflow-wrap: anywhere; }
-.details-overview > div:first-child strong { color: var(--mint); }
+.details-overview > div:first-child strong { color: var(--highlight); }
 .details-overview p { font-size: 12px; margin: 0; }
 .details-columns { display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px; align-items: stretch; }
 .details-panel { padding: 28px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); min-width: 0; }
 .details-section-heading { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
 .details-section-number { color: var(--accent); border: 1px solid var(--border); border-radius: 12px; padding: 10px; font-size: 12px; }
-.details-kicker { color: var(--mint); font-size: 9px; letter-spacing: 1.5px; margin: 0 0 4px; }
+.details-kicker { color: var(--highlight); font-size: 9px; letter-spacing: 1.5px; margin: 0 0 4px; }
 .details-section-heading h2 { margin: 0; font-size: 22px; }
 .details-panel h3 { font-size: 16px; margin: 26px 0 12px; }
 .details-description { font-size: 13px; }
-.tuition-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 18px; background: #a6c6ff07; border-radius: 12px; }
+.tuition-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 18px; background: var(--accent-faint); border-radius: 12px; }
 .tuition-comparison dt { font-size: 12px; color: var(--muted); }
 .tuition-comparison dd { margin: 8px 0 0; font-size: 22px; font-weight: 600; }
 .income-prices th, .income-prices td { padding: 13px 8px; font-size: 13px; }
