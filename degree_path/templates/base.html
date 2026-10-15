@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title }} | Degree Path Explorer</title>
+<meta name="csrf-token" content="{{ csrf_token }}">
 <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
@@ -12,6 +13,10 @@
 <body class="chat-app">
 <a class="skip-link" href="#page-title">Skip to content</a>
 {% include '_navigation.html' %}
+{% if request.endpoint in ['web.explore', 'web.program_details', 'web.saved_majors_page'] %}
+<script src="{{ url_for('static', filename='js/clerk-config.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/favorites.js') }}" defer></script>
+{% endif %}
 <main class="app-main">
 {% block content %}{% endblock %}
 </main>

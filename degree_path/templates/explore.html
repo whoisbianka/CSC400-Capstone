@@ -57,6 +57,7 @@
 <p class="program-location">{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p>
 <h3><a href="{{ url_for('web.program_details', program_id=program.id) }}">{{ program.college }}</a></h3>
 <div class="program-subject"><span class="subject-label">PROGRAM</span><p>{{ program.major }}</p></div>
+<button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false">☆ Save major</button>
 {% set facts = program.facts %}
 {% if facts.get('credlev') in [2, 3] %}<p class="program-degree">{{ 'Associate degree' if facts.credlev == 2 else 'Bachelor’s degree' }}</p>{% endif %}
 <dl class="program-facts">

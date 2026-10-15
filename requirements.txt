@@ -9,3 +9,4 @@ pandas
 numpy
 google-cloud-secret-manager
 sqlparse
+PyJWT[crypto]>=2.12,<3
