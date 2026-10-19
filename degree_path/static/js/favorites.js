@@ -16,7 +16,48 @@
   signIn.className = 'primary-link';
   signIn.textContent = 'Sign in / Create account';
   gate.append(explanation, signIn);
-  (list || document.querySelector('.page-workspace')).prepend(gate, notice);
+  // Account prompts belong on Saved Majors; catalog stars open a modal.
+  if (list) list.prepend(gate, notice);
+
+  const loginDialog = document.createElement('dialog');
+  loginDialog.className = 'favorites-login-dialog';
+  loginDialog.setAttribute('aria-labelledby', 'favorites-login-title');
+  loginDialog.setAttribute('aria-describedby', 'favorites-login-message');
+  const loginTitle = document.createElement('h2');
+  loginTitle.id = 'favorites-login-title';
+  loginTitle.textContent = 'Sign in to save';
+  const loginMessage = document.createElement('p');
+  loginMessage.id = 'favorites-login-message';
+  loginMessage.textContent = 'To save this college, you must sign in.';
+  const loginStatus = document.createElement('p');
+  loginStatus.className = 'favorites-notice';
+  loginStatus.setAttribute('role', 'status');
+  const loginActions = document.createElement('div');
+  loginActions.className = 'favorites-login-actions';
+  const dismissLogin = document.createElement('button');
+  dismissLogin.type = 'button';
+  dismissLogin.className = 'secondary-button';
+  dismissLogin.textContent = 'Cancel';
+  const confirmLogin = document.createElement('button');
+  confirmLogin.type = 'button';
+  confirmLogin.className = 'primary-link';
+  confirmLogin.textContent = 'Sign in';
+  loginActions.append(dismissLogin, confirmLogin);
+  loginDialog.append(loginTitle, loginMessage, loginStatus, loginActions);
+  document.body.append(loginDialog);
+  dismissLogin.addEventListener('click', () => loginDialog.close());
+  confirmLogin.addEventListener('click', async () => {
+    confirmLogin.disabled = true;
+    loginStatus.textContent = '';
+    try {
+      const auth = await clerk();
+      loginDialog.close();
+      openSignIn(auth);
+    } catch (error) {
+      loginStatus.textContent = error.message;
+      if (!loginDialog.open) loginDialog.showModal();
+    } finally { confirmLogin.disabled = false; }
+  });
 
   function loadScript(src, key) {
     return new Promise((resolve, reject) => {
@@ -71,10 +112,30 @@
     return clerkPromise;
   }
 
+  function openSignIn(auth) {
+    auth.openSignIn({
+      forceRedirectUrl: location.href,
+      signUpForceRedirectUrl: location.href,
+      appearance: {
+        elements: {
+          modalBackdrop: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' },
+          modalContent: { margin: 'auto', maxWidth: '100%' }
+        }
+      }
+    });
+  }
+
+  function accountRequired() {
+    gate.hidden = false;
+    const error = new Error('Sign in or create an account to save majors.');
+    error.requiresSignIn = true;
+    return error;
+  }
+
   async function api(path, body) {
     const auth = await clerk();
     const token = await auth.session?.getToken();
-    if (!token) { gate.hidden = false; throw new Error('Sign in or create an account to save majors.'); }
+    if (!token) throw accountRequired();
     const response = await fetch(path, {
       method: body ? 'POST' : 'GET',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json',
@@ -82,7 +143,8 @@
       ...(body ? { body: JSON.stringify(body) } : {})
     });
     const data = await response.json();
-    if (!response.ok) { if (response.status === 401) gate.hidden = false; throw new Error(data.error || 'Could not update saved majors. Try again.'); }
+    if (response.status === 401) throw accountRequired();
+    if (!response.ok) throw new Error(data.error || 'Could not update saved majors. Try again.');
     gate.hidden = true;
     return data;
   }
@@ -115,7 +177,13 @@
     document.querySelectorAll('[data-save-major]').forEach(button => {
       const saved = favorites.some(major => String(major.cipcode) === button.dataset.saveMajor);
       button.setAttribute('aria-pressed', String(saved));
-      button.textContent = list ? 'Remove' : saved ? '★ Major saved' : '☆ Save major';
+      const cardStar = button.closest('.program-card') !== null;
+      button.textContent = list ? 'Remove' : cardStar ? (saved ? '★' : '☆') : saved ? '★ Major saved' : '☆ Save major';
+      if (cardStar) {
+        const label = saved ? 'Remove major from saved majors' : 'Save major';
+        button.setAttribute('aria-label', label);
+        button.title = label;
+      }
     });
   }
 
@@ -124,7 +192,7 @@
     try {
       const auth = await clerk();
       if (auth.session?.status === 'active') { await refresh(); return; }
-      auth.openSignUp({ forceRedirectUrl: location.href, signInForceRedirectUrl: location.href });
+      openSignIn(auth);
     } catch (error) { notice.textContent = error.message; }
     finally { signIn.disabled = false; }
   });
@@ -139,6 +207,11 @@
     const button = event.target.closest('[data-save-major]');
     if (!button || button.disabled) return;
     button.disabled = true;
+    if (!list) {
+      // Keep feedback beside the clicked star instead of above the catalog.
+      (button.closest('.program-card-content') || button.parentElement).append(notice);
+      notice.textContent = '';
+    }
     const cipcode = button.dataset.saveMajor;
     try {
       // Read current account state before changing it, including after sign-in.
@@ -146,7 +219,15 @@
       const saved = !current.some(major => String(major.cipcode) === cipcode);
       await api(`/api/saved-majors/${cipcode}`, { saved });
       if (await refresh()) notice.textContent = saved ? 'Major saved to your account.' : 'Major removed from your saved majors.';
-    } catch (error) { notice.textContent = error.message; gate.scrollIntoView({ block: 'nearest' }); }
+    } catch (error) {
+      if (error.requiresSignIn) {
+        notice.textContent = '';
+        loginStatus.textContent = '';
+        if (!loginDialog.open) loginDialog.showModal();
+      } else {
+        notice.textContent = error.message;
+      }
+    }
     finally { button.disabled = false; }
   });
 

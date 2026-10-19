@@ -56,7 +56,7 @@
 <div class="program-card-content">
 <div class="program-card-header">
 <p class="program-location">{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p>
-<button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false">☆</button>
+<button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false" aria-label="Save {{ program.major }} to saved majors" title="Save major">☆</button>
 </div>
 <h3><a href="{{ url_for('web.program_details', program_id=program.id) }}">{{ program.college }}</a></h3>
 <div class="program-subject"><span class="subject-label">PROGRAM</span><p>{{ program.major }}</p></div>
