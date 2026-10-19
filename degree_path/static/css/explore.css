@@ -18,7 +18,9 @@
 .program-card:hover { border-color: var(--accent-border); }
 .college-monogram { display: grid; place-items: center; flex-shrink: 0; width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(140deg, var(--accent-border), var(--accent-faint)); border: 1px solid var(--accent-border); color: var(--highlight); font: 600 30px Georgia, serif; }
 .program-card-content { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.program-location { font-size: 12px; margin: 0 0 5px; }
+.program-card-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 5px; }
+.program-card-header .save-major-button { flex-shrink: 0; margin: 0 0 0 auto; }
+.program-location { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
 .program-card h3 { min-height: 2.4em; overflow-wrap: anywhere; margin: 0 0 18px; font-size: 21px; letter-spacing: -.5px; }
 .program-card h3 a { color: var(--text); text-decoration: none; }
 .program-card h3 a:hover { color: var(--accent); }

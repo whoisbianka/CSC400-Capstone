@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='3') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='4') }}">
 <script src="{{ url_for('static', filename='js/explore.js') }}" defer></script>
 {% endblock %}
 {% block content %}
@@ -54,10 +54,12 @@
 <article class="program-card">
 <div class="college-monogram" aria-hidden="true">{{ program.college[:1] }}</div>
 <div class="program-card-content">
+<div class="program-card-header">
 <p class="program-location">{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p>
+<button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false">☆</button>
+</div>
 <h3><a href="{{ url_for('web.program_details', program_id=program.id) }}">{{ program.college }}</a></h3>
 <div class="program-subject"><span class="subject-label">PROGRAM</span><p>{{ program.major }}</p></div>
-<button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false">☆ Save major</button>
 {% set facts = program.facts %}
 {% if facts.get('credlev') in [2, 3] %}<p class="program-degree">{{ 'Associate degree' if facts.credlev == 2 else 'Bachelor’s degree' }}</p>{% endif %}
 <dl class="program-facts">
