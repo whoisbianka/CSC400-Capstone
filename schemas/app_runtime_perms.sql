@@ -30,7 +30,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
     public.major_rec,
     public.program_rec,
     public.chatlog,
-    public.user_keywords
+    public.user_keywords,
+    public.user_info,
+    public.guest_sessions
 TO app_runtime;
 
 GRANT USAGE ON SEQUENCE
@@ -40,7 +42,8 @@ GRANT USAGE ON SEQUENCE
     public.major_rec_id_seq,
     public.program_rec_id_seq,
     public.chatlog_id_seq,
-    public.user_keywords_id_seq
+    public.user_keywords_id_seq,
+    public.user_info_id_seq
 TO app_runtime;
 
 GRANT app_runtime TO python_connection;

@@ -5,6 +5,14 @@ from urllib.parse import urlsplit
 from functools import wraps
 from werkzeug.exceptions import HTTPException
 from time import perf_counter
+from copy import deepcopy
+
+import db_functions
+
+from .auth import get_current_user
+from .guest_state import get_or_create_guest_session
+from .chat_service import interpret_message, InvalidAdvisorResponse
+
 
 def database_errors(function):
     """Return an unavailable response when a database query fails."""
@@ -335,3 +343,173 @@ def recommendations_api():
         abort(400, description='Send between 1 and 20 major names.')
     terms = [text_value(term) for term in body['majors']]
     return jsonify(recommendations(terms))
+
+@web.route("/api/chat", methods=["GET", "POST"])
+def api_chat():
+    message = None
+
+    if request.method == "POST":
+        body = request.get_json(silent=True)
+
+        if not isinstance(body, dict):
+            abort(400, description="Send a JSON object.")
+
+        message = body.get("message")
+
+        if not isinstance(message, str):
+            abort(400, description="A message is required.")
+
+        message = message.strip()
+
+        if not 1 <= len(message) <= 4000:
+            abort(
+                400,
+                description="Messages must contain 1–4000 characters.",
+            )
+
+    try:
+        user = get_current_user()
+
+        if user is not None:
+            mode = "user"
+            user_id = user["id"]
+
+            messages = db_functions.get_recent_chatlog(user_id)
+            keywords = db_functions.get_user_keywords(user_id)
+
+        else:
+            mode = "guest"
+            guest_id, guest = get_or_create_guest_session()
+
+            messages = guest["state"]["messages"]
+            keywords = guest["state"]["keywords"]
+
+        if request.method == "GET":
+            if user is not None:
+                major_recommendations = db_functions.get_recommendations(
+                    user_id
+                )
+            else:
+                major_recommendations = guest["state"].get(
+                    "recommendations",
+                    [],
+                )
+
+            return jsonify(
+                mode=mode,
+                messages=messages,
+                keywords=keywords,
+                recommendations=major_recommendations,
+            )
+
+        catalog = db_functions.get_keywords()
+
+        turn = interpret_message(
+            message=message,
+            keyword_catalog=catalog,
+            saved_keywords=keywords,
+            recent_messages=messages[-20:],
+        )
+
+        if user is not None:
+            major_recommendations = db_functions.save_chat_turn(
+                user_id,
+                message,
+                turn,
+            )
+
+        else:
+            updated_state = apply_guest_chat_turn(
+                state=guest["state"],
+                message=message,
+                turn=turn,
+                catalog=catalog,
+            )
+
+            major_recommendations = (
+                db_functions.get_recommendations_for_keywords(
+                    updated_state["keywords"]
+                )
+            )
+
+            updated_state["recommendations"] = major_recommendations
+
+            new_version = db_functions.save_guest_session(
+                guest_id=guest_id,
+                state=updated_state,
+                expected_version=guest["version"],
+            )
+
+            if new_version is None:
+                abort(
+                    409,
+                    description=(
+                        "This chat changed in another tab or expired. "
+                        "Reload the chat before sending again."
+                    ),
+                )
+
+        return jsonify(
+            mode=mode,
+            reply=turn.reply,
+            recommendations=major_recommendations,
+        )
+
+    except HTTPException:
+        raise
+
+    except InvalidAdvisorResponse:
+        current_app.logger.exception(
+            "Gemini returned an invalid chat response."
+        )
+        abort(
+            502,
+            description="The assistant could not respond. Please try again.",
+        )
+
+    except Exception:
+        current_app.logger.exception("Chat request failed.")
+        abort(
+            503,
+            description="Chat is temporarily unavailable. Please try again.",
+        )
+
+
+def apply_guest_chat_turn(state, message, turn, catalog):
+    updated = deepcopy(state)
+
+    keywords_by_id = {
+        item["keyword_id"]: item
+        for item in updated["keywords"]
+    }
+
+    labels_by_id = {
+        item["keyword_id"]: item["keyword"]
+        for item in catalog
+    }
+
+    for keyword_id in turn.keyword_removals:
+        keywords_by_id.pop(keyword_id, None)
+
+    for addition in turn.keyword_additions:
+        keywords_by_id[addition.keyword_id] = {
+            "keyword_id": addition.keyword_id,
+            "keyword": labels_by_id[addition.keyword_id],
+            "evidence": addition.evidence,
+        }
+
+    updated["keywords"] = list(keywords_by_id.values())
+
+    updated["messages"].extend([
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": turn.reply},
+    ])
+
+    # Keep guest state bounded.
+    updated["messages"] = updated["messages"][-100:]
+
+    # Existing recommendations may no longer match changed interests.
+    if turn.keyword_additions or turn.keyword_removals:
+        updated["recommendations"] = []
+
+    return updated

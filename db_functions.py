@@ -8,6 +8,7 @@ from google.cloud.sql.connector import Connector
 from cloud_sql_connection import connect_with_connector, close_connector
 from time import perf_counter
 from contextlib import ExitStack
+import json
 
 load_dotenv()
 
@@ -15,17 +16,25 @@ engine=connect_with_connector()
 
 ##CREATE Functions
 #Add User
-def add_user(user_id,fname,lname,email,google_auth):
+def create_or_update_user(clerk_user_id):
+    insert_query=text("""
+            INSERT INTO public.users(clerk_user_id)
+            VALUES (:clerk_user_id)
+            ON CONFLICT(clerk_user_id)
+            DO NOTHING
+            RETURNING id, clerk_user_id;
+            """)
+    lookup_query=text("""
+                    SELECT id, clerk_user_id
+                    FROM users
+                    WHERE clerk_user_id=:clerk_user_id""")
+    params={"clerk_user_id":clerk_user_id}
+
     with engine.begin() as connection:
-        query=text("""
-                INSERT INTO users(user_id,fname,lname,email,google_auth)
-                VALUES (:user_id, :fname, :lname, :email, :google_auth)
-                """)
-        connection.execute(query,{"user_id":user_id,
-                                  "fname":fname,
-                                  "lname":lname,
-                                  "email":email,
-                                  "google_auth":google_auth})
+        row=connection.execute(insert_query,params).mappings().one_or_none()
+        if row is None:
+            row=connection.execute(lookup_query,params).mappings().one()
+    return dict(row)
 
 #Add a given major(by cipcode) to a user's favorites
 def add_major_fav(user_id,cipcode):
@@ -36,48 +45,40 @@ def add_major_fav(user_id,cipcode):
                 """)
         connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
 
-#Add a given major(by cipcode) to a user's recommendation list
-def add_major_rec(user_id,cipcode):
-    with engine.begin() as connection:
-        query=text("""
-                INSERT INTO major_rec(user_id,cipcode)
-                VALUES (:user_id, :cipcode)
-                """)
-        connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
-
 #Add a given school(by unitid) to a user's favorites
 def add_program_fav(user_id,program_id):
     with engine.begin() as connection:
         query=text("""
-                INSERT INTO school_fav(user_id,program_id)
+                INSERT INTO program_fav(user_id,program_id)
                 VALUES (:user_id, :program_id)
                 """)
-        connection.execute(query,{"user_id":user_id,"school_id":program_id})
+        connection.execute(query,{"user_id":user_id,"program_id":program_id})
 
 #Add a given school(by unitid) to a user's recommendation list
 def add_program_rec(user_id,program_id):
     with engine.begin() as connection:
         query=text("""
-                INSERT INTO school_rec(user_id,school_id)
+                INSERT INTO program_rec(user_id,program_id)
                 VALUES (:user_id, :program_id)
                 """)
-        connection.execute(query,{"user_id":user_id,"school_id":program_id})
+        connection.execute(query,{"user_id":user_id,"program_id":program_id})
 
 #Add a chat to a user's chatlog
-def add_to_chat_to_log(user_id,chat_text,isUser):
+def add_to_chat_to_log(user_id,content,sender):
     with engine.begin() as connection:
         query=text("""
-                INSERT INTO chatlog(user_id, chat_text, isUser)
-                VALUES(:user_id, :chat_text, :isUser)""")
-        connection.execute(query,{"user_id":user_id,"chat_text":chat_text,"isUser":isUser})
+                INSERT INTO chatlog(user_id, content, sender)
+                VALUES(:user_id, :content, :sender)""")
+        connection.execute(query,{"user_id":user_id,"content":content,"sender":sender})
 
 #Add a keyword for user
-def add_user_keyword(user_id,keyword_id):
+def add_user_keyword(user_id,keyword_id,evidence):
     query=text("""
-            INSERT INTO user_keywords(user_id, keyword_id)
-            VALUES(:user_id, keyword_id)
+            INSERT INTO user_keywords(user_id, keyword_id, evidence)
+            VALUES(:user_id, :keyword_id,:evidence)
+            ON CONFLICT (user_id, keyword_id) DO NOTHING
             """)
-    params={"user_id":user_id,"keyword_id":keyword_id}
+    params={"user_id":user_id,"keyword_id":keyword_id,"evidence":evidence}
     with engine.begin() as connection:
         connection.execute(query,params)
 
@@ -89,7 +90,7 @@ def get_a_keyword_id_from_keyword(keyword):
                 WHERE keyword=:keyword""")
     params={"keyword":keyword}
     with engine.connect() as connection:
-        result=engine.execute(query,params)
+        result=connection.execute(query,params)
         out=result.one()
     return out
 
@@ -233,7 +234,7 @@ def get_school_url(unitid):
 
         for row in result:
             out=row.insturl
-    return out
+    return out if out is not None else None
 
 #Get SAT Criteria for a school(by unitid)
 def get_sat_crit(unitid):
@@ -259,7 +260,7 @@ def get_sat_crit(unitid):
     return schools_list
 
 #Get ACT Criteria for a School(by unitid)
-def get_school_adm_crit(unitid):
+def get_school_act_crit(unitid):
     with engine.connect() as connection:
         query=text("""
         SELECT a.unitid, s.instnm, a.actmt25,a.actmt75,a.acten25,a.acten75,a.actwr25,a.actwr75
@@ -301,16 +302,32 @@ def get_school_list_from_satscores(math_sat_score,reading_sat_score):
 
 #Get Income Bracket from Income
 def get_bracket(income):
-    if income<30001 or income=='a':
+    if isinstance(income, str):
+        brackets = {
+            "a": "npt41",
+            "b": "npt42",
+            "c": "npt43",
+            "d": "npt44",
+            "e": "npt45",
+        }
+
+        letter = income.strip().lower()
+
+        if letter not in brackets:
+            raise ValueError("Income bracket must be a, b, c, d, or e.")
+
+        return brackets[letter]
+
+    if income < 30001:
         return "npt41"
-    if income<48001 or income=='b':
+    if income < 48001:
         return "npt42"
-    if income<75001 or income=='c':
+    if income < 75001:
         return "npt43"
-    if income<110001 or income=='d':
+    if income < 110001:
         return "npt44"
-    else:
-        return "npt45"
+
+    return "npt45"
 
 #Get Net Average Price for a Given Income Bracket
 def get_npt(unitid,inc_bracket):
@@ -403,13 +420,13 @@ def get_best_progs_from_cip(x,cip,criteria):
 def get_major_id_from_cipcode(cipcode):
     with engine.connect() as connection:
         query=text("""
-                    SELECT m.major_id
+                    SELECT m.id
                     FROM majors m
                     WHERE m.cipcode=:cipcode""")
         result=connection.execute(query,{"cipcode":cipcode})
         results=[]
         for row in result:
-            results.append(row.major_id)
+            results.append(row.id)
     return results[0]
 
 #Helper Function: Get a cipcode from a major_id
@@ -418,7 +435,7 @@ def get_cipcode_from_major_id(major_id):
         query=text("""
                     SELECT m.cipcode
                     FROM majors m
-                    WHERE m.major_id=:major_id""")
+                    WHERE m.id=:major_id""")
         result=connection.execute(query,{"major_id":major_id})
         results=[]
         for row in result:
@@ -429,13 +446,13 @@ def get_cipcode_from_major_id(major_id):
 def get_school_id_from_unitid(unitid):
     with engine.connect() as connection:
         query=text("""
-                    SELECT s.school_id
+                    SELECT s.id
                     FROM schools s
                     WHERE s.unitid=:unitid""")
         result=connection.execute(query,{"unitid":unitid})
         results=[]
         for row in result:
-            results.append(row.school_id)
+            results.append(row.id)
     return results[0]
 
 #Helper Function: Get a unitid from a school_id
@@ -444,7 +461,7 @@ def get_unitid_from_school_id(school_id):
         query=text("""
                     SELECT s.unitid
                     FROM schools s
-                    WHERE s.school_id=:school_id""")
+                    WHERE s.id=:school_id""")
         result=connection.execute(query,{"school_id":school_id})
         results=[]
         for row in result:
@@ -452,19 +469,17 @@ def get_unitid_from_school_id(school_id):
     return results[0]
 
 #Get user's chatlog
-def get_user_chatlog(user_id):
+def get_recent_chatlog(user_id,limit=20):
     with engine.connect() as connection:
         query=text("""
-            SELECT cl.createdAt, cl.chat_text, cl.isUser
+            SELECT cl.content, cl.sender
             FROM chatlog cl
             WHERE cl.user_id=:user_id
-            ORDER BY cl.createdAt ASC""")
-        result=connection.execute(query,{"user_id":user_id})
+            ORDER BY cl.createdAt DESC, id DESC
+            LIMIT :limit""")
+        rows=connection.execute(query,{"user_id":user_id,"limit":limit}).mappings().all()
 
-    results=[]
-    for row in result:
-        results.append({"Time":row.createdAt,"Text":row.chat_text,"isUser":row.isUser})
-    return results
+    return [{"role":row["sender"],"content":row["content"]}for row in reversed(rows)]
 
 #Page(Integer), Page_count(Integer), Table_Name(String), column_to_sort(String), order(String) "ASC" or "DESC"
 def get_a_page(page,page_count,table_name,column_to_sort,order):
@@ -924,7 +939,7 @@ def get_page_program_favs(user_id,page=1,page_count=10,column_to_sort="pf.id",or
                 JOIN cost_info c ON c.unitid = p.unitid
                 JOIN adm_crit a ON a.unitid = p.unitid
                 WHERE pf.user_id=:user_id AND {criteria} {operator} :threshhold
-                ORDER BY {column_to_sort} {order}, prec.id {order}
+                ORDER BY {column_to_sort} {order}, pf.id {order}
                 LIMIT :limit OFFSET :offset""")
     params={"user_id":user_id,"threshhold":threshhold,"limit":page_count,"offset":offset}
     with engine.connect() as connection:
@@ -986,7 +1001,7 @@ def get_page_major_favs(user_id,page=1,page_count=10,column_to_sort="mf.id",orde
                 FROM major_fav mf
                 JOIN majors m ON mf.cipcode = m.cipcode
                 WHERE mf.user_id=:user_id AND {criteria} {operator} :threshhold
-                ORDER BY {column_to_sort} {order}, mr.id {order}
+                ORDER BY {column_to_sort} {order}, mf.id {order}
                 LIMIT :limit OFFSET :offset""")
     params={"user_id":user_id,"threshhold":threshhold,"limit":page_count,"offset":offset}
     with engine.connect() as connection:
@@ -996,16 +1011,132 @@ def get_page_major_favs(user_id,page=1,page_count=10,column_to_sort="mf.id",orde
 #get a user's keywords
 def get_user_keywords(user_id):
     query=text("""
-            SELECT *
-            FROM user_keywords uk
-            JOIN keywords k ON uk.keyword_id = k.id
+            SELECT k.id AS keyword_id, k.keyword, uk.evidence
+            FROM public.user_keywords uk
+            JOIN public.keywords k ON uk.keyword_id = k.id
             WHERE uk.user_id=:user_id""")
     params={"user_id":user_id}
     with engine.connect() as connection:
-        result=connection.execute(query,params)
-    return result.mappings().all()
+        rows=connection.execute(query,params).mappings().all()
+    return [dict(row) for row in rows]
+
+#get all keywords
+def get_keywords():
+    query=text("""
+            SELECT id AS keyword_id, keyword
+            FROM keywords
+            ORDER BY id ASC""")
+    with engine.connect() as connection:
+        rows=connection.execute(query).mappings().all()
+    return [dict(row) for row in rows]
+
+def get_user(clerk_user_id):
+    query=text("""
+                SELECT id,clerk_user_id
+                FROM users
+                WHERE clerk_user_id=:clerk_user_id""")
+    params={"clerk_user_id":clerk_user_id}
+    with engine.connect() as connection:
+        row=connection.execute(query,params).mappings().one_or_none()
+    return dict(row) if row is not None else None
 
 ##UPDATE Functions
+
+#save chat_turn
+def save_chat_turn(user_id, user_message, turn):
+    chat_query = text("""
+        INSERT INTO public.chatlog (
+            user_id,
+            content,
+            sender
+        )
+        VALUES (
+            :user_id,
+            :message,
+            :sender
+        )
+    """)
+
+    add_query = text("""
+        INSERT INTO public.user_keywords (
+            user_id,
+            keyword_id,
+            evidence
+        )
+        VALUES (
+            :user_id,
+            :keyword_id,
+            :evidence
+        )
+        ON CONFLICT (user_id, keyword_id)
+        DO UPDATE SET evidence = EXCLUDED.evidence
+    """)
+
+    remove_query = text("""
+        DELETE FROM public.user_keywords
+        WHERE user_id = :user_id
+          AND keyword_id = :keyword_id
+    """)
+
+    chat_params = [
+        {
+            "user_id": user_id,
+            "message": user_message,
+            "sender": "user",
+        },
+        {
+            "user_id": user_id,
+            "message": turn.reply,
+            "sender": "assistant",
+        },
+    ]
+
+    add_params = [
+        {
+            "user_id": user_id,
+            "keyword_id": addition.keyword_id,
+            "evidence": addition.evidence,
+        }
+        for addition in turn.keyword_additions
+    ]
+
+    remove_params = [
+        {
+            "user_id": user_id,
+            "keyword_id": keyword_id,
+        }
+        for keyword_id in turn.keyword_removals
+    ]
+
+    with engine.begin() as connection:
+        existing_user = connection.execute(
+            text("""
+                SELECT id
+                FROM public.users
+                WHERE id = :user_id
+                FOR UPDATE
+            """),
+            {"user_id": user_id},
+        ).scalar_one_or_none()
+
+        if existing_user is None:
+            raise ValueError("User does not exist.")
+
+        connection.execute(chat_query, chat_params)
+
+        if remove_params:
+            connection.execute(remove_query, remove_params)
+
+        if add_params:
+            connection.execute(add_query, add_params)
+
+        recommendations = _refresh_user_recommendations(
+            connection,
+            user_id,
+        )
+
+    return recommendations
+
 
 ##DELETE Functions
 #Delete a user
@@ -1013,7 +1144,7 @@ def remove_user(user_id):
     with engine.begin() as connection:
         query=text("""
                 DELETE from users
-                WHERE user_id=:user_id""")
+                WHERE id=:user_id""")
         connection.execute(query,{"user_id":user_id})
 
 #Remove a major from user's favorites
@@ -1041,7 +1172,7 @@ def remove_school_fav(user_id,program_id):
                 DELETE from program_fav
                 WHERE user_id=:user_id AND program_id=:program_id
                 """)
-        connection.execute(query,{"user_id":user_id,"school_id":program_id})
+        connection.execute(query,{"user_id":user_id,"program_id":program_id})
 
 #Remove a school from user's recommendations
 def remove_program_rec(user_id,program_id):
@@ -1063,7 +1194,7 @@ def delete_chatlog(user_id):
 #Remove a user keyword
 def remove_user_keyword(user_id,keyword_id):
     query=text("""
-                DELETE from user_keyword
+                DELETE from user_keywords
                 WHERE user_id=:user_id AND keyword_id=:keyword_id""")
     params={"user_id":user_id,"keyword_id":keyword_id}
     with engine.begin() as connection:
@@ -1087,4 +1218,308 @@ def warm_database_connections(engine, size=5):
         for _ in range(size):
             connection=stack.enter_context(engine.connect())
             connection.execute(text("SELECT 1"))
+
+#Updating Recommendations based on current keywords for a user
+
+def _rank_majors_from_keywords(connection, saved_keywords):
+    """
+    Rank up to six majors using saved keyword dictionaries.
+
+    Each keyword dictionary contains:
+        keyword_id
+        evidence
+
+    The caller supplies the database connection so this function
+    can participate in an existing transaction.
+    """
+    keywords_by_id = {
+        item["keyword_id"]: item
+        for item in saved_keywords
+    }
+
+    if not keywords_by_id:
+        return []
+
+    query = text("""
+        WITH ranked_majors AS (
+            SELECT
+                mk.cipcode,
+                COUNT(DISTINCT mk.keyword_id) AS matching_keywords
+            FROM public.major_keywords mk
+            WHERE mk.keyword_id IN :keyword_ids
+            GROUP BY mk.cipcode
+            ORDER BY matching_keywords DESC, mk.cipcode ASC
+            LIMIT 6
+        )
+        SELECT DISTINCT
+            ranked.cipcode,
+            m.cipdesc AS major,
+            ranked.matching_keywords,
+            k.id AS keyword_id,
+            k.keyword
+        FROM ranked_majors ranked
+        JOIN public.majors m
+            ON m.cipcode = ranked.cipcode
+        JOIN public.major_keywords mk
+            ON mk.cipcode = ranked.cipcode
+        JOIN public.keywords k
+            ON k.id = mk.keyword_id
+        WHERE mk.keyword_id IN :keyword_ids
+        ORDER BY
+            ranked.matching_keywords DESC,
+            ranked.cipcode ASC,
+            k.keyword ASC,
+            k.id ASC
+    """).bindparams(
+        bindparam("keyword_ids", expanding=True)
+    )
+
+    rows = connection.execute(
+        query,
+        {"keyword_ids": list(keywords_by_id)},
+    ).mappings().all()
+
+    recommendations = {}
+
+    for row in rows:
+        cipcode = row["cipcode"]
+
+        if cipcode not in recommendations:
+            recommendations[cipcode] = {
+                "cipcode": cipcode,
+                "major": row["major"],
+                "matching_keywords": row["matching_keywords"],
+                "evidence": [],
+            }
+
+        saved_keyword = keywords_by_id[row["keyword_id"]]
+
+        recommendations[cipcode]["evidence"].append({
+            "keyword_id": row["keyword_id"],
+            "keyword": row["keyword"],
+            "evidence": saved_keyword["evidence"],
+        })
+
+    return list(recommendations.values())
+
+
+def get_recommendations_for_keywords(saved_keywords):
+    """
+    Generate recommendations without saving account records.
+
+    Used for guests, whose results are saved in guest_sessions.state.
+    """
+    with engine.connect() as connection:
+        return _rank_majors_from_keywords(
+            connection,
+            saved_keywords,
+        )
+
+def _refresh_user_recommendations(connection, user_id):
+    """
+    Read current account keywords, rank majors, and replace saved results.
+
+    Must run inside a transaction whose caller has locked the user row.
+    """
+    keyword_query = text("""
+        SELECT keyword_id, evidence
+        FROM public.user_keywords
+        WHERE user_id = :user_id
+    """)
+
+    rows = connection.execute(
+        keyword_query,
+        {"user_id": user_id},
+    ).mappings().all()
+
+    saved_keywords = [dict(row) for row in rows]
+
+    recommendations = _rank_majors_from_keywords(
+        connection,
+        saved_keywords,
+    )
+
+    connection.execute(
+        text("""
+            DELETE FROM public.major_rec
+            WHERE user_id = :user_id
+        """),
+        {"user_id": user_id},
+    )
+
+    if recommendations:
+        connection.execute(
+            text("""
+                INSERT INTO public.major_rec (
+                    user_id,
+                    cipcode,
+                    matching_keywords
+                )
+                VALUES (
+                    :user_id,
+                    :cipcode,
+                    :matching_keywords
+                )
+            """),
+            [
+                {
+                    "user_id": user_id,
+                    "cipcode": item["cipcode"],
+                    "matching_keywords": item["matching_keywords"],
+                }
+                for item in recommendations
+            ],
+        )
+
+    return recommendations
+
+def create_recommendations(user_id):
+    with engine.begin() as connection:
+        existing_user = connection.execute(
+            text("""
+                SELECT id
+                FROM public.users
+                WHERE id = :user_id
+                FOR UPDATE
+            """),
+            {"user_id": user_id},
+        ).scalar_one_or_none()
+
+        if existing_user is None:
+            raise ValueError("User does not exist.")
+
+        return _refresh_user_recommendations(
+            connection,
+            user_id,
+        )
+
+def get_recommendations(user_id):
+    query = text("""
+        SELECT DISTINCT
+            mr.cipcode,
+            m.cipdesc AS major,
+            k.id AS keyword_id,
+            k.keyword,
+            uk.evidence,
+            mr.matching_keywords
+        FROM public.major_rec mr
+        JOIN public.majors m
+            ON m.cipcode=mr.cipcode
+        JOIN public.major_keywords mk
+            ON mk.cipcode = mr.cipcode
+        JOIN public.user_keywords uk
+            ON uk.keyword_id = mk.keyword_id
+            AND uk.user_id = mr.user_id
+        JOIN public.keywords k
+            ON k.id = uk.keyword_id
+        WHERE mr.user_id = :user_id
+        ORDER BY mr.matching_keywords DESC, mr.cipcode, k.keyword, k.id
+    """)
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            query,
+            {
+                "user_id": user_id
+            },
+        ).mappings().all()
+    recs={}
+    for row in rows:
+        cipcode=row["cipcode"]
+        if cipcode not in recs:
+            recs[cipcode]={
+            "cipcode":cipcode,
+            "major":row["major"],
+            "matching_keywords":row["matching_keywords"],
+            "evidence":[]
+            }
+        rec=recs[cipcode]
+        rec["evidence"].append({
+            "keyword_id":row["keyword_id"],
+            "keyword":row["keyword"],
+            "evidence":row["evidence"]
+        })
     
+    return list(recs.values())
+
+
+##Guest Sessions
+
+def create_guest_session(guest_id):
+    state = {
+        "messages": [],
+        "keywords": [],
+        "preferences": {},
+        "recommendations": [],
+    }
+
+    query = text("""
+        INSERT INTO public.guest_sessions (guest_id, state)
+        VALUES (:guest_id, CAST(:state AS JSONB))
+        RETURNING state, version
+    """)
+
+    with engine.begin() as connection:
+        row = connection.execute(
+            query,
+            {
+                "guest_id": guest_id,
+                "state": json.dumps(state),
+            },
+        ).mappings().one()
+
+    return dict(row)
+
+
+def get_guest_session(guest_id):
+    query = text("""
+        SELECT state, version
+        FROM public.guest_sessions
+        WHERE guest_id = :guest_id
+          AND expires_at > CURRENT_TIMESTAMP
+    """)
+
+    with engine.connect() as connection:
+        row = connection.execute(
+            query,
+            {"guest_id": guest_id},
+        ).mappings().one_or_none()
+
+    return dict(row) if row is not None else None
+
+
+def save_guest_session(guest_id, state, expected_version):
+    query = text("""
+        UPDATE public.guest_sessions
+        SET state = CAST(:state AS JSONB),
+            version = version + 1,
+            expires_at = CURRENT_TIMESTAMP + INTERVAL '24 hours'
+        WHERE guest_id = :guest_id
+          AND version = :expected_version
+          AND expires_at > CURRENT_TIMESTAMP
+        RETURNING version
+    """)
+
+    with engine.begin() as connection:
+        new_version = connection.execute(
+            query,
+            {
+                "guest_id": guest_id,
+                "state": json.dumps(state),
+                "expected_version": expected_version,
+            },
+        ).scalar_one_or_none()
+
+    # None means the session expired or another request updated it.
+    return new_version
+
+
+def delete_expired_guest_sessions():
+    query = text("""
+        DELETE FROM public.guest_sessions
+        WHERE expires_at <= CURRENT_TIMESTAMP
+    """)
+
+    with engine.begin() as connection:
+        result = connection.execute(query)
+        return result.rowcount

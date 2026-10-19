@@ -29,3 +29,56 @@
   .guided-center { padding: 20px 12px; }
   #guided-chat .chat-container { padding: 18px 12px; }
 }
+
+#recommendationsPanel {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+#recommendationsPanel > h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+#recommendationsPanel > p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+#recommendationCards {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.major-recommendation {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--background);
+}
+
+.major-recommendation h3 {
+  margin: 0 0 8px;
+}
+
+.major-recommendation h4 {
+  margin: 16px 0 8px;
+}
+
+.major-recommendation ul {
+  padding-left: 20px;
+}
+
+.major-recommendation li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.major-recommendation a {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--mint);
+}

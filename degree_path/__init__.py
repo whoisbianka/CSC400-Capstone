@@ -6,7 +6,7 @@ from pathlib import Path
 from flask import Flask, render_template, request, session, abort, jsonify
 from flask.cli import load_dotenv
 from werkzeug.exceptions import HTTPException
-import db_functions
+from datetime import timedelta
 
 
 
@@ -22,14 +22,41 @@ def create_app(test_config=None):
 
     app = Flask(__name__)
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY') or secrets.token_hex(32),
+        SECRET_KEY=os.environ.get('SECRET_KEY'),
         SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
         MAX_CONTENT_LENGTH=65536,
         # Reload edited HTML templates without restarting the local server.
         TEMPLATES_AUTO_RELOAD=True,
+        SESSION_COOKIE_SECURE=(
+        os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
+        ),
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=24),
+
+        CLERK_SECRET_KEY=os.environ.get("CLERK_SECRET_KEY"),
+        CLERK_PUBLISHABLE_KEY=os.environ.get("CLERK_PUBLISHABLE_KEY"),
+
+        CLERK_AUTHORIZED_PARTIES=[
+            origin.strip()
+            for origin in os.environ.get(
+                "CLERK_AUTHORIZED_PARTIES", ""
+            ).split(",")
+            if origin.strip()
+        ],
     )
     if test_config:
         app.config.update(test_config)
+
+    if not app.config["SECRET_KEY"]:
+        raise RuntimeError("SECRET_KEY is required.")
+
+    if not app.config["CLERK_SECRET_KEY"]:
+        raise RuntimeError("CLERK_SECRET_KEY is required.")
+
+    if not app.config["CLERK_AUTHORIZED_PARTIES"]:
+        raise RuntimeError("CLERK_AUTHORIZED_PARTIES is required.")
+
+    if not app.config["CLERK_PUBLISHABLE_KEY"]:
+        raise RuntimeError("CLERK_PUBLISHABLE_KEY is required.")
 
     @app.before_request
     def protect_forms(): #helping to protect site from CRSF attacks
@@ -45,7 +72,8 @@ def create_app(test_config=None):
         if 'csrf' not in session:
             session['csrf'] = secrets.token_urlsafe(24)
         return {
-            'csrf_token': session['csrf'],
+            "csrf_token": session["csrf"],
+            "clerk_publishable_key": app.config["CLERK_PUBLISHABLE_KEY"],
         }
     
     @app.template_filter('money')
@@ -70,6 +98,14 @@ def create_app(test_config=None):
 
     #initialize database connection on initial connection to website
     if not app.config.get("TESTING"):
+        import db_functions
         db_functions.warm_database_connections(db_functions.engine,size=5)
+
+    @app.cli.command("cleanup-guests")
+    def cleanup_guests():
+        import db_functions
+
+        deleted = db_functions.delete_expired_guest_sessions()
+        print(f"Deleted {deleted} expired guest sessions.")    
 
     return app

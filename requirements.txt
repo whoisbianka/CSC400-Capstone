@@ -9,3 +9,7 @@ pandas
 numpy
 google-cloud-secret-manager
 sqlparse
+google-genai
+pydantic
+clerk-backend-api
+httpx

@@ -3,29 +3,118 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <title>Find my path | Degree Path</title>
-  <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/guided-chat.css') }}">
-  <script src="{{ url_for('static', filename='js/guided-chat.js') }}" defer></script>
+
+  <link
+    rel="icon"
+    href="{{ url_for('static', filename='img/favicon.png') }}"
+  >
+
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='css/theme.css') }}"
+  >
+
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='css/guided-chat.css') }}"
+  >
+
+  <!-- This is the PUBLIC Clerk key, never the secret key. -->
+  <script>
+    window.CLERK_PUBLISHABLE_KEY = {{ clerk_publishable_key | tojson }};
+  </script>
+
+  <!-- Order matters: initialize the API helper before the chat interface. -->
+  <script
+    src="{{ url_for('static', filename='js/chat-api.js') }}"
+    defer
+  ></script>
+
+  <script
+    src="{{ url_for('static', filename='js/guided-chat.js') }}"
+    defer
+  ></script>
 </head>
+
 <body class="guided-page">
   {% include '_navigation.html' %}
-  <!-- Keep the existing IDs and data attributes used by the chatbot script. -->
+
   <main class="guided-center">
-    <section id="guided-chat" aria-labelledby="page-title" data-recommendations-url="{{ url_for('web.recommendations_api') }}" data-explore-url="{{ url_for('web.explore') }}" data-csrf="{{ csrf_token }}">
+    <section
+      id="guided-chat"
+      aria-labelledby="page-title"
+      data-csrf="{{ csrf_token }}"
+      data-explore-url="{{ url_for('web.explore') }}"
+    >
       <div class="chat-container">
         <h1 id="page-title">Find my path</h1>
-        <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Conversation">
-          <div class="bot-message"><strong>Degree Path Explorer:</strong><br>Hi! I'm here to help you explore possible college majors, careers, and schools.</div>
-          <div class="bot-message"><strong>Degree Path Explorer:</strong><br>Let's start simple. What's your first name?</div>
-        </div>
+
+        <div
+          class="chat-messages"
+          id="chatMessages"
+          role="log"
+          aria-live="polite"
+          aria-label="Conversation"
+          aria-busy="true"
+        ></div>
+
         <div class="chat-input">
-          <label for="userInput" class="sr-only">Your answer</label>
-          <input type="text" id="userInput" placeholder="Type your message…" autocomplete="off">
-          <button id="sendButton" type="button">Send</button>
+          <label for="userInput" class="sr-only">
+            Your message
+          </label>
+
+          <input
+            type="text"
+            id="userInput"
+            placeholder="Type your message…"
+            autocomplete="off"
+            maxlength="4000"
+            disabled
+          >
+
+          <button
+            id="sendButton"
+            type="button"
+            disabled
+          >
+            Send
+          </button>
         </div>
-        <p class="chat-note">Answers reset when you reload.</p>
+
+        <p
+          id="chatStatus"
+          class="chat-note"
+          role="status"
+          aria-live="polite"
+        >
+          Loading your chat…
+        </p>
+
+        <p id="chatStorageNote" class="chat-note"></p>
+
+        <button id="reloadChat" type="button" hidden>
+          Reload chat
+        </button>
+        <section
+          id="recommendationsPanel"
+          aria-labelledby="recommendationsTitle"
+          hidden
+        >
+          <h2 id="recommendationsTitle">Majors to explore</h2>
+
+          <p>
+            These majors match your saved interests. Results update as
+            you tell us more. Keyword matches are starting points for
+            exploration, not admission predictions.
+          </p>
+
+          <div id="recommendationCards"></div>
+        </section>
+        <noscript>
+          <p>Enable JavaScript to use the chatbot.</p>
+        </noscript>
       </div>
     </section>
   </main>

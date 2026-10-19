@@ -15,16 +15,31 @@ DROP TABLE IF EXISTS public.major_info CASCADE;
 DROP TABLE IF EXISTS public.keywords CASCADE;
 DROP TABLE IF EXISTS public.major_keywords CASCADE;
 DROP TABLE IF EXISTS public.user_keywords CASCADE;
+DROP TABLE IF EXISTS public.user_info CASCADE;
+DROP TABLE IF EXISTS public.guest_sessions CASCADE;
 
 --Create Tables--
 CREATE TABLE public.users(
     id SERIAL PRIMARY KEY,
-    fname VARCHAR(50) NOT NULL,
-    lname VARCHAR(50) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    google_auth TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    clerk_user_id TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE public.guest_sessions (
+    guest_id TEXT PRIMARY KEY,
+
+    state JSONB NOT NULL DEFAULT '{}'::jsonb,
+    version INTEGER NOT NULL DEFAULT 0,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMPTZ NOT NULL
+        DEFAULT (CURRENT_TIMESTAMP + INTERVAL '24 hours'),
+
+    CHECK (jsonb_typeof(state) = 'object')
+);
+
+CREATE INDEX guest_sessions_expires_at_idx
+    ON public.guest_sessions (expires_at);
 
 CREATE TABLE public.schools(
     id SERIAL PRIMARY KEY,
@@ -111,7 +126,7 @@ CREATE TABLE public.cost_info(
     CONSTRAINT fk_unitid FOREIGN KEY (unitid) REFERENCES public.schools(unitid)
 );
 
-CREATE TABLE program_rank_crit(
+CREATE TABLE public.program_rank_crit(
     id SERIAL PRIMARY KEY,
 	program_id INT UNIQUE NOT NULL,
     earn_count_wne_4yr_nat INT,
@@ -123,8 +138,10 @@ CREATE TABLE public.major_rec(
     id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
 	cipcode INT NOT NULL,
+    matching_keywords INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_major FOREIGN KEY(cipcode) REFERENCES public.majors(cipcode)
+    CONSTRAINT fk_major FOREIGN KEY(cipcode) REFERENCES public.majors(cipcode),
+    CONSTRAINT uq_uid_cip_mr UNIQUE (user_id, cipcode)
 );
 
 CREATE TABLE public.program_rec(
@@ -132,14 +149,15 @@ CREATE TABLE public.program_rec(
 	user_id INT NOT NULL,
 	program_id INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_program FOREIGN KEY(program_id) REFERENCES public.programs(program_id)
+    CONSTRAINT fk_program FOREIGN KEY(program_id) REFERENCES public.programs(program_id),
+    CONSTRAINT uq_uid_pid_pr UNIQUE (user_id, program_id)
 );
 
 CREATE TABLE public.chatlog(
     id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
-    chat_text TEXT,
-    isUser BOOLEAN NOT NULL,
+    content TEXT NOT NULL,
+    sender TEXT NOT NULL CHECK(sender IN ('user','assistant')),
     createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES public.users(id) ON DELETE CASCADE
 );
@@ -149,7 +167,8 @@ CREATE TABLE public.major_fav(
 	user_id INT NOT NULL,
 	cipcode INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_major FOREIGN KEY(cipcode) REFERENCES public.majors(cipcode)
+    CONSTRAINT fk_major FOREIGN KEY(cipcode) REFERENCES public.majors(cipcode),
+    CONSTRAINT uq_uid_cip_mf UNIQUE (user_id, cipcode)
 );
 
 CREATE TABLE public.program_fav(
@@ -157,15 +176,36 @@ CREATE TABLE public.program_fav(
 	user_id INT NOT NULL,
 	program_id INT NOT NULL,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_program FOREIGN KEY(program_id) REFERENCES public.programs(program_id)
+    CONSTRAINT fk_program FOREIGN KEY(program_id) REFERENCES public.programs(program_id),
+    CONSTRAINT uq_uid_pid_mf UNIQUE (user_id, program_id)
 );
 
 CREATE TABLE public.user_keywords(
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
     keyword_id INT NOT NULL,
-    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT fk_kwd_id FOREIGN KEY (keyword_id) REFERENCES public.keywords(id)
+    evidence TEXT NOT NULL,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_kwd_id FOREIGN KEY (keyword_id) REFERENCES public.keywords(id),
+    CONSTRAINT uq_uid_kwd UNIQUE (user_id, keyword_id)
+);
+
+CREATE TABLE public.user_info(
+    id SERIAL PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL,
+    satmt INT,
+    satvr INT,
+    satwr INT,
+    actmt INT,
+    acten INT,
+    actwr INT,
+    max_cost INT,
+    search_city TEXT,
+    search_state TEXT,
+    search_longitude NUMERIC(9,6),
+    search_latitude NUMERIC(9,6),
+    max_distance INT,
+    CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 
@@ -201,7 +241,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
     public.major_rec,
     public.program_rec,
     public.chatlog,
-    public.user_keywords
+    public.user_keywords,
+    public.user_info,
+    public.guest_sessions
 TO app_runtime;
 
 GRANT USAGE ON SEQUENCE
@@ -211,7 +253,8 @@ GRANT USAGE ON SEQUENCE
     public.major_rec_id_seq,
     public.program_rec_id_seq,
     public.chatlog_id_seq,
-    public.user_keywords_id_seq
+    public.user_keywords_id_seq,
+    public.user_info_id_seq
 TO app_runtime;
 
 GRANT app_runtime TO python_connection;
