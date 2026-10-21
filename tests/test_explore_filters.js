@@ -1,47 +1,43 @@
+// The reference UI applies valid filters immediately and restores loading state on Back.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-class Element {
-  constructor() {this.dataset={};this.children=[];this.handlers={};this.value='';}
-  addEventListener(event, handler) {this.handlers[event]=handler;}
-  replaceChildren() {this.children=[];}
-  appendChild(child) {this.children.push(child);}
-  setAttribute() {}
-  removeAttribute() {}
-}
-const ids={};
-for(const id of ['degree-filter-form','major-filter','major-name','major-name-fields','major-favorite-fields','major-name-options','major-search-status','degree-values','explore-loading']) ids[id]=new Element();
-const favorites=[new Element(),new Element()];
-ids['major-favorite-fields'].querySelectorAll=()=>favorites;
-ids['degree-filter-form'].querySelectorAll=()=>[{value:'3'}];
-ids['major-filter'].value='all';
-ids['major-name'].dataset.suggestionsUrl='/api/major-names';
-let timer;
-const requests=[];
+const handlers = {};
+const choices = [{value:'2',checked:false},{value:'3',checked:true}];
+let valid = true;
+let submissions = 0;
+const form = {
+  querySelectorAll: () => choices,
+  addEventListener: (event, handler) => { handlers[event] = handler; },
+  reportValidity: () => valid,
+  requestSubmit: () => { submissions++; handlers.submit(); },
+};
+const values = {value:''};
+const loading = {hidden:true};
+const results = {setAttribute:(name,value) => { results[name]=value; },removeAttribute:name => { delete results[name]; }};
+let pageshow;
+let click;
 vm.runInNewContext(fs.readFileSync('degree_path/static/js/explore.js','utf8'),{
-  document:{getElementById:id=>ids[id],querySelectorAll:()=>[],querySelector:()=>new Element(),createElement:()=>new Element()},
-  window:{location:{origin:'https://app.test'},addEventListener(){}},URL,
-  setTimeout:fn=>{timer=fn;return 1;},clearTimeout:()=>{},
-  fetch:url=>new Promise(resolve=>requests.push({url,resolve})),
+  document:{
+    getElementById:id=>({'degree-filter-form':form,'degree-values':values,'explore-loading':loading})[id],
+    querySelector:()=>results,
+    querySelectorAll:()=>[{addEventListener:(_,handler)=>{click=handler;}}],
+  },
+  window:{addEventListener:(_,handler)=>{pageshow=handler;}},
 });
-(async()=>{
-  assert.equal(ids['major-name'].disabled,true);
-  ids['major-filter'].value='favorites';ids['major-filter'].handlers.change();
-  assert.equal(ids['major-favorite-fields'].hidden,false);
-  assert.equal(favorites[0].disabled,false);
-  // No form-level change handler: users can select multiple favorites before applying.
-  assert.equal(ids['degree-filter-form'].handlers.change,undefined);
-  ids['degree-filter-form'].handlers.submit();
-  ids['major-filter'].value='name';ids['major-filter'].handlers.change();
-  assert.equal(ids['major-name'].required,true);
-  assert.equal(favorites[0].disabled,true);
-  ids['major-name'].value='bio';ids['major-name'].handlers.input();
-  const first=timer();
-  ids['major-name'].value='art';ids['major-name'].handlers.input();
-  const second=timer();
-  requests[1].resolve({ok:true,json:async()=>({majors:[{name:'Art'}]})});await second;
-  requests[0].resolve({ok:true,json:async()=>({majors:[{name:'Biology'}]})});await first;
-  assert.equal(ids['major-name-options'].children.length,1);
-  assert.equal(ids['major-name-options'].children[0].value,'Art');
-  console.log('Explore filter controls and stale suggestion protection passed.');
-})().catch(error=>{console.error(error);process.exitCode=1;});
+handlers.change();
+assert.equal(submissions,1);
+assert.equal(values.value,'3');
+assert.equal(loading.hidden,false);
+assert.equal(results['aria-busy'],'true');
+pageshow();
+assert.equal(loading.hidden,true);
+assert.equal(results['aria-busy'],undefined);
+valid=false;
+handlers.change();
+assert.equal(submissions,1,'Invalid filters must not submit');
+click({button:0,ctrlKey:true});
+assert.equal(loading.hidden,true,'Opening another tab must not leave this page loading');
+click({button:0});
+assert.equal(loading.hidden,false);
+console.log('Immediate filter submission, validation, loading feedback, and Back restoration passed.');

@@ -1,0 +1,67 @@
+.major-filter-group { margin-bottom: 24px; }
+.major-filter-group select, .major-filter-group input[type="search"] { width: 100%; }
+.major-favorite-list { max-height: 280px; overflow-y: auto; }
+.major-favorite-list label { align-items: flex-start; }
+.major-favorite-list input { flex-shrink: 0; margin-top: 3px; }
+.degree-filters > button[type="submit"] { margin-top: 20px; width: 100%; }
+
+.explore-tabs { display: flex; gap: 8px; margin: 0 0 28px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.explore-tabs a { display: inline-block; padding: 12px 28px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; }
+.explore-tabs a[aria-current="page"] { background: var(--accent); color: var(--on-primary); }
+.degree-filters > input, .degree-filters > select { width: 100%; margin-bottom: 14px; }
+.major-catalog-card { padding: 24px; border: 1px solid var(--border); background: var(--panel); border-radius: 18px; }
+.major-catalog-card h3 { margin: 0 0 16px; }
+.major-catalog-card .major-description { line-height: 1.7; }
+.major-catalog-card summary { cursor: pointer; color: var(--accent); }
+#recommendationsPanel {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+#recommendationsPanel > h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+#recommendationsPanel > p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+#recommendationCards {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.major-recommendation {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--background);
+}
+
+.major-recommendation h3 {
+  margin: 0 0 8px;
+}
+
+.major-recommendation h4 {
+  margin: 16px 0 8px;
+}
+
+.major-recommendation ul {
+  padding-left: 20px;
+}
+
+.major-recommendation li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.major-recommendation a {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--highlight);
+}

@@ -1,40 +1,43 @@
 /* Shared design tokens: the homepage and every application page use one palette. */
 :root {
   color-scheme: dark;
-  --background: #0c1017;
-  --surface: #151c27;
-  --surface-raised: #1c2735;
-  --text: #f0f2f6;
-  --muted: #adb8ca;
-  --accent: #a6c6ff;
-  --mint: #9ae1ca;
-  --border: #ffffff13;
-  --panel: linear-gradient(135deg, #1c2735, #151c27);
-  --glow: radial-gradient(ellipse at 18% 15%, #314d792a, transparent 48%), radial-gradient(ellipse at 90% 65%, #276a5e20, transparent 45%);
+  --background: #0e1728;
+  --surface: #1c2a40;
+  --surface-raised: #24354f;
+  --text: #efe5d6;
+  --muted: #c2c5ca;
+  --accent: #91a8ea;
+  --highlight: #f1b891;
+  --primary: #3458c7;
+  --primary-hover: #2c4db4;
+  --on-primary: #faf6ee;
+  --border: #efe5d624;
+  --accent-border: #91a8ea55;
+  --accent-soft: #91a8ea14;
+  --accent-faint: #91a8ea09;
+  --panel: var(--surface);
+  --hero: linear-gradient(120deg, #14223a 15%, #21365e 100%);
+  --navigation: #0e1728ed;
+  --overlay: #0e172866;
+  --shadow: #00000026;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--background); background-image: var(--glow); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6; }
+body { margin: 0; background: var(--background); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6; }
 a { color: var(--accent); }
-a:hover { color: var(--mint); }
+a:hover { color: var(--highlight); }
 button, input, select, textarea { font: inherit; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
 [hidden] { display: none !important; }
-::selection { background: #a6c6ff35; }
+::selection { background: var(--primary); color: var(--on-primary); }
+input, select, textarea { background: var(--background); color: var(--text); border: 1px solid var(--accent-border); border-radius: 12px; padding: 12px 14px; max-width: 100%; min-width: 0; accent-color: var(--primary); }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+button:disabled { opacity: .6; cursor: not-allowed; }
 
 /* One compact, responsive header across all routes. */
-.site-navigation { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px max(24px, calc((100vw - 1100px) / 2)); background: #0c101799; border-bottom: 1px solid var(--border); backdrop-filter: blur(18px); }
+.site-navigation { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px max(24px, calc((100vw - 1100px) / 2)); background: var(--navigation); border-bottom: 1px solid var(--border); backdrop-filter: blur(18px); }
 .site-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
-.site-brand span { display: grid; place-items: center; width: 32px; height: 32px; background: var(--accent); color: #10203b; border-radius: 10px; }
+.site-brand span { display: grid; place-items: center; width: 32px; height: 32px; background: var(--primary); color: var(--on-primary); border-radius: 10px; }
 .site-navigation nav { display: flex; gap: 24px; }
 .site-navigation nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
 .site-navigation nav a:hover, .site-navigation nav a[aria-current] { color: var(--accent); }
-@media (max-width: 600px) { .site-navigation { padding: 18px 16px; } .site-navigation nav { gap: 16px; } }
-
-/* Account controls match the navigation links. */
-.site-navigation .nav-auth-button {
-  border: 0; background: transparent; padding: 0; margin: 0;
-  color: var(--muted); font: inherit; font-size: 14px; cursor: pointer;
-}
-.site-navigation .nav-auth-button:hover { color: var(--accent); }
-.site-navigation nav { align-items: center; }
-.account-status { padding: 0 24px; }
+@media (max-width: 600px) { .site-navigation { padding: 18px 16px; flex-wrap: wrap; } .site-navigation nav { gap: 16px; flex-wrap: wrap; } }

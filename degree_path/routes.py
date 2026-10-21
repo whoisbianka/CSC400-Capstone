@@ -775,3 +775,8 @@ def explore_major_catalog():
                            data=data, query=query, sort=sort, earnings_min=earnings_min,
                            favorites_only=favorites_only, has_programs=has_programs,
                            pagination=pagination)
+
+
+@web.get('/saved-majors')
+def saved_majors_page():
+    return render_template('saved_majors.html', title='Saved majors')

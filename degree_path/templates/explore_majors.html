@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/prototype-views.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css') }}">
 {% if session.get('user_id') %}
 <script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>

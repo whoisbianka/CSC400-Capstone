@@ -1,22 +1,12 @@
 {% extends 'base.html' %}
-{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/program-details.css') }}">{% if session.get('user_id') %}
-<script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/program-favorite.js') }}" defer></script>
-{% endif %}{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/program-details.css') }}">{% endblock %}
 {% block content %}
 <div class="page-workspace program-details">
 <a class="details-back" href="{{ url_for('web.explore') }}">← Explore programs</a> <!--back button-->
 <header class="details-hero">
 
 <h1 id="page-title">{{ program.major }}</h1>
-{% if session.get('user_id') %}
-<button id="program-favorite" class="secondary-button" type="button" data-program-id="{{ program.id }}" disabled>Loading favorite…</button>
-<p id="program-favorite-status" role="status"></p>
-<button id="program-favorite-retry" type="button" class="secondary-button" hidden>Retry</button>
-{% else %}
-<a href="{{ url_for('web.favorites') }}">Sign in to save favorites</a>
-{% endif %}
-<a href="{{ url_for('web.compare') }}">Compare favorites</a>
+<button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false">☆ Save major</button>
 <div class="details-college"><span class="details-monogram" aria-hidden="true">{{ program.college[:1] }}</span><div><h2>{{ program.college }}</h2><p>{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p></div></div>
 </header>
 

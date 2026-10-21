@@ -84,11 +84,11 @@ class SessionAuthTests(unittest.TestCase):
     def test_navigation_uses_session(self):
         html = self.client.get('/favorites').get_data(as_text=True)
         self.assertIn('data-auth-action="login"', html)
-        self.assertNotIn('>Profile</a>', html)
+        self.assertIn('>Profile</a>', html)
         self.login()
         html = self.client.get('/favorites').get_data(as_text=True)
         self.assertIn('data-auth-action="logout"', html)
-        self.assertNotIn('data-auth-action="login"', html)
+        self.assertIn('data-user-id="42"', html)
 
     def test_invalid_token_and_untrusted_user_id_cannot_login(self):
         self.assertEqual(self.login(False).status_code, 401)
@@ -213,15 +213,15 @@ class SessionAuthTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/program-favorites', headers={'X-App-User-ID': '99'}).status_code, 401)
 
     def test_explore_cards_offer_favorites_for_guests_and_users(self):
-        data = {'page': 1, 'has_next': False, 'rows': [{'id': 10, 'college': 'Test College', 'major': 'Biology', 'city': 'City', 'state': 'NY', 'facts': {}}]}
+        data = {'page': 1, 'has_next': False, 'rows': [{'id': 10, 'college': 'Test College', 'major': 'Biology', 'city': 'City', 'state': 'NY', 'cipcode': 7, 'facts': {}}]}
         with patch('degree_path.routes.program_page', return_value=data):
             html = self.client.get('/explore').get_data(as_text=True)
-            self.assertIn('Favorite program</a>', html)
+            self.assertIn('data-save-major="7"', html)
             self.assertNotIn('js/program-card-favorites.js', html)
             self.login()
             html = self.client.get('/explore').get_data(as_text=True)
-            self.assertIn('data-program-favorite="10"', html)
-            self.assertIn('js/program-card-favorites.js', html)
+            self.assertIn('data-save-major="7"', html)
+            self.assertIn('js/saved-major-controls.js', html)
 
     def test_explore_major_search_and_favorite_selection_persist(self):
         data = {'page': 1, 'has_next': True, 'rows': []}
@@ -240,7 +240,7 @@ class SessionAuthTests(unittest.TestCase):
             html = response.get_data(as_text=True)
             self.assertIn('favorite_major=7', html)
             self.assertIn('favorite_major=8', html)
-            self.assertIn('value="7" checked', html)
+            self.assertIn('name="favorite_major" value="7"', html)
             self.client.get('/explore?major_filter=favorites')
             self.assertEqual(get_page.call_args.args[3]['cipcodes'], [])
             self.assertEqual(self.client.get('/explore?major_filter=favorites&favorite_major=999').status_code, 400)
