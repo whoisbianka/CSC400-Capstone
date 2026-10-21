@@ -78,6 +78,7 @@ def create_app(test_config=None):
         return {
             "csrf_token": session["csrf"],
             "clerk_publishable_key": app.config["CLERK_PUBLISHABLE_KEY"],
+            "source_note": "Database catalog. Confirm current information with the college.",
         }
     
     @app.template_filter('money')
@@ -98,6 +99,7 @@ def create_app(test_config=None):
         return response
 
     from .routes import web
+    from . import saved_comparison
     app.register_blueprint(web)
 
     #initialize database connection on initial connection to website

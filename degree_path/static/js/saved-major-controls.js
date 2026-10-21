@@ -81,7 +81,8 @@
     const userId = document.getElementById('account-navigation').dataset.userId;
     const cipcode = path.split('/')[3];
     if (body) body = { cipcode: Number(cipcode), favorite: body.saved };
-    const response = await fetch('/api/favorites', {
+    const isPrograms = path.endsWith('/programs') || path.includes('/programs?');
+    const response = await fetch(isPrograms ? path : '/api/favorites', {
       method: body ? 'POST' : 'GET',
       headers: { 'X-App-User-ID': userId, 'Content-Type': 'application/json',
         'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
@@ -96,7 +97,7 @@
   }
 
   function render() {
-    if (list) {
+    if (list && !window.SavedMajors) {
       // Preserve the account prompt and status nodes.
       list.querySelectorAll('.saved-major-row, .saved-majors-empty').forEach(node => node.remove());
       if (!favorites.length) {
@@ -145,8 +146,14 @@
 
   async function refresh() {
     notice.textContent = 'Loading saved majors…';
-    try { favorites = (await api('/api/saved-majors')).majors; render(); notice.textContent = ''; return true; }
+    if (list) list.setAttribute('aria-busy', 'true');
+    try {
+      favorites = (await api('/api/saved-majors')).majors;
+      if (list && window.SavedMajors) await window.SavedMajors.refresh(api, favorites);
+      render(); notice.textContent = ''; return true;
+    }
     catch (error) { notice.textContent = error.message; return false; }
+    finally { if (list) list.setAttribute('aria-busy', 'false'); }
   }
 
   document.addEventListener('click', async event => {
