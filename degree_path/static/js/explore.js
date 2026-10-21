@@ -1,10 +1,8 @@
 const degreeForm = document.getElementById('degree-filter-form');
 if (degreeForm) {
-  const choices = [...degreeForm.querySelectorAll('.degree-choice')];
-  degreeForm.addEventListener('change', () => {
-    if (!degreeForm.reportValidity()) return;
+  degreeForm.addEventListener('submit', () => {
+    const choices = [...degreeForm.querySelectorAll('.degree-choice')];
     document.getElementById('degree-values').value = choices.filter(input => input.checked).map(input => input.value).join(',');
-    degreeForm.requestSubmit();
   });
 }
 
@@ -16,7 +14,7 @@ function showExploreLoading() {
   if (exploreResults) exploreResults.setAttribute('aria-busy', 'true');
 }
 if (degreeForm) degreeForm.addEventListener('submit', showExploreLoading);
-document.querySelectorAll('.explore-pagination a, .explore-sidebar .sidebar-heading a, .explore-empty a').forEach(link => {
+document.querySelectorAll('.explore-pagination a, .explore-sidebar .sidebar-heading a, .explore-empty a, .active-filters a').forEach(link => {
   link.addEventListener('click', event => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     showExploreLoading();
