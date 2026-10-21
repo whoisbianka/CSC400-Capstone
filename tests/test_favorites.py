@@ -7,7 +7,6 @@ from unittest.mock import patch
 import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import DBAPIError
 
 from degree_path import create_app
 from degree_path.favorites import favorites_engine as favorites_engine_original
@@ -95,19 +94,57 @@ class FavoritesTests(unittest.TestCase):
                 patch.object(self.engine, 'begin', side_effect=AssertionError('Unexpected schema creation')):
             self.assertIs(favorites_engine_original(), self.engine)
 
-    def test_missing_setup_permissions_return_a_specific_error(self):
+    def test_missing_storage_does_not_attempt_schema_creation(self):
         from degree_path import favorites
-        original = Exception({'C': '42501', 'M': 'permission denied for table majors'})
-        denied = DBAPIError('CREATE TABLE', {}, original)
-        with patch.object(favorites, 'inspect', side_effect=denied), \
+        inspector = SimpleNamespace(has_table=lambda name: False)
+        with patch.object(favorites, 'inspect', return_value=inspector), \
                 self.app.app_context(), self.assertLogs(self.app.logger, level='ERROR') as logs:
             # Re-enable the real setup function for this authenticated request.
             with patch.object(favorites, 'favorites_engine', favorites_engine_original):
                 response = self.save()
         self.assertEqual(response.status_code, 503)
-        self.assertIn('Saving majors is not set up yet', response.json['error'])
+        self.assertIn('Saving majors is not configured', response.json['error'])
         self.assertNotIn('permission denied', response.json['error'])
-        self.assertIn('schemas/saved_majors.sql', logs.output[0])
+        self.assertIn('No compatible saved-major storage', logs.output[0])
+
+
+class ExistingFavoritesTests(FavoritesTests):
+    """Run the same account-isolation and save tests on the original schema."""
+    def setUp(self):
+        super().setUp()
+        with self.engine.begin() as connection:
+            connection.execute(text('DROP TABLE saved_majors'))
+            connection.execute(text('''CREATE TABLE users (
+                id INTEGER PRIMARY KEY, clerk_user_id TEXT UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'''))
+            connection.execute(text('''CREATE TABLE major_fav (
+                id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id),
+                cipcode INTEGER NOT NULL REFERENCES majors(cipcode),
+                UNIQUE(user_id, cipcode))'''))
+        from degree_path import favorites
+        real_engine = patch.object(favorites, 'favorites_engine', favorites_engine_original)
+        real_engine.start()
+        self.addCleanup(real_engine.stop)
+        engine = patch('db_functions.engine', self.engine)
+        engine.start()
+        self.addCleanup(engine.stop)
+
+    def test_previous_saved_majors_are_visible(self):
+        with self.engine.begin() as connection:
+            connection.execute(text("INSERT INTO users (id,clerk_user_id) VALUES (17,'user_alice'),(18,'user_bob')"))
+            connection.execute(text('INSERT INTO major_fav (user_id,cipcode) VALUES (17,1107)'))
+        response = self.client.get('/api/saved-majors', headers=self.headers())
+        self.assertEqual(response.json['majors'], [{'cipcode': 1107, 'name': 'Computer Science'}])
+        self.assertEqual(self.client.get('/api/saved-majors', headers=self.headers('user_bob')).json['majors'], [])
+        self.assertEqual(self.app.extensions['favorites_storage'], 'major_fav')
+        self.assertEqual(self.save(saved=False).status_code, 200)
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.execute(text('SELECT COUNT(*) FROM major_fav')).scalar(), 0)
+
+    def test_unknown_account_read_does_not_create_a_user(self):
+        self.assertEqual(self.client.get('/api/saved-majors', headers=self.headers()).json['majors'], [])
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.execute(text('SELECT COUNT(*) FROM users')).scalar(), 0)
 
 
 if __name__ == '__main__':

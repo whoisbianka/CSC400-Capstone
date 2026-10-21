@@ -4,7 +4,6 @@ import os
 
 from flask import abort, current_app, g, jsonify, render_template, request
 from sqlalchemy import inspect, text
-from sqlalchemy.exc import DBAPIError
 
 from .routes import web, database_errors
 
@@ -36,29 +35,20 @@ def require_account(function):
 
 def favorites_engine():
     import db_functions
-    # Additive setup: does not drop or alter existing catalog/account tables.
-    if not current_app.extensions.get('saved_majors_ready'):
-        try:
-            # A runtime role can use an administrator-created table without
-            # needing CREATE or REFERENCES privileges itself.
-            if not inspect(db_functions.engine).has_table('saved_majors'):
-                with db_functions.engine.begin() as connection:
-                    connection.execute(text('''CREATE TABLE IF NOT EXISTS saved_majors (
-                        clerk_user_id TEXT NOT NULL,
-                        cipcode INTEGER NOT NULL REFERENCES majors(cipcode),
-                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (clerk_user_id, cipcode)
-                    )'''))
-        except DBAPIError as error:
-            details = error.orig.args[0] if error.orig.args else None
-            sqlstate = details.get('C') if isinstance(details, dict) else getattr(error.orig, 'sqlstate', None)
-            if sqlstate != '42501':
-                raise
-            current_app.logger.exception(
-                'Saved majors setup was denied. A database owner must run schemas/saved_majors.sql.'
-            )
-            abort(503, description='Saving majors is not set up yet. Please contact the site administrator.')
-        current_app.extensions['saved_majors_ready'] = True
+    if 'favorites_storage' not in current_app.extensions:
+        catalog = inspect(db_functions.engine)
+        # Keep compatibility with installations already using standalone saves.
+        if catalog.has_table('saved_majors'):
+            storage = 'saved_majors'
+        elif (catalog.has_table('users') and catalog.has_table('major_fav')
+              and 'clerk_user_id' in {column['name'] for column in catalog.get_columns('users')}):
+            # The original application maps a verified Clerk identity to an
+            # integer users.id and stores its selections in major_fav.
+            storage = 'major_fav'
+        else:
+            current_app.logger.error('No compatible saved-major storage exists in the configured database.')
+            abort(503, description='Saving majors is not configured. Please contact the site administrator.')
+        current_app.extensions['favorites_storage'] = storage
     return db_functions.engine
 
 
@@ -72,10 +62,16 @@ def saved_majors_page():
 @database_errors
 def saved_majors_api():
     with favorites_engine().connect() as connection:
-        rows = connection.execute(text('''SELECT m.cipcode, m.cipdesc AS name
-            FROM saved_majors f JOIN majors m ON m.cipcode = f.cipcode
-            WHERE f.clerk_user_id = :user_id ORDER BY f.created_at DESC, m.cipcode'''),
-            {'user_id': g.clerk_user_id}).mappings()
+        if current_app.extensions.get('favorites_storage') == 'major_fav':
+            query = '''SELECT m.cipcode, m.cipdesc AS name
+                FROM major_fav f JOIN users u ON u.id = f.user_id
+                JOIN majors m ON m.cipcode = f.cipcode
+                WHERE u.clerk_user_id = :user_id ORDER BY m.cipdesc, m.cipcode'''
+        else:
+            query = '''SELECT m.cipcode, m.cipdesc AS name
+                FROM saved_majors f JOIN majors m ON m.cipcode = f.cipcode
+                WHERE f.clerk_user_id = :user_id ORDER BY f.created_at DESC, m.cipcode'''
+        rows = connection.execute(text(query), {'user_id': g.clerk_user_id}).mappings()
         return jsonify(majors=[dict(row) for row in rows])
 
 
@@ -92,7 +88,17 @@ def save_major_api(cipcode):
         if not connection.execute(text('SELECT 1 FROM majors WHERE cipcode = :cipcode'), {'cipcode': cipcode}).scalar():
             abort(404, description='Major not found.')
         params = {'user_id': g.clerk_user_id, 'cipcode': cipcode}
-        if body['saved']:
+        if current_app.extensions.get('favorites_storage') == 'major_fav':
+            if body['saved']:
+                connection.execute(text('''INSERT INTO users (clerk_user_id)
+                    VALUES (:user_id) ON CONFLICT (clerk_user_id) DO NOTHING'''), params)
+                connection.execute(text('''INSERT INTO major_fav (user_id, cipcode)
+                    SELECT id, :cipcode FROM users WHERE clerk_user_id = :user_id
+                    ON CONFLICT (user_id, cipcode) DO NOTHING'''), params)
+            else:
+                connection.execute(text('''DELETE FROM major_fav WHERE cipcode = :cipcode
+                    AND user_id IN (SELECT id FROM users WHERE clerk_user_id = :user_id)'''), params)
+        elif body['saved']:
             connection.execute(text('''INSERT INTO saved_majors (clerk_user_id, cipcode)
                 VALUES (:user_id, :cipcode) ON CONFLICT DO NOTHING'''), params)
         else:
