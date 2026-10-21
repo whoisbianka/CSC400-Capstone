@@ -14,6 +14,70 @@
   let api = null;
   let busy = false;
 
+  const favoriteIds = new Set();
+  let favoritesLoaded = false;
+
+  function createFavoriteButton(cipcode) {
+    const button = document.createElement("button");
+    button.type = "button";
+
+    function updateLabel() {
+      const saved = favoriteIds.has(cipcode);
+
+      button.setAttribute("aria-pressed", String(saved));
+
+      if (!api.isSignedIn()) {
+        button.textContent = "Sign in to favorite";
+      } else if (!favoritesLoaded) {
+        button.textContent = "Favorites unavailable";
+        button.disabled = true;
+      } else {
+        button.textContent = saved
+          ? "Remove favorite"
+          : "♡ Favorite";
+      }
+    }
+
+    updateLabel();
+
+    button.addEventListener("click", async () => {
+      if (!api.isSignedIn()) {
+        setStatus("Sign in using your account, then reload this page.");
+        return;
+      }
+
+      const shouldFavorite = !favoriteIds.has(cipcode);
+      button.disabled = true;
+
+      try {
+        const result = await api.setFavorite(
+          cipcode,
+          shouldFavorite
+        );
+
+        if (result.favorite) {
+          favoriteIds.add(cipcode);
+        } else {
+          favoriteIds.delete(cipcode);
+        }
+
+        updateLabel();
+
+        setStatus(
+          result.favorite
+            ? "Major added to your favorites."
+            : "Major removed from your favorites."
+        );
+      } catch (error) {
+        setStatus(error.message || "Unable to update favorites.");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    return button;
+  }
+
   function setStatus(message) {
     status.textContent = message;
   }
@@ -133,13 +197,18 @@
 
       link.href = destination.href;
       link.textContent = "Explore programs in this major →";
+      const favoriteButton = createFavoriteButton(
+        Number(recommendation.cipcode)
+      );
 
       card.append(
         title,
         count,
         evidenceHeading,
         evidenceList,
-        link
+        link,
+        document.createElement("br"),
+        favoriteButton
       );
 
       recommendationCards.appendChild(card);
@@ -212,7 +281,7 @@
     window.location.reload();
   });
 
-  // Load Clerk and recover this visitor's saved conversation.
+  // Recover this visitor's saved conversation using the Flask session.
   setBusy(true);
 
   try {
@@ -225,12 +294,28 @@
     api = await window.chatApiReady;
 
     const saved = await api.load();
+    let favoritesWarning = "";
+
+    if (api.isSignedIn()) {
+      try {
+        const result = await api.loadFavorites();
+
+        for (const favorite of result.favorites) {
+          favoriteIds.add(Number(favorite.cipcode));
+        }
+
+        favoritesLoaded = true;
+      } catch (error) {
+        favoritesWarning =
+          "Chat loaded, but favorites could not load. Reload to retry.";
+      }
+    }
 
     renderHistory(saved.messages);
     showStorageNote(saved.mode);
     renderRecommendations(saved.recommendations ?? []);
 
-    setStatus("");
+    setStatus(favoritesWarning);
     setBusy(false);
 
     input.focus();

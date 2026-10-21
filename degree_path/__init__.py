@@ -31,6 +31,7 @@ def create_app(test_config=None):
         os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
         ),
         PERMANENT_SESSION_LIFETIME=timedelta(hours=24),
+        SESSION_REFRESH_EACH_REQUEST=False,
 
         CLERK_SECRET_KEY=os.environ.get("CLERK_SECRET_KEY"),
         CLERK_PUBLISHABLE_KEY=os.environ.get("CLERK_PUBLISHABLE_KEY"),
@@ -57,6 +58,9 @@ def create_app(test_config=None):
 
     if not app.config["CLERK_PUBLISHABLE_KEY"]:
         raise RuntimeError("CLERK_PUBLISHABLE_KEY is required.")
+
+    from .auth import expire_login
+    app.before_request(expire_login)
 
     @app.before_request
     def protect_forms(): #helping to protect site from CRSF attacks

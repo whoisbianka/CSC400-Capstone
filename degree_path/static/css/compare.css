@@ -1,0 +1,27 @@
+.compare-page { max-width: 1440px; }
+.compare-modes { display: flex; gap: 8px; margin: 24px 0; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+.compare-modes button { padding: 12px 28px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text); cursor: pointer; font: inherit; }
+.compare-modes button[aria-pressed="true"] { background: var(--accent); color: #10203b; }
+.compare-layout { display: grid; grid-template-columns: minmax(230px, 290px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.compare-sidebar, .compare-results { border: 1px solid var(--border); border-radius: 18px; background: var(--panel); padding: 24px; min-width: 0; }
+.compare-sidebar h2, .compare-results h2 { margin-top: 0; }
+.compare-sidebar > a { display: block; margin-top: 16px; color: var(--accent); }
+#compare-favorites { max-height: 60vh; overflow-y: auto; margin-bottom: 16px; }
+.compare-choice { display: flex; align-items: flex-start; gap: 12px; padding: 14px 10px; border-bottom: 1px solid var(--border); cursor: pointer; overflow-wrap: anywhere; }
+.compare-choice:has(input:checked) { background: #a6c6ff12; }
+.compare-choice input { margin-top: 4px; flex-shrink: 0; accent-color: var(--accent); }
+.compare-choice strong, .compare-choice small { display: block; }
+.compare-choice small { color: var(--muted); margin-top: 6px; }
+.compare-legend { font-size: 14px; line-height: 1.6; }
+#compare-table { min-width: 660px; table-layout: fixed; }
+#compare-table th, #compare-table td { vertical-align: top; overflow-wrap: anywhere; }
+#compare-table th small { display: block; margin-top: 8px; font-weight: normal; color: var(--muted); line-height: 1.5; }
+#compare-table td { white-space: pre-wrap; }
+#compare-table .best-value { background: #71d6b520; color: var(--text); }
+.compare-badge { display: block; width: fit-content; border: 1px solid var(--mint); color: var(--mint); padding: 3px 7px; border-radius: 6px; margin-top: 8px; font-size: 12px; }
+.compare-modes button:focus-visible, .compare-choice:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+.compare-sidebar button:disabled { opacity: .55; cursor: default; }
+@media (max-width: 850px) { .compare-layout { grid-template-columns: 1fr; } #compare-favorites { max-height: 300px; } }
+@media (max-width: 600px) { .site-navigation { flex-wrap: wrap; } .site-navigation nav { flex-wrap: wrap; } .compare-results, .compare-sidebar { padding: 16px; } }
+
+#compare-table[data-selections="3"] { min-width: 880px; }

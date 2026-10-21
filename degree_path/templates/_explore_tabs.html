@@ -1,0 +1,4 @@
+<nav class="explore-tabs" aria-label="Explore type">
+  <a href="{{ url_for('web.explore', view='programs') }}" {% if explore_view == 'programs' %}aria-current="page"{% endif %}>Programs</a>
+  <a href="{{ url_for('web.explore', view='majors') }}" {% if explore_view == 'majors' %}aria-current="page"{% endif %}>Majors</a>
+</nav>

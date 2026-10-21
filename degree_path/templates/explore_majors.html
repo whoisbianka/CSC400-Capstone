@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css') }}">
+{% if session.get('user_id') %}
+<script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/major-card-favorites.js') }}" defer></script>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="page-workspace explore-workspace">
+  <header class="explore-hero">
+    <p class="eyebrow">Find your next chapter</p>
+    <h1 id="page-title">Explore majors</h1>
+    <p>Browse fields of study, then explore the programs that offer them.</p>
+  </header>
+  {% include '_explore_tabs.html' %}
+  <div class="explore-layout">
+    <aside class="explore-sidebar" aria-labelledby="browse-title">
+      <div class="sidebar-heading"><h2 id="browse-title">Filter majors</h2><a href="{{ url_for('web.explore', view='majors') }}">Reset</a></div>
+      <form method="get" class="degree-filters">
+        <input type="hidden" name="view" value="majors">
+        <label for="major-search">Major name</label>
+        <input id="major-search" type="search" name="q" maxlength="200" value="{{ query }}" placeholder="Search major names…">
+        <label for="major-sort">Sort majors</label>
+        <select id="major-sort" name="sort">
+          {% for value, label in [('name_asc', 'Name A–Z'), ('name_desc', 'Name Z–A'), ('earnings_desc', 'Highest reported earnings'), ('earnings_asc', 'Lowest reported earnings'), ('programs_desc', 'Most programs')] %}
+          <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <label for="major-earnings-min">Minimum reported earnings ($)</label>
+        <input id="major-earnings-min" type="number" name="earnings_min" min="0" max="2147483647" value="{{ earnings_min if earnings_min is not none else '' }}" placeholder="Any">
+        <label><input type="checkbox" name="has_programs" value="1" {% if has_programs %}checked{% endif %}> Has programs in our database</label>
+        {% if session.get('user_id') %}<label><input type="checkbox" name="favorites_only" value="1" {% if favorites_only %}checked{% endif %}> Only my favorite majors</label>{% endif %}
+        <button class="secondary-button" type="submit">Apply filters</button>
+      </form>
+    </aside>
+    <section class="explore-results" aria-labelledby="results-title">
+      <div class="results-heading"><h2 id="results-title">Majors found</h2><span class="page-badge">Page {{ data.page }}</span></div>
+      <p class="results-count">{% if data.rows %}Showing {{ (data.page - 1) * 25 + 1 }}–{{ (data.page - 1) * 25 + data.rows|length }} majors{% else %}No majors on this page{% endif %}</p>
+      <p id="major-favorites-status" role="status"></p>
+      <div class="program-cards">
+        {% for major in data.rows %}
+        <article class="major-catalog-card">
+          <h3>{{ major.major }}</h3>
+          <dl class="program-facts">
+            <div><dt>Median of reported program earnings</dt><dd>{{ major.earnings|money }}</dd></div>
+            <div><dt>Programs in our database</dt><dd>{{ major.program_count }}</dd></div>
+            <div><dt>Schools in our database</dt><dd>{{ major.school_count }}</dd></div>
+          </dl>
+          {% if major.description %}
+          <details><summary>About this major</summary><p class="major-description">{{ major.description }}</p>{% if major.description_source %}<p class="small-note">Source: {{ major.description_source }}</p>{% endif %}</details>
+          {% else %}<p>No description available yet.</p>{% endif %}
+          <div class="program-card-footer">
+            {% if session.get('user_id') %}
+            <button type="button" class="secondary-button" data-major-favorite="{{ major.cipcode }}" aria-pressed="{{ 'true' if major.is_favorite else 'false' }}">{{ 'Remove favorite' if major.is_favorite else 'Favorite major' }}</button>
+            {% else %}<a class="secondary-button" href="{{ url_for('web.favorites') }}">Favorite major</a>{% endif %}
+            <a href="{{ url_for('web.explore', view='programs', cipcode=major.cipcode) }}">Explore programs in this major →</a>
+          </div>
+        </article>
+        {% else %}<div class="explore-empty"><h3>No matching majors</h3><p>Try a different name or broaden your filters.</p><a href="{{ url_for('web.explore', view='majors') }}">Browse all majors</a></div>{% endfor %}
+      </div>
+      <p class="small-note">Earnings are the median of program-level four-year earnings medians in our database, not a graduate-weighted median. Missing values are shown as unavailable.</p>
+      <nav class="explore-pagination" aria-label="Major catalog pages">
+        {% if data.page > 1 %}<a class="secondary-button" href="{{ url_for('web.explore', page=data.page-1, **pagination) }}">← Previous</a>{% endif %}
+        <span>Page {{ data.page }}</span>
+        {% if data.has_next %}<a class="primary-link" href="{{ url_for('web.explore', page=data.page+1, **pagination) }}">Next →</a>{% endif %}
+      </nav>
+    </section>
+  </div>
+</div>
+{% endblock %}

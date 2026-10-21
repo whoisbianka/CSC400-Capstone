@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block extra_head %}
+{% if session.get("user_id") %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/favorites.css') }}">
+<script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/favorites.js') }}" defer></script>
+{% endif %}
+{% endblock %}
+{% block content %}
+{% if not session.get('user_id') %}
+{% with gate_title='Favorites' %}{% include '_favorites_signin.html' %}{% endwith %}
+{% else %}
+<section class="page-workspace" id="favorites-page" data-csrf="{{ csrf_token }}" data-explore-url="{{ url_for('web.explore') }}">
+  <h1 id="page-title">Favorites</h1>
+  <p>Your saved majors and programs, all in one place.</p>
+  <nav class="favorites-tabs" aria-label="Favorite type">
+    <button type="button" data-favorite-kind="majors" aria-pressed="true">Majors</button>
+    <button type="button" data-favorite-kind="programs" aria-pressed="false">Programs</button>
+  </nav>
+  <h2 id="favorites-heading">Favorite majors</h2>
+  <p id="favoritesStatus" role="status" aria-live="polite">Loading favorites…</p>
+  <button id="retryFavorites" type="button" class="secondary-button" hidden>Retry</button>
+  <div id="favoriteCards" class="favorite-cards"></div>
+  <a class="primary-link" href="{{ url_for('web.compare') }}">Compare favorites</a>
+  <noscript><p>Enable JavaScript to view your favorites.</p></noscript>
+</section>
+{% endif %}
+{% endblock %}

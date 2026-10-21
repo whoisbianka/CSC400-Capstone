@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+{% if session.get("user_id") %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/compare.css') }}">
+<script src="{{ url_for('static', filename='js/comparison-values.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/compare.js') }}" defer></script>
+{% endif %}
+{% endblock %}
+{% block content %}
+{% if not session.get('user_id') %}
+{% with gate_title='Compare favorites' %}{% include '_favorites_signin.html' %}{% endwith %}
+{% else %}
+<section class="page-workspace compare-page" id="compare-page" data-api-url="{{ url_for('web.compare_api') }}" data-explore-url="{{ url_for('web.explore') }}">
+  <header><p class="eyebrow">Find your fit</p><h1 id="page-title">Compare your options</h1>
+    <p>Select two or three favorites to see their statistics side by side.</p></header>
+  <nav class="compare-modes" aria-label="Comparison type">
+    <button type="button" data-compare-kind="majors" aria-pressed="true">Majors</button>
+    <button type="button" data-compare-kind="programs" aria-pressed="false">Programs</button>
+  </nav>
+  <div class="compare-layout">
+    <aside class="compare-sidebar" aria-labelledby="favorite-list-title">
+      <h2 id="favorite-list-title">Favorite majors</h2>
+      <p id="selection-count" role="status">0 of 3 selected</p>
+      <div id="compare-favorites"></div>
+      <p id="compare-status" role="status"></p>
+      <button id="compare-retry" type="button" class="secondary-button" hidden>Retry</button>
+      <button id="compare-clear" type="button" class="secondary-button" disabled>Clear selection</button>
+      <a href="{{ url_for('web.favorites') }}">View favorites</a>
+      <a href="{{ url_for('web.explore') }}">Explore programs</a>
+    </aside>
+    <section class="compare-results" aria-labelledby="comparison-title" aria-busy="false">
+      <h2 id="comparison-title">Major comparison</h2>
+      <p class="compare-legend">The highest earnings and lowest costs among reported values are highlighted. Ties for the best value share a label. Missing data is not treated as zero. Other statistics have no universal best value.</p>
+      <p id="compare-placeholder">Choose two or three favorite majors to compare.</p>
+      <div class="tbl-scroll" id="compare-table-container" tabindex="0" role="region" aria-label="Comparison table; scroll horizontally to view all selections" hidden>
+        <table id="compare-table"><caption class="sr-only">Selected favorites and their database statistics</caption><thead></thead><tbody></tbody></table>
+      </div>
+      <p class="small-note">These figures describe the database records, not a guarantee of future earnings or personal costs. School costs and admissions apply to the institution, not the individual program. Different credentials and reporting cohorts may not be directly comparable.</p>
+    </section>
+  </div>
+  <noscript><p>Enable JavaScript to select and compare favorites.</p></noscript>
+</section>
+{% endif %}
+{% endblock %}

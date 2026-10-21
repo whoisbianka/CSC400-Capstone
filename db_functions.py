@@ -39,20 +39,35 @@ def create_or_update_user(clerk_user_id):
 #Add a given major(by cipcode) to a user's favorites
 def add_major_fav(user_id,cipcode):
     with engine.begin() as connection:
+        major_exists=connection.execute(
+            text("""
+                    SELECT 1
+                    FROM public.majors
+                    WHERE cipcode=:cipcode"""),{"cipcode":cipcode}).scalar_one_or_none()
+        if major_exists is None:
+            return False
         query=text("""
                 INSERT INTO major_fav(user_id,cipcode)
                 VALUES (:user_id, :cipcode)
+                ON CONFLICT (user_id,cipcode) DO NOTHING
                 """)
         connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
+    return True
 
 #Add a given school(by unitid) to a user's favorites
-def add_program_fav(user_id,program_id):
+def add_program_fav(user_id, program_id):
     with engine.begin() as connection:
-        query=text("""
-                INSERT INTO program_fav(user_id,program_id)
-                VALUES (:user_id, :program_id)
-                """)
-        connection.execute(query,{"user_id":user_id,"program_id":program_id})
+        exists = connection.execute(text("""
+            SELECT 1 FROM public.programs WHERE program_id = :program_id
+        """), {"program_id": program_id}).scalar_one_or_none()
+        if exists is None:
+            return False
+        connection.execute(text("""
+            INSERT INTO public.program_fav (user_id, program_id)
+            VALUES (:user_id, :program_id)
+            ON CONFLICT (user_id, program_id) DO NOTHING
+        """), {"user_id": user_id, "program_id": program_id})
+    return True
 
 #Add a given school(by unitid) to a user's recommendation list
 def add_program_rec(user_id,program_id):
@@ -663,9 +678,19 @@ def get_page_programs(
     if filters.get("cipcode") is not None:
         conditions.append("p.cipcode=:cipcode")
         params["cipcode"]=filters["cipcode"]
+    if filters.get("cipcodes") is not None:
+        conditions.append("p.cipcode IN :cipcodes")
+        params["cipcodes"] = filters["cipcodes"]
+    if filters.get("major_name"):
+        conditions.append("LOWER(m.cipdesc) = LOWER(:major_name)")
+        params["major_name"] = filters["major_name"].strip()
     if filters.get("unitid") is not None:
         conditions.append("p.unitid=:unitid")
         params["unitid"]=filters["unitid"]
+    if filters.get("school_name"):
+        escaped = filters["school_name"].strip().replace("!", "!!").replace("%", "!%").replace("_", "!_")
+        conditions.append("LOWER(s.instnm) LIKE LOWER(:school_name) ESCAPE '!'")
+        params["school_name"] = "%" + escaped + "%"
     if filters.get("state"):
         conditions.append("LOWER(s.stabbr)=LOWER(:state)")
         params["state"]=filters["state"]
@@ -781,8 +806,9 @@ def get_page_programs(
                 ORDER BY {sql_order}
                 LIMIT :limit OFFSET :offset""")
 
-    if "degrees" in params:
-        query=query.bindparams(bindparam("degrees",expanding=True))
+    for key in ("degrees", "cipcodes"):
+        if key in params:
+            query = query.bindparams(bindparam(key, expanding=True))
 
     start=perf_counter()  
     with engine.connect() as connection:
@@ -800,6 +826,23 @@ def get_page_programs(
 
 #helper function to validate program filters
 def validate_program_filters(filters):
+    school_name = filters.get("school_name")
+    if school_name is not None and (
+        not isinstance(school_name, str) or not 1 <= len(school_name.strip()) <= 200
+    ):
+        raise ValueError("School name must contain 1 to 200 characters.")
+    cipcodes = filters.get("cipcodes")
+    if cipcodes is not None:
+        if not isinstance(cipcodes, (list, tuple)) or any(
+            type(code) is not int or not 1 <= code <= 2147483647 for code in cipcodes
+        ):
+            raise ValueError("cipcodes must be a list of positive major codes.")
+    major_name = filters.get("major_name")
+    if major_name is not None and (
+        not isinstance(major_name, str) or not 1 <= len(major_name.strip()) <= 200
+    ):
+        raise ValueError("Enter a major name between 1 and 200 characters.")
+
     numeric_ranges = {
         "cipcode": (1, 2147483647),
         "unitid": (1, 2147483647),
@@ -1151,7 +1194,7 @@ def remove_user(user_id):
 def remove_from_major_fav(user_id,cipcode):
     with engine.begin() as connection:
         query=text("""
-                DELETE from major_fav
+                DELETE from public.major_fav
                 WHERE user_id=:user_id AND cipcode=:cipcode
                 """)
         connection.execute(query,{"user_id":user_id,"cipcode":cipcode})
@@ -1169,7 +1212,7 @@ def remove_major_rec(user_id,cipcode):
 def remove_school_fav(user_id,program_id):
     with engine.begin() as connection:
         query=text("""
-                DELETE from program_fav
+                DELETE from public.program_fav
                 WHERE user_id=:user_id AND program_id=:program_id
                 """)
         connection.execute(query,{"user_id":user_id,"program_id":program_id})
@@ -1523,3 +1566,171 @@ def delete_expired_guest_sessions():
     with engine.begin() as connection:
         result = connection.execute(query)
         return result.rowcount
+
+
+
+def get_major_favorites(user_id):
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text("""
+                SELECT
+                    m.cipcode,
+                    m.cipdesc AS major
+                FROM public.major_fav AS f
+                JOIN public.majors AS m
+                    ON m.cipcode = f.cipcode
+                WHERE f.user_id = :user_id
+                ORDER BY m.cipdesc, m.cipcode
+            """),
+            {"user_id": user_id},
+        ).mappings().all()
+
+    return [dict(row) for row in rows]
+
+def get_comparison_favorites(user_id, kind):
+    """Return only this user's favorites, including optional statistics."""
+    if kind == "majors":
+        query = text("""
+            SELECT m.cipcode AS id, m.cipdesc AS name,
+                   mi.mdn_earnings AS earnings,
+                   mi.major_description AS description, mi.description_source,
+                   (SELECT COUNT(*) FROM public.programs p
+                    WHERE p.cipcode = m.cipcode) AS program_count,
+                   (SELECT COUNT(DISTINCT p.unitid) FROM public.programs p
+                    WHERE p.cipcode = m.cipcode) AS school_count
+            FROM public.major_fav f
+            JOIN public.majors m ON m.cipcode = f.cipcode
+            LEFT JOIN public.major_info mi ON mi.cipcode = m.cipcode
+            WHERE f.user_id = :user_id
+            ORDER BY m.cipdesc, m.cipcode
+        """)
+    elif kind == "programs":
+        query = text("""
+            SELECT p.program_id AS id, m.cipdesc AS name, p.credlev,
+                   s.instnm AS college, s.city, s.stabbr AS state,
+                   s.ug12mn AS enrollment,
+                   r.earn_mdn_4yr_nat AS earnings,
+                   c.npt4, c.npt41, c.npt42, c.npt43, c.npt44, c.npt45,
+                   c.tuitionfee_in, c.tuitionfee_out,
+                   a.adm_rate, a.satmt25, a.satmt75, a.satvr25, a.satvr75,
+                   a.satwr25, a.satwr75, a.actmt25, a.actmt75,
+                   a.acten25, a.acten75, a.actwr25, a.actwr75
+            FROM public.program_fav f
+            JOIN public.programs p ON p.program_id = f.program_id
+            JOIN public.majors m ON m.cipcode = p.cipcode
+            JOIN public.schools s ON s.unitid = p.unitid
+            LEFT JOIN public.cost_info c ON c.unitid = p.unitid
+            LEFT JOIN public.adm_crit a ON a.unitid = p.unitid
+            LEFT JOIN public.program_rank_crit r ON r.program_id = p.program_id
+            WHERE f.user_id = :user_id
+            ORDER BY m.cipdesc, s.instnm, p.credlev, p.program_id
+        """)
+    else:
+        raise ValueError("Choose majors or programs.")
+    with engine.connect() as connection:
+        rows = connection.execute(query, {"user_id": user_id}).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def is_program_favorite(user_id, program_id):
+    with engine.connect() as connection:
+        return connection.execute(text("""
+            SELECT EXISTS (
+                SELECT 1 FROM public.program_fav
+                WHERE user_id = :user_id AND program_id = :program_id
+            )
+        """), {"user_id": user_id, "program_id": program_id}).scalar_one()
+
+
+def get_program_favorites(user_id):
+    """Lightweight list for Favorites and program-card saved states."""
+    with engine.connect() as connection:
+        rows = connection.execute(text("""
+            SELECT p.program_id, p.cipcode, p.credlev,
+                   m.cipdesc AS major, s.instnm AS college,
+                   s.city, s.stabbr AS state
+            FROM public.program_fav f
+            JOIN public.programs p ON p.program_id = f.program_id
+            JOIN public.majors m ON m.cipcode = p.cipcode
+            JOIN public.schools s ON s.unitid = p.unitid
+            WHERE f.user_id = :user_id
+            ORDER BY m.cipdesc, s.instnm, p.credlev, p.program_id
+        """), {"user_id": user_id}).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def get_major_name_suggestions(query):
+    # Treat LIKE wildcards in user input as literal characters.
+    escaped = query.replace("!", "!!").replace("%", "!%").replace("_", "!_")
+    with engine.connect() as connection:
+        rows = connection.execute(text("""
+            SELECT cipcode, cipdesc AS name
+            FROM public.majors
+            WHERE LOWER(cipdesc) LIKE LOWER(:query) ESCAPE '!'
+            ORDER BY cipdesc, cipcode
+            LIMIT 20
+        """), {"query": "%" + escaped + "%"}).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
+                           earnings_min=None, favorites_only=False,
+                           has_programs=False, user_id=None):
+    """Page through majors, independently of the program catalog."""
+    if type(page) is not int or not 1 <= page <= 100000:
+        raise ValueError('Invalid page.')
+    if type(page_count) is not int or not 1 <= page_count <= 100:
+        raise ValueError('Invalid page size.')
+    if not isinstance(query, str) or len(query.strip()) > 200:
+        raise ValueError('Search must be at most 200 characters.')
+    if earnings_min is not None and (type(earnings_min) is not int or not 0 <= earnings_min <= 2147483647):
+        raise ValueError('Invalid minimum earnings.')
+    if type(favorites_only) is not bool or type(has_programs) is not bool:
+        raise ValueError('Invalid major filters.')
+    if user_id is not None and (type(user_id) is not int or user_id <= 0):
+        raise ValueError('Invalid user.')
+    if favorites_only and user_id is None:
+        raise ValueError('Sign in to filter your favorites.')
+    sorts = {
+        'name_asc': 'm.cipdesc ASC, m.cipcode ASC',
+        'name_desc': 'm.cipdesc DESC, m.cipcode ASC',
+        'earnings_desc': 'mi.mdn_earnings DESC NULLS LAST, m.cipcode ASC',
+        'earnings_asc': 'mi.mdn_earnings ASC NULLS LAST, m.cipcode ASC',
+        'programs_desc': 'COALESCE(counts.program_count, 0) DESC, m.cipcode ASC',
+    }
+    if sort not in sorts:
+        raise ValueError('Invalid major sort.')
+    params = {'user_id': user_id, 'limit': page_count + 1, 'offset': (page - 1) * page_count}
+    conditions = []
+    if query.strip():
+        escaped = query.strip().replace('!', '!!').replace('%', '!%').replace('_', '!_')
+        conditions.append("LOWER(m.cipdesc) LIKE LOWER(:query) ESCAPE '!'")
+        params['query'] = '%' + escaped + '%'
+    if earnings_min is not None:
+        conditions.append('mi.mdn_earnings >= :earnings_min')
+        params['earnings_min'] = earnings_min
+    if favorites_only:
+        conditions.append('EXISTS (SELECT 1 FROM public.major_fav f WHERE f.cipcode = m.cipcode AND f.user_id = :user_id)')
+    if has_programs:
+        conditions.append('COALESCE(counts.program_count, 0) > 0')
+    where = ' AND '.join(conditions) if conditions else 'TRUE'
+    statement = text(f"""
+        SELECT m.cipcode, m.cipdesc AS major, mi.mdn_earnings AS earnings,
+               mi.major_description AS description, mi.description_source,
+               COALESCE(counts.program_count, 0) AS program_count,
+               COALESCE(counts.school_count, 0) AS school_count,
+               EXISTS (SELECT 1 FROM public.major_fav f
+                       WHERE f.cipcode = m.cipcode AND f.user_id = :user_id) AS is_favorite
+        FROM public.majors m
+        LEFT JOIN public.major_info mi ON mi.cipcode = m.cipcode
+        LEFT JOIN (
+            SELECT cipcode, COUNT(*) AS program_count, COUNT(DISTINCT unitid) AS school_count
+            FROM public.programs GROUP BY cipcode
+        ) counts ON counts.cipcode = m.cipcode
+        WHERE {where}
+        ORDER BY {sorts[sort]}
+        LIMIT :limit OFFSET :offset
+    """)
+    with engine.connect() as connection:
+        rows = connection.execute(statement, params).mappings().all()
+    return {'rows': [dict(row) for row in rows[:page_count]], 'page': page, 'has_next': len(rows) > page_count}

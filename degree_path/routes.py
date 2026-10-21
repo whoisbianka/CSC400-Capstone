@@ -9,7 +9,7 @@ from copy import deepcopy
 
 import db_functions
 
-from .auth import get_current_user
+from .auth import get_current_user, establish_login
 from .guest_state import get_or_create_guest_session
 from .chat_service import interpret_message, InvalidAdvisorResponse
 
@@ -101,7 +101,7 @@ def catalog_majors():
 
 
 @database_errors
-def program_page(page=1, cipcode=None, degrees=None, filters=None, shuffle_seed=None):
+def program_page(page=1, cipcode=None, degrees=None, filters=None, shuffle_seed=None, *, sort_option="school_name", sort_order="ASC"):
     import db_functions
     search_filters={**(filters or {}),
                     "cipcode":cipcode,
@@ -111,8 +111,8 @@ def program_page(page=1, cipcode=None, degrees=None, filters=None, shuffle_seed=
             page=page,
             page_count=25,
             filters=search_filters,
-            sort_option="school_name",
-            sort_order="ASC"
+            sort_option=sort_option,
+            sort_order=sort_order
             )
     except ValueError as error:
         abort(400, description=str(error))
@@ -236,8 +236,55 @@ def questionnaire():
 
 @web.get('/explore')
 def explore():
+    view = request.args.get('view', 'programs')
+    if view not in ('programs', 'majors'):
+        abort(400, description='Choose Programs or Majors.')
+    if view == 'majors':
+        return explore_major_catalog()
+    sort = request.args.get('sort', 'school_asc')
+    sorts = {'school_asc': ('school_name', 'ASC'), 'school_desc': ('school_name', 'DESC'),
+             'earnings_desc': ('earnings', 'DESC'), 'net_price_asc': ('npt4', 'ASC'),
+             'tuition_in_asc': ('tuitionfee_in', 'ASC'), 'tuition_out_asc': ('tuitionfee_out', 'ASC')}
+    if sort not in sorts:
+        abort(400, description='Invalid program sort.')
     page = positive_arg('page', 1, 100000)
     cipcode = positive_arg('cipcode')
+    major_query = request.args.get('major_name', '').strip()
+    major_filter = request.args.get('major_filter', 'name' if cipcode or major_query else 'all')
+    if major_filter not in ('all', 'name', 'favorites'):
+        abort(400, description='Invalid major filter.')
+    if len(major_query) > 200:
+        abort(400, description='Major names must be at most 200 characters.')
+    favorite_majors = []
+    if session.get('user_id'):
+        try:
+            favorite_majors = db_functions.get_major_favorites(session['user_id'])
+        except Exception:
+            current_app.logger.exception('Unable to load favorite major filters.')
+            abort(503, description='Unable to load favorite majors. Please retry.')
+    selected_favorites = []
+    major_filters = {}
+    if major_filter == 'favorites':
+        if not session.get('user_id'):
+            return redirect(url_for('web.favorites'))
+        try:
+            selected_favorites = sorted({int(value) for value in request.args.getlist('favorite_major')})
+        except ValueError:
+            abort(400, description='Invalid favorite major selection.')
+        allowed = {row['cipcode'] for row in favorite_majors}
+        if not set(selected_favorites) <= allowed:
+            abort(400, description='A selected major is no longer in your favorites. Reset the filters and try again.')
+        # An empty selection deliberately returns no programs, not all programs.
+        major_filters['cipcodes'] = selected_favorites
+        cipcode = None
+    elif major_filter == 'name':
+        if major_query:
+            major_filters['major_name'] = major_query
+            cipcode = None
+        elif cipcode is None:
+            abort(400, description='Enter a major name or choose All majors.')
+    else:
+        cipcode = None
     # No selected degrees means no degree restriction.
     degree_values = (request.args.getlist('degree') if 'degree_form' in request.args
                      else request.args.get('degrees', '').split(','))
@@ -245,6 +292,11 @@ def explore():
         abort(400, description='Invalid degree level.')
     degrees = tuple(sorted({int(value) for value in degree_values if value}))
     filters = {}
+    school_query = request.args.get('school_name', '').strip()
+    if len(school_query) > 200:
+        abort(400, description='School names must be at most 200 characters.')
+    if school_query:
+        filters['school_name'] = school_query
     for key in ('state', 'city'):
         value = request.args.get(key, '').strip()
         if value:
@@ -267,13 +319,25 @@ def explore():
             abort(400, description='Minimum must not exceed maximum.')
     if 'explore_shuffle_seed' not in session:
         session['explore_shuffle_seed'] = secrets.token_hex(16)
-    data = program_page(page, cipcode, degrees, filters, session['explore_shuffle_seed'])
+    data = program_page(page, cipcode, degrees, {**filters, **major_filters}, session['explore_shuffle_seed'],
+                        sort_option=sorts[sort][0], sort_order=sorts[sort][1])
     major_name=None
     if cipcode is not None and data["rows"]:
         major_name=data["rows"][0]["major"]
+    if cipcode and major_name:
+        major_query = major_name
+    pagination = {**filters, 'view': 'programs', 'sort': sort, 'degrees': ','.join(map(str, degrees)),
+                  'major_filter': major_filter}
+    if major_filter == 'name':
+        pagination.update(major_name=major_query, cipcode=cipcode)
+    elif major_filter == 'favorites':
+        pagination['favorite_major'] = selected_favorites
     return render_template('explore.html', title='Explore programs', data=data,
                            major_name=major_name, cipcode=cipcode, degrees=degrees,
-                           degree_query=','.join(map(str, degrees)), filters=filters)
+                           degree_query=','.join(map(str, degrees)), filters=filters,
+                           major_filter=major_filter, major_query=major_query,
+                           favorite_majors=favorite_majors, selected_favorites=selected_favorites,
+                           pagination=pagination, explore_view='programs', program_sort=sort)
 
 @web.get('/programs/<int:program_id>')
 def program_details(program_id):
@@ -284,13 +348,11 @@ def program_details(program_id):
 
 @web.get('/start/<destination>')
 def start(destination):
-    destinations = {'questionnaire': ('web.questionnaire', 'Find my path'),
-                    'explore': ('web.explore', 'Explore majors')}
-    if destination not in destinations:
+    # Keep old bookmarks working without the account-choice screen.
+    endpoints = {'questionnaire': 'web.questionnaire', 'explore': 'web.explore'}
+    if destination not in endpoints:
         abort(404)
-    endpoint, label = destinations[destination]
-    return render_template('start.html', title='Choose how to continue',
-                           destination_url=url_for(endpoint), destination_label=label)
+    return redirect(url_for(endpoints[destination]))
 
 
 @web.get('/profile')
@@ -513,3 +575,203 @@ def apply_guest_chat_turn(state, message, turn, catalog):
         updated["recommendations"] = []
 
     return updated
+
+
+@web.get("/favorites")
+def favorites():
+    return render_template(
+        "favorites.html",
+        title="Favorites",
+    )
+
+
+@web.route("/api/favorites", methods=["GET", "POST"])
+def favorites_api():
+    try:
+        user = get_current_user()
+
+        if user is None:
+            abort(
+                401,
+                description="Sign in to save and view favorite majors.",
+            )
+
+        # Always use the identity verified by Clerk.
+        user_id = user["id"]
+
+        if request.method == "GET":
+            return jsonify(
+                favorites=db_functions.get_major_favorites(user_id)
+            )
+
+        body = request.get_json(silent=True)
+
+        if not isinstance(body, dict):
+            abort(400, description="Send a JSON object.")
+
+        cipcode = body.get("cipcode")
+        favorite = body.get("favorite")
+
+        if type(cipcode) is not int or not 0 < cipcode <= 2147483647:
+            abort(400, description="A valid major code is required.")
+
+        if type(favorite) is not bool:
+            abort(400, description="favorite must be true or false.")
+
+        if favorite:
+            exists = db_functions.add_major_fav(user_id, cipcode)
+
+            if not exists:
+                abort(404, description="This major does not exist.")
+        else:
+            db_functions.remove_from_major_fav(user_id, cipcode)
+
+        return jsonify(
+            cipcode=cipcode,
+            favorite=favorite,
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception:
+        current_app.logger.exception("Favorites request failed.")
+        abort(
+            503,
+            description="Favorites are temporarily unavailable. Try again.",
+        )
+
+@web.post("/api/auth/session")
+def auth_session_api():
+    try:
+        user = establish_login()
+        return jsonify(user_id=user["id"])
+    except HTTPException:
+        raise
+    except Exception:
+        current_app.logger.exception("Unable to establish login session.")
+        abort(503, description="Unable to sign in right now. Please try again.")
+
+
+@web.post("/logout")
+def logout():
+    # Clear Flask even if Clerk is unavailable in the browser.
+    session.clear()
+    return jsonify(ok=True)
+
+
+@web.get("/compare")
+def compare():
+    return render_template("compare.html", title="Compare")
+
+
+@web.get("/api/compare")
+def compare_api():
+    from .comparison import comparison_payload
+    kind = request.args.get("kind", "majors")
+    if kind not in ("majors", "programs"):
+        abort(400, description="Choose majors or programs.")
+    user = get_current_user()
+    if user is None:
+        abort(401, description="Sign in to compare your favorites.")
+    try:
+        rows = db_functions.get_comparison_favorites(user["id"], kind)
+        return jsonify(comparison_payload(kind, rows))
+    except Exception:
+        current_app.logger.exception("Comparison request failed.")
+        abort(503, description="Comparison data is unavailable. Please retry.")
+
+
+@web.route("/api/program-favorites/<int:program_id>", methods=["GET", "POST"])
+def program_favorite_api(program_id):
+    if not 0 < program_id <= 2147483647:
+        abort(400, description="Invalid program ID.")
+    user = get_current_user()
+    if user is None:
+        abort(401, description="Sign in to save programs.")
+    try:
+        if request.method == "GET":
+            favorite = db_functions.is_program_favorite(user["id"], program_id)
+        else:
+            body = request.get_json(silent=True)
+            if not isinstance(body, dict) or type(body.get("favorite")) is not bool:
+                abort(400, description="favorite must be true or false.")
+            favorite = body["favorite"]
+            if favorite:
+                if not db_functions.add_program_fav(user["id"], program_id):
+                    abort(404, description="Program not found.")
+            else:
+                db_functions.remove_school_fav(user["id"], program_id)
+        return jsonify(program_id=program_id, favorite=favorite)
+    except HTTPException:
+        raise
+    except Exception:
+        current_app.logger.exception("Program favorite request failed.")
+        abort(503, description="Unable to update program favorites. Please retry.")
+
+
+@web.get("/api/program-favorites")
+def program_favorites_api():
+    from .comparison import CREDENTIALS
+    user = get_current_user()
+    if user is None:
+        abort(401, description="Sign in to view your favorite programs.")
+    try:
+        favorites = db_functions.get_program_favorites(user["id"])
+        for favorite in favorites:
+            favorite["credential"] = CREDENTIALS.get(favorite.get("credlev"), "Not reported")
+            favorite["url"] = url_for("web.program_details", program_id=favorite["program_id"])
+        return jsonify(favorites=favorites)
+    except Exception:
+        current_app.logger.exception("Unable to load program favorites.")
+        abort(503, description="Program favorites are unavailable. Please retry.")
+
+
+@web.get("/api/major-names")
+def major_names_api():
+    query = request.args.get("q", "").strip()
+    if len(query) > 200:
+        abort(400, description="Major names must be at most 200 characters.")
+    if len(query) < 2:
+        return jsonify(majors=[])
+    try:
+        return jsonify(majors=db_functions.get_major_name_suggestions(query))
+    except Exception:
+        current_app.logger.exception("Major name search failed.")
+        abort(503, description="Major suggestions are unavailable. Enter an exact major name or retry.")
+
+
+def explore_major_catalog():
+    page = positive_arg('page', 1, 100000)
+    query = request.args.get('q', '').strip()
+    sort = request.args.get('sort', 'name_asc')
+    favorite_flag = request.args.get('favorites_only', '0')
+    program_flag = request.args.get('has_programs', '0')
+    if favorite_flag not in ('0', '1') or program_flag not in ('0', '1'):
+        abort(400, description='Invalid major filter.')
+    favorites_only, has_programs = favorite_flag == '1', program_flag == '1'
+    if favorites_only and not session.get('user_id'):
+        return redirect(url_for('web.favorites'))
+    raw_earnings = request.args.get('earnings_min', '').strip()
+    try:
+        earnings_min = int(raw_earnings) if raw_earnings else None
+    except ValueError:
+        abort(400, description='Minimum earnings must be a whole number.')
+    try:
+        data = db_functions.get_major_catalog_page(
+            page, query=query, sort=sort, earnings_min=earnings_min,
+            favorites_only=favorites_only, has_programs=has_programs,
+            user_id=session.get('user_id'),
+        )
+    except ValueError as error:
+        abort(400, description=str(error))
+    except Exception:
+        current_app.logger.exception('Unable to load major catalog.')
+        abort(503, description='The major catalog is unavailable. Please retry.')
+    pagination = {'view': 'majors', 'q': query, 'sort': sort,
+                  'earnings_min': earnings_min, 'favorites_only': int(favorites_only),
+                  'has_programs': int(has_programs)}
+    return render_template('explore_majors.html', title='Explore majors', explore_view='majors',
+                           data=data, query=query, sort=sort, earnings_min=earnings_min,
+                           favorites_only=favorites_only, has_programs=has_programs,
+                           pagination=pagination)
