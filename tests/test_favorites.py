@@ -7,8 +7,10 @@ from unittest.mock import patch
 import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import DBAPIError
 
 from degree_path import create_app
+from degree_path.favorites import favorites_engine as favorites_engine_original
 
 
 class FavoritesTests(unittest.TestCase):
@@ -86,6 +88,26 @@ class FavoritesTests(unittest.TestCase):
         self.assertIn(b'id="saved-majors-list"', response.data)
         self.assertIn(b'js/favorites.js', response.data)
         self.assertIn(b'csrf-token', response.data)
+
+    def test_existing_table_needs_no_runtime_schema_permissions(self):
+        # Use the real setup function instead of the ordinary test shortcut.
+        with self.app.app_context(), patch('db_functions.engine', self.engine), \
+                patch.object(self.engine, 'begin', side_effect=AssertionError('Unexpected schema creation')):
+            self.assertIs(favorites_engine_original(), self.engine)
+
+    def test_missing_setup_permissions_return_a_specific_error(self):
+        from degree_path import favorites
+        original = Exception({'C': '42501', 'M': 'permission denied for table majors'})
+        denied = DBAPIError('CREATE TABLE', {}, original)
+        with patch.object(favorites, 'inspect', side_effect=denied), \
+                self.app.app_context(), self.assertLogs(self.app.logger, level='ERROR') as logs:
+            # Re-enable the real setup function for this authenticated request.
+            with patch.object(favorites, 'favorites_engine', favorites_engine_original):
+                response = self.save()
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('Saving majors is not set up yet', response.json['error'])
+        self.assertNotIn('permission denied', response.json['error'])
+        self.assertIn('schemas/saved_majors.sql', logs.output[0])
 
 
 if __name__ == '__main__':

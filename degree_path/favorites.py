@@ -3,7 +3,8 @@ from functools import wraps
 import os
 
 from flask import abort, current_app, g, jsonify, render_template, request
-from sqlalchemy import text
+from sqlalchemy import inspect, text
+from sqlalchemy.exc import DBAPIError
 
 from .routes import web, database_errors
 
@@ -37,13 +38,26 @@ def favorites_engine():
     import db_functions
     # Additive setup: does not drop or alter existing catalog/account tables.
     if not current_app.extensions.get('saved_majors_ready'):
-        with db_functions.engine.begin() as connection:
-            connection.execute(text('''CREATE TABLE IF NOT EXISTS saved_majors (
-                clerk_user_id TEXT NOT NULL,
-                cipcode INTEGER NOT NULL REFERENCES majors(cipcode),
-                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (clerk_user_id, cipcode)
-            )'''))
+        try:
+            # A runtime role can use an administrator-created table without
+            # needing CREATE or REFERENCES privileges itself.
+            if not inspect(db_functions.engine).has_table('saved_majors'):
+                with db_functions.engine.begin() as connection:
+                    connection.execute(text('''CREATE TABLE IF NOT EXISTS saved_majors (
+                        clerk_user_id TEXT NOT NULL,
+                        cipcode INTEGER NOT NULL REFERENCES majors(cipcode),
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (clerk_user_id, cipcode)
+                    )'''))
+        except DBAPIError as error:
+            details = error.orig.args[0] if error.orig.args else None
+            sqlstate = details.get('C') if isinstance(details, dict) else getattr(error.orig, 'sqlstate', None)
+            if sqlstate != '42501':
+                raise
+            current_app.logger.exception(
+                'Saved majors setup was denied. A database owner must run schemas/saved_majors.sql.'
+            )
+            abort(503, description='Saving majors is not set up yet. Please contact the site administrator.')
         current_app.extensions['saved_majors_ready'] = True
     return db_functions.engine
 
