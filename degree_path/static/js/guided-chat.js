@@ -9,10 +9,10 @@
   const reloadButton = document.getElementById("reloadChat");
   const recommendationsPanel =document.getElementById("recommendationsPanel");
   const recommendationCards =document.getElementById("recommendationCards");
-  const exploreUrl =document.getElementById("guided-chat").dataset.exploreUrl;
 
   let api = null;
   let busy = false;
+  const resetChatButton = document.getElementById("resetAdvisorChat");
 
   const favoriteIds = new Set();
   let favoritesLoaded = false;
@@ -20,22 +20,20 @@
   function createFavoriteButton(cipcode) {
     const button = document.createElement("button");
     button.type = "button";
+    button.className = "recommendation-heart";
 
     function updateLabel() {
       const saved = favoriteIds.has(cipcode);
 
       button.setAttribute("aria-pressed", String(saved));
 
-      if (!api.isSignedIn()) {
-        button.textContent = "Sign in to favorite";
-      } else if (!favoritesLoaded) {
-        button.textContent = "Favorites unavailable";
-        button.disabled = true;
-      } else {
-        button.textContent = saved
-          ? "Remove favorite"
-          : "♡ Favorite";
-      }
+      const label = !api.isSignedIn() ? "Sign in to favorite"
+        : !favoritesLoaded ? "Favorites unavailable"
+        : saved ? "Remove favorite" : "Favorite major";
+      button.textContent = saved ? "♥" : "♡";
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.disabled = api.isSignedIn() && !favoritesLoaded;
     }
 
     updateLabel();
@@ -89,6 +87,7 @@
     sendButton.disabled = value;
 
     messages.setAttribute("aria-busy", String(value));
+    resetChatButton.disabled = value;
   }
 
   function showStorageNote(mode) {
@@ -157,7 +156,10 @@
       card.className = "major-recommendation";
 
       const title = document.createElement("h3");
-      title.textContent = recommendation.major;
+      const majorLink = document.createElement("a");
+      majorLink.href = "/majors/" + Number(recommendation.cipcode);
+      majorLink.textContent = recommendation.major;
+      title.appendChild(majorLink);
 
       const count = document.createElement("p");
 
@@ -165,51 +167,8 @@
       count.textContent =
         `${number} matching ${number === 1 ? "interest" : "interests"}`;
 
-      const evidenceHeading = document.createElement("h4");
-      evidenceHeading.textContent = "Why this appeared";
-
-      const evidenceList = document.createElement("ul");
-
-      for (const match of recommendation.evidence) {
-        const item = document.createElement("li");
-
-        const keyword = document.createElement("strong");
-        keyword.textContent = `${match.keyword}: `;
-
-        const quote = document.createElement("span");
-        quote.textContent = `“${match.evidence}”`;
-
-        item.append(keyword, quote);
-        evidenceList.appendChild(item);
-      }
-
-      const link = document.createElement("a");
-
-      const destination = new URL(
-        exploreUrl,
-        window.location.origin
-      );
-
-      destination.searchParams.set(
-        "cipcode",
-        String(recommendation.cipcode)
-      );
-
-      link.href = destination.href;
-      link.textContent = "Explore programs in this major →";
-      const favoriteButton = createFavoriteButton(
-        Number(recommendation.cipcode)
-      );
-
-      card.append(
-        title,
-        count,
-        evidenceHeading,
-        evidenceList,
-        link,
-        document.createElement("br"),
-        favoriteButton
-      );
+      const favoriteButton = createFavoriteButton(Number(recommendation.cipcode));
+      card.append(title, count, favoriteButton);
 
       recommendationCards.appendChild(card);
     }
@@ -263,6 +222,22 @@
       input.focus();
     }
   }
+
+  resetChatButton.addEventListener('click', async () => {
+    if (busy || !api) return;
+    if (!window.confirm('Remove your chat, saved interests, and recommendations? Favorites and preferences will be kept.')) return;
+    setBusy(true);
+    setStatus('Resetting your chat…');
+    try {
+      await api.resetChat();
+      input.value = '';
+      renderHistory([]);
+      renderRecommendations([]);
+      reloadButton.hidden = true;
+      setStatus('Chat reset. Tell me what subjects or activities you enjoy.');
+    } catch (error) { setStatus(error.message); }
+    finally { setBusy(false); }
+  });
 
   sendButton.addEventListener("click", sendMessage);
 

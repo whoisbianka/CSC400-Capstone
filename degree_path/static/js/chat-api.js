@@ -19,11 +19,12 @@ window.chatApiReady = Promise.resolve((function () {
   return {
     load: () => apiRequest("/api/chat", "GET"),
     send: message => apiRequest("/api/chat", "POST", { message }),
+    resetChat: () => apiRequest("/api/chat/reset", "POST", {}),
     isSignedIn: () => Boolean(userId),
-    loadProgramFavorites: () => apiRequest("/api/program-favorites", "GET"),
+    loadProgramFavorites: (details = false) => apiRequest("/api/program-favorites" + (details ? "?details=1" : ""), "GET"),
     loadProgramFavorite: id => apiRequest(`/api/program-favorites/${id}`, "GET"),
     setProgramFavorite: (id, favorite) => apiRequest(`/api/program-favorites/${id}`, "POST", {favorite}),
-    loadFavorites: () => apiRequest("/api/favorites", "GET"),
+    loadFavorites: (details = false) => apiRequest("/api/favorites" + (details ? "?details=1" : ""), "GET"),
     setFavorite: (cipcode, favorite) =>
       apiRequest("/api/favorites", "POST", { cipcode, favorite }),
   };

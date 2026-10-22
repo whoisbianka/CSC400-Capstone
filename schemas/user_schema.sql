@@ -8,6 +8,9 @@ DROP TABLE IF EXISTS public.user_keywords CASCADE;
 DROP TABLE IF EXISTS public.user_info CASCADE;
 DROP TABLE IF EXISTS public.guest_sessions CASCADE;
 
+DROP TABLE IF EXISTS public.program_prefs CASCADE;
+DROP TABLE IF EXISTS public.major_prefs CASCADE;
+
 CREATE TABLE public.users(
     id SERIAL PRIMARY KEY,
     clerk_user_id TEXT UNIQUE NOT NULL,
@@ -29,6 +32,7 @@ CREATE TABLE public.user_info(
     search_longitude NUMERIC(9,6),
     search_latitude NUMERIC(9,6),
     max_distance INT,
+    degree_level TEXT,
     CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -103,3 +107,40 @@ CREATE TABLE public.guest_sessions (
 
 CREATE INDEX guest_sessions_expires_at_idx
     ON public.guest_sessions (expires_at);
+
+
+CREATE TABLE public.program_prefs(
+    id SERIAL PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL,
+    satmt INT,
+    satvr INT,
+    satwr INT,
+    actmt INT,
+    acten INT,
+    actwr INT,
+    max_net_price INT,
+    school_name_search_bar TEXT,
+    major_name_search_bar TEXT,
+    sort_option TEXT,
+    search_city TEXT,
+    search_state TEXT,
+    search_longitude NUMERIC(9,6),
+    search_latitude NUMERIC(9,6),
+    max_acc_rate INT,
+    min_acc_rate INT,
+    max_tuit_out INT,
+    max_tuit_in INT,
+    max_distance INT,
+    degree_level TEXT,
+    CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE public.major_prefs(
+    id SERIAL PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL,
+    min_reported earnings INT,
+    search_bar TEXT,
+    sort_option TEXT,
+    only_my_favorites BOOLEAN,
+    CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);

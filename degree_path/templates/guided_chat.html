@@ -36,6 +36,7 @@
     src="{{ url_for('static', filename='js/guided-chat.js') }}"
     defer
   ></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/prototype-views.css') }}">
 </head>
 
 <body class="guided-page">
@@ -92,6 +93,8 @@
           Loading your chat…
         </p>
 
+        <button id="resetAdvisorChat" type="button" disabled>Reset chat and recommendations</button>
+        <p class="chat-note">Reset removes your conversation, interests, and recommendations. Your favorites and saved preferences stay.</p>
         <p id="chatStorageNote" class="chat-note"></p>
 
         <button id="reloadChat" type="button" hidden>
@@ -110,6 +113,7 @@
             exploration, not admission predictions.
           </p>
 
+          <p>Find programs in a recommended major, then narrow your search and save preferences on Explore.</p>
           <div id="recommendationCards"></div>
         </section>
         <noscript>

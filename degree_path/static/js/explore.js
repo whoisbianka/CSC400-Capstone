@@ -1,27 +1,12 @@
 const degreeForm = document.getElementById('degree-filter-form');
 if (degreeForm) {
-  const mode = document.getElementById('major-filter');
   const name = document.getElementById('major-name');
-  const nameFields = document.getElementById('major-name-fields');
-  const favoriteFields = document.getElementById('major-favorite-fields');
   const options = document.getElementById('major-name-options');
   const searchStatus = document.getElementById('major-search-status');
   let timer;
   let searchVersion = 0;
-  function updateMode() {
-    nameFields.hidden = mode.value !== 'name';
-    name.disabled = mode.value !== 'name';
-    name.required = mode.value === 'name' && !document.getElementById('legacy-cipcode');
-    if (favoriteFields) {
-      favoriteFields.hidden = mode.value !== 'favorites';
-      favoriteFields.querySelectorAll('input').forEach(input => {input.disabled = mode.value !== 'favorites';});
-    }
-  }
-  mode.addEventListener('change', updateMode);
-  updateMode();
   name.addEventListener('input', () => {
     document.getElementById('legacy-cipcode')?.remove();
-    name.required = true;
     clearTimeout(timer);
     const version = ++searchVersion;
     options.replaceChildren();

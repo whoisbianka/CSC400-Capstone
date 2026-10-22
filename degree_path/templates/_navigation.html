@@ -2,12 +2,13 @@
 <header class="site-navigation" id="account-navigation" data-user-id="{{ session.get('user_id', '') }}" data-csrf="{{ csrf_token }}" data-clerk-key="{{ clerk_publishable_key }}">
   <a class="site-brand" href="{{ url_for('web.home') }}"><span aria-hidden="true">✳</span> Degree Path</a>
   <nav aria-label="Account navigation">
+    <a href="{{ url_for('web.chat') }}" {% if request.endpoint == 'web.chat' %}aria-current="page"{% endif %}>Chat</a>
+    <a href="{{ url_for('web.explore') }}" {% if request.endpoint == 'web.explore' %}aria-current="page"{% endif %}>Explore</a>
+    <a href="{{ url_for('web.favorites') }}"{% if request.endpoint == 'web.favorites' %}aria-current="page"{% endif %}>Favorites</a>
+    <a href="{{ url_for('web.compare') }}" {% if request.endpoint == 'web.compare' %}aria-current="page"{% endif %}>Compare</a>
     <button type="button" class="nav-auth-button" data-auth-action="{{ 'logout' if session.get('user_id') else 'login' }}">
       {{ 'Sign out' if session.get('user_id') else 'Sign in' }}
     </button>
-    <a href="{{ url_for('web.favorites') }}"{% if request.endpoint == 'web.favorites' %}aria-current="page"{% endif %}>Favorites</a>
-    <a href="{{ url_for('web.compare') }}" {% if request.endpoint == 'web.compare' %}aria-current="page"{% endif %}>Compare</a>
-    <a href="{{ url_for('web.settings') }}" {% if request.endpoint == 'web.settings' %}aria-current="page"{% endif %}>Settings</a>
   </nav>
 </header>
 <p id="account-status" class="account-status" role="status" hidden></p>

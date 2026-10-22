@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/program-details.css') }}">
+{% if session.get('user_id') %}
+<script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/major-card-favorites.js') }}" defer></script>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="page-workspace program-details">
+  <a class="details-back" href="{{ url_for('web.explore', view='majors') }}">← Explore majors</a>
+  <header class="details-hero">
+    <h1 id="page-title">{{ major.major }}</h1>
+    {% if session.get('user_id') %}
+    <button class="secondary-button" type="button" data-major-favorite="{{ major.cipcode }}" aria-pressed="{{ 'true' if major.is_favorite else 'false' }}">{{ 'Remove favorite' if major.is_favorite else 'Favorite major' }}</button>
+    <p id="major-favorites-status" role="status"></p>
+    {% else %}<a class="secondary-button" href="{{ url_for('web.favorites') }}">Sign in to save favorites</a>{% endif %}
+    <a href="{{ url_for('web.compare') }}">Compare favorites</a>
+  </header>
+  <div class="details-overview" aria-label="Major at a glance">
+    <div><span>Median of reported program earnings</span><strong>{{ major.earnings|money }}</strong><p>Median across program-level four-year earnings medians; not a graduate-weighted median.</p></div>
+    <div><span>Number of schools offering this major</span><strong>{{ major.school_count }}</strong><p>Based on programs in our catalog.</p></div>
+  </div>
+  {% if recommendation and recommendation.evidence %}
+  <section class="details-panel" aria-labelledby="matching-interests-title">
+    <h2 id="matching-interests-title">Matching interests</h2>
+    <p>{{ recommendation.matching_keywords }} matching {{ 'interest' if recommendation.matching_keywords == 1 else 'interests' }}</p>
+    <p>This major was recommended because it matches these interests you shared:</p>
+    <dl class="matching-interests">
+      {% for match in recommendation.evidence %}
+      <div>
+        <dt>{{ match.keyword }}</dt>
+        <dd>{{ match.evidence }}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+  </section>
+  {% endif %}
+  <section class="details-panel details-about" aria-labelledby="about-major-title">
+    <h2 id="about-major-title">About this major</h2>
+    <p class="major-description">{{ major.description or 'A description for this major is not available yet.' }}</p>
+  </section>
+  <a class="primary-link" href="{{ url_for('web.explore', view='programs', cipcode=major.cipcode) }}">Explore programs in this major →</a>
+</div>
+{% endblock %}

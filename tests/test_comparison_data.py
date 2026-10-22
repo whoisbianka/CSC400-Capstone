@@ -12,7 +12,7 @@ class ComparisonDataTests(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine('sqlite://')
         self.addCleanup(self.engine.dispose)
-        names = {'get_major_catalog_page', 'get_page_programs', 'validate_program_filters', 'get_major_name_suggestions', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'}
+        names = {'reset_user_chat', 'reset_user_preferences', 'get_program_preferences', 'save_program_preferences', 'get_major_catalog_page', 'get_page_programs', 'validate_program_filters', 'get_major_name_suggestions', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'}
         source = ast.parse((Path(__file__).resolve().parents[1] / 'db_functions.py').read_text())
         # Load the production functions without initializing a cloud connection.
         tree = ast.Module(body=[n for n in source.body if isinstance(n, ast.FunctionDef) and n.name in names], type_ignores=[])
@@ -21,6 +21,7 @@ class ComparisonDataTests(unittest.TestCase):
         with self.engine.begin() as c:
             c.execute(text("ATTACH DATABASE ':memory:' AS public"))
             definitions = {
+                'user_info': 'user_id INTEGER UNIQUE, search_state TEXT, max_cost INTEGER, search_city TEXT, max_distance INTEGER, satmt INTEGER, degree_level TEXT',
                 'majors': 'cipcode INTEGER PRIMARY KEY, cipdesc TEXT',
                 'major_info': 'cipcode INTEGER UNIQUE, mdn_earnings INTEGER, major_description TEXT, description_source TEXT',
                 'major_fav': 'user_id INTEGER, cipcode INTEGER, UNIQUE(user_id, cipcode)',
@@ -94,6 +95,9 @@ class ComparisonDataTests(unittest.TestCase):
         self.assertEqual(ids(get(filters={'major_name': "Biology' OR 1=1 --"})), [])
         self.assertEqual(ids(get(filters={'cipcodes': [7, 8]})), [10, 11, 12])
         self.assertEqual(ids(get(filters={'cipcodes': []})), [])
+        self.assertEqual(ids(get(filters={'major_name': 'Biology', 'cipcodes': [8]})), [10, 11, 12])
+        self.assertEqual(ids(get(filters={'major_name': 'Biology', 'cipcodes': [8], 'degrees': [3]})), [10, 12])
+
         self.assertEqual(ids(get(filters={'cipcodes': [7], 'degrees': [3], 'net_price_max': 6000})), [10])
         self.assertEqual(ids(get(filters={'cipcodes': [7], 'net_price_max': 4000})), [])
         first = get(page_count=1, filters={'cipcodes': [7]})
@@ -145,3 +149,43 @@ class ComparisonDataTests(unittest.TestCase):
         rows = get(filters={'school_name': 'coll', 'cipcodes': [7]}, sort_option='earnings', sort_order='DESC')['rows']
         self.assertEqual([row['id'] for row in rows], [11, 10])
         self.assertEqual(get(filters={'school_name': '%'})['rows'], [])
+
+
+
+    def test_preferences_use_existing_profile_columns_without_erasing_other_fields(self):
+        with self.engine.begin() as connection:
+            connection.execute(text("INSERT INTO public.user_info VALUES (42, 'CA', 30000, 'Albany', 50, 700, '2')"))
+        save = self.functions['save_program_preferences']
+        get = self.functions['get_program_preferences']
+        save(42, {'state': ['NY'], 'city':['Buffalo'], 'net_price_max': ['20000'], 'degrees':['2,3']})
+        self.assertEqual(get(42), {'state':['NY'], 'city':['Buffalo'], 'net_price_max':['20000'], 'degrees':['2,3']})
+        with self.engine.connect() as connection:
+            row = connection.execute(text('SELECT max_distance, satmt FROM public.user_info WHERE user_id=42')).one()
+            self.assertEqual(tuple(row), (50, 700))
+        save(42, {})
+        self.assertEqual(get(42), {'state':[''], 'city':[''], 'net_price_max':[''], 'degrees':['']})
+        self.assertEqual(get(123), {})
+
+
+    def test_chat_reset_clears_only_target_discovery_data_and_keeps_favorites(self):
+        # SQLite does not implement PostgreSQL row locks; execute the same deletes
+        # while omitting only FOR UPDATE in this offline fixture.
+        self.functions['text'] = lambda sql: text(sql.replace(' FOR UPDATE', ''))
+        with self.engine.begin() as c:
+            c.execute(text('CREATE TABLE public.users (id INTEGER PRIMARY KEY)'))
+            c.execute(text('INSERT INTO public.users VALUES (42), (99)'))
+            for table in ('chatlog', 'user_keywords', 'major_rec', 'program_rec'):
+                c.execute(text(f'CREATE TABLE public.{table} (user_id INTEGER)'))
+                c.execute(text(f'INSERT INTO public.{table} VALUES (42), (99)'))
+            c.execute(text("INSERT INTO public.user_info (user_id, search_state) VALUES (42, 'NY'), (99, 'CA')"))
+        self.functions['reset_user_chat'](42)
+        with self.engine.connect() as c:
+            for table in ('chatlog', 'user_keywords', 'major_rec', 'program_rec'):
+                self.assertEqual(c.execute(text(f'SELECT user_id FROM public.{table}')).scalars().all(), [99])
+            self.assertEqual(c.execute(text('SELECT COUNT(*) FROM public.major_fav WHERE user_id=42')).scalar_one(), 1)
+            self.assertEqual(c.execute(text('SELECT COUNT(*) FROM public.program_fav WHERE user_id=42')).scalar_one(), 1)
+            self.assertEqual(c.execute(text('SELECT search_state FROM public.user_info WHERE user_id=42')).scalar_one(), 'NY')
+        self.functions['reset_user_preferences'](42)
+        with self.engine.connect() as c:
+            self.assertEqual(c.execute(text('SELECT user_id FROM public.user_info')).scalars().all(), [99])
+            self.assertEqual(c.execute(text('SELECT COUNT(*) FROM public.major_fav WHERE user_id=42')).scalar_one(), 1)

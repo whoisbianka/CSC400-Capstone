@@ -3,10 +3,8 @@
 MAJOR_METRICS = [
     {"key": "earnings", "label": "Median of reported program earnings", "format": "money", "direction": "higher",
      "note": "Median across program-level four-year earnings medians in the database; not a graduate-weighted median."},
-    {"key": "program_count", "label": "Programs in our database", "format": "number", "direction": None},
-    {"key": "school_count", "label": "Schools in our database", "format": "number", "direction": None},
+    {"key": "school_count", "label": "Number of schools offering this major", "format": "number", "direction": None},
     {"key": "description", "label": "About this major", "format": "text", "direction": None},
-    {"key": "description_source", "label": "Description source", "format": "text", "direction": None},
 ]
 
 PROGRAM_METRICS = [

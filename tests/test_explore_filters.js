@@ -25,16 +25,11 @@ vm.runInNewContext(fs.readFileSync('degree_path/static/js/explore.js','utf8'),{
   fetch:url=>new Promise(resolve=>requests.push({url,resolve})),
 });
 (async()=>{
-  assert.equal(ids['major-name'].disabled,true);
-  ids['major-filter'].value='favorites';ids['major-filter'].handlers.change();
-  assert.equal(ids['major-favorite-fields'].hidden,false);
-  assert.equal(favorites[0].disabled,false);
-  // No form-level change handler: users can select multiple favorites before applying.
+  assert.notEqual(ids['major-name'].disabled,true);
+  assert.notEqual(ids['major-name'].required,true);
+  assert.notEqual(favorites[0].disabled,true);
   assert.equal(ids['degree-filter-form'].handlers.change,undefined);
   ids['degree-filter-form'].handlers.submit();
-  ids['major-filter'].value='name';ids['major-filter'].handlers.change();
-  assert.equal(ids['major-name'].required,true);
-  assert.equal(favorites[0].disabled,true);
   ids['major-name'].value='bio';ids['major-name'].handlers.input();
   const first=timer();
   ids['major-name'].value='art';ids['major-name'].handlers.input();
@@ -43,5 +38,8 @@ vm.runInNewContext(fs.readFileSync('degree_path/static/js/explore.js','utf8'),{
   requests[0].resolve({ok:true,json:async()=>({majors:[{name:'Biology'}]})});await first;
   assert.equal(ids['major-name-options'].children.length,1);
   assert.equal(ids['major-name-options'].children[0].value,'Art');
+  ids['major-name'].value='';ids['major-name'].handlers.input();
+  assert.notEqual(ids['major-name'].required,true);
+  assert.equal(ids['major-name-options'].children.length,0);
   console.log('Explore filter controls and stale suggestion protection passed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

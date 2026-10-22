@@ -10,6 +10,7 @@ from copy import deepcopy
 import db_functions
 
 from .auth import get_current_user, establish_login
+from .preferences import validate_explore_preferences
 from .guest_state import get_or_create_guest_session
 from .chat_service import interpret_message, InvalidAdvisorResponse
 
@@ -218,12 +219,9 @@ def home():
 @web.post('/')
 @web.route('/chat', methods=['GET', 'POST'])
 def chat():
-    question = ''
-    result = None
     if request.method == 'POST':
-        question = text_value(request.form.get('question'))
-        result = recommendations([question])
-    return render_template('chat.html', title='Degree Path Assistant', question=question, result=result)
+        return redirect(url_for('web.chat'), code=303)
+    return render_template('chat.html', title='Degree Path Assistant')
 
 
 @web.post('/chat/reset')
@@ -232,13 +230,16 @@ def reset_chat():
 
 @web.get('/questionnaire')
 def questionnaire():
-    return render_template('guided_chat.html', title='Find my major')
+    return redirect(url_for('web.chat'), code=301)
 
 @web.get('/explore')
 def explore():
     view = request.args.get('view', 'programs')
     if view not in ('programs', 'majors'):
         abort(400, description='Choose Programs or Majors.')
+    restored = restore_explore_preferences(view)
+    if restored is not None:
+        return restored
     if view == 'majors':
         return explore_major_catalog()
     sort = request.args.get('sort', 'school_asc')
@@ -264,7 +265,7 @@ def explore():
             abort(503, description='Unable to load favorite majors. Please retry.')
     selected_favorites = []
     major_filters = {}
-    if major_filter == 'favorites':
+    if request.args.getlist('favorite_major'):
         if not session.get('user_id'):
             return redirect(url_for('web.favorites'))
         try:
@@ -274,17 +275,11 @@ def explore():
         allowed = {row['cipcode'] for row in favorite_majors}
         if not set(selected_favorites) <= allowed:
             abort(400, description='A selected major is no longer in your favorites. Reset the filters and try again.')
-        # An empty selection deliberately returns no programs, not all programs.
         major_filters['cipcodes'] = selected_favorites
+    if major_query:
+        major_filters['major_name'] = major_query
         cipcode = None
-    elif major_filter == 'name':
-        if major_query:
-            major_filters['major_name'] = major_query
-            cipcode = None
-        elif cipcode is None:
-            abort(400, description='Enter a major name or choose All majors.')
-    else:
-        cipcode = None
+    major_filter = 'name' if major_query or cipcode else ('favorites' if selected_favorites else 'all')
     # No selected degrees means no degree restriction.
     degree_values = (request.args.getlist('degree') if 'degree_form' in request.args
                      else request.args.get('degrees', '').split(','))
@@ -326,11 +321,11 @@ def explore():
         major_name=data["rows"][0]["major"]
     if cipcode and major_name:
         major_query = major_name
-    pagination = {**filters, 'view': 'programs', 'sort': sort, 'degrees': ','.join(map(str, degrees)),
+    pagination = {**filters, 'preferences_applied': '1', 'view': 'programs', 'sort': sort, 'degrees': ','.join(map(str, degrees)),
                   'major_filter': major_filter}
     if major_filter == 'name':
         pagination.update(major_name=major_query, cipcode=cipcode)
-    elif major_filter == 'favorites':
+    if selected_favorites:
         pagination['favorite_major'] = selected_favorites
     return render_template('explore.html', title='Explore programs', data=data,
                            major_name=major_name, cipcode=cipcode, degrees=degrees,
@@ -338,6 +333,34 @@ def explore():
                            major_filter=major_filter, major_query=major_query,
                            favorite_majors=favorite_majors, selected_favorites=selected_favorites,
                            pagination=pagination, explore_view='programs', program_sort=sort)
+
+@web.get('/majors/<int:cipcode>')
+def major_details(cipcode):
+    if not 1 <= cipcode <= 2147483647:
+        abort(404, description='Major not found.')
+    try:
+        major = db_functions.get_major_details(cipcode, session.get('user_id'))
+    except Exception:
+        current_app.logger.exception('Unable to load major details.')
+        abort(503, description='Major details are unavailable. Please retry.')
+    if major is None:
+        abort(404, description='Major not found.')
+    try:
+        recommendations = []
+        if session.get('user_id'):
+            recommendations = db_functions.get_recommendations(session['user_id'])
+        elif isinstance(session.get('guest_id'), str):
+            guest = db_functions.get_guest_session(session['guest_id'])
+            if guest is not None:
+                recommendations = guest['state'].get('recommendations', [])
+        recommendation = next((item for item in recommendations
+                               if item['cipcode'] == cipcode), None)
+    except Exception:
+        current_app.logger.exception('Unable to load matching interests.')
+        abort(503, description='Matching interests are unavailable. Please retry.')
+    return render_template('major_details.html', title=major['major'], major=major,
+                           recommendation=recommendation)
+
 
 @web.get('/programs/<int:program_id>')
 def program_details(program_id):
@@ -349,7 +372,7 @@ def program_details(program_id):
 @web.get('/start/<destination>')
 def start(destination):
     # Keep old bookmarks working without the account-choice screen.
-    endpoints = {'questionnaire': 'web.questionnaire', 'explore': 'web.explore'}
+    endpoints = {'questionnaire': 'web.chat', 'chat': 'web.chat', 'explore': 'web.explore'}
     if destination not in endpoints:
         abort(404)
     return redirect(url_for(endpoints[destination]))
@@ -367,12 +390,12 @@ def settings():
 
 @web.get('/<page>.html')
 def legacy_page(page):
-    targets = {'index': 'web.home', 'chatbot': 'web.questionnaire',
+    targets = {'index': 'web.home', 'chatbot': 'web.chat',
                'explore': 'web.explore', 'program-details': 'web.explore',
                'profile': 'web.profile', 'settings': 'web.settings'}
     if page not in targets:
         abort(404)
-    target = 'web.questionnaire' if page == 'index' and request.args.get('mode') == 'guided' else targets[page]
+    target = 'web.chat' if page == 'index' and request.args.get('mode') == 'guided' else targets[page]
     return redirect(url_for(target))
 
 
@@ -600,9 +623,10 @@ def favorites_api():
         user_id = user["id"]
 
         if request.method == "GET":
-            return jsonify(
-                favorites=db_functions.get_major_favorites(user_id)
-            )
+            if request.args.get("details") == "1":
+                rows = db_functions.get_comparison_favorites(user_id, "majors")
+                return jsonify(favorites=[{**row, "cipcode": row["id"], "major": row["name"]} for row in rows])
+            return jsonify(favorites=db_functions.get_major_favorites(user_id))
 
         body = request.get_json(silent=True)
 
@@ -717,7 +741,11 @@ def program_favorites_api():
     if user is None:
         abort(401, description="Sign in to view your favorite programs.")
     try:
-        favorites = db_functions.get_program_favorites(user["id"])
+        if request.args.get("details") == "1":
+            rows = db_functions.get_comparison_favorites(user["id"], "programs")
+            favorites = [{**row, "program_id": row["id"], "major": row["name"]} for row in rows]
+        else:
+            favorites = db_functions.get_program_favorites(user["id"])
         for favorite in favorites:
             favorite["credential"] = CREDENTIALS.get(favorite.get("credlev"), "Not reported")
             favorite["url"] = url_for("web.program_details", program_id=favorite["program_id"])
@@ -746,10 +774,9 @@ def explore_major_catalog():
     query = request.args.get('q', '').strip()
     sort = request.args.get('sort', 'name_asc')
     favorite_flag = request.args.get('favorites_only', '0')
-    program_flag = request.args.get('has_programs', '0')
-    if favorite_flag not in ('0', '1') or program_flag not in ('0', '1'):
+    if favorite_flag not in ('0', '1'):
         abort(400, description='Invalid major filter.')
-    favorites_only, has_programs = favorite_flag == '1', program_flag == '1'
+    favorites_only = favorite_flag == '1'
     if favorites_only and not session.get('user_id'):
         return redirect(url_for('web.favorites'))
     raw_earnings = request.args.get('earnings_min', '').strip()
@@ -760,7 +787,7 @@ def explore_major_catalog():
     try:
         data = db_functions.get_major_catalog_page(
             page, query=query, sort=sort, earnings_min=earnings_min,
-            favorites_only=favorites_only, has_programs=has_programs,
+            favorites_only=favorites_only,
             user_id=session.get('user_id'),
         )
     except ValueError as error:
@@ -768,10 +795,123 @@ def explore_major_catalog():
     except Exception:
         current_app.logger.exception('Unable to load major catalog.')
         abort(503, description='The major catalog is unavailable. Please retry.')
-    pagination = {'view': 'majors', 'q': query, 'sort': sort,
-                  'earnings_min': earnings_min, 'favorites_only': int(favorites_only),
-                  'has_programs': int(has_programs)}
+    pagination = {'preferences_applied': '1', 'view': 'majors', 'q': query, 'sort': sort,
+                  'earnings_min': earnings_min, 'favorites_only': int(favorites_only)}
     return render_template('explore_majors.html', title='Explore majors', explore_view='majors',
                            data=data, query=query, sort=sort, earnings_min=earnings_min,
-                           favorites_only=favorites_only, has_programs=has_programs,
+                           favorites_only=favorites_only,
                            pagination=pagination)
+
+
+
+def saved_explore_preferences(user):
+    if user is not None:
+        saved = session.get('explore_preferences', {})
+        views = deepcopy(saved.get('views', {})) if saved.get('user_id') == user['id'] else {}
+        views['programs'] = {**views.get('programs', {}), **db_functions.get_program_preferences(user['id'])}
+        return views
+    guest_id = session.get('guest_id')
+    guest = db_functions.get_guest_session(guest_id) if guest_id else None
+    return guest['state'].get('explore_preferences', {}) if guest else {}
+
+
+def restore_explore_preferences(view):
+    # Explicit searches, pagination and resets must not silently reapply defaults.
+    if set(request.args) - {'view', 'cipcode', 'major_name'}:
+        return None
+    try:
+        user = get_current_user()
+        saved = deepcopy(saved_explore_preferences(user).get(view, {}))
+        # Missing values must not become the strings 'None' or 'null' in filters.
+        saved = {key: values for key, values in saved.items()
+                 if isinstance(values, list) and values and all(isinstance(v, str) for v in values)}
+        if not any(any(value for value in values) for values in saved.values()):
+            return None
+        if 'cipcode' in request.args or 'major_name' in request.args:
+            for key in ('favorite_major', 'major_name', 'cipcode', 'major_filter'):
+                saved.pop(key, None)
+            for key in ('cipcode', 'major_name'):
+                if key in request.args:
+                    saved[key] = [request.args[key]]
+        # A favorite removed since saving is no longer a valid selection.
+        saved.pop('major_filter', None)
+        saved.pop('has_programs', None)
+        if saved.get('favorite_major') and user:
+            allowed = {str(row['cipcode']) for row in db_functions.get_major_favorites(user['id'])}
+            saved['favorite_major'] = [code for code in saved.get('favorite_major', []) if code in allowed]
+        return redirect(url_for('web.explore', view=view, preferences_applied='1', **saved))
+    except HTTPException:
+        raise
+    except Exception:
+        current_app.logger.exception('Unable to restore optional Explore preferences; using visible filters.')
+        return None
+
+
+@web.post('/api/explore/preferences')
+def explore_preferences_api():
+    user = get_current_user()
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or body.get('action') not in ('save', 'reset'):
+        abort(400, description='Choose save or reset.')
+    kind = body.get('view', 'programs')
+    if kind not in ('programs', 'majors'):
+        abort(400, description='Choose programs or majors.')
+    try:
+        values = validate_explore_preferences(kind, body.get('filters', {})) if body['action'] == 'save' else {}
+    except ValueError as error:
+        abort(400, description=str(error))
+    try:
+        if values.get('favorite_major') or values.get('favorites_only') == ['1']:
+            if user is None:
+                abort(401, description='Sign in to use favorite filters.')
+            allowed = {str(row['cipcode']) for row in db_functions.get_major_favorites(user['id'])}
+            if not set(values.get('favorite_major', [])) <= allowed:
+                abort(400, description='A selected major is no longer a favorite.')
+        if user is not None:
+            if body['action'] == 'reset':
+                db_functions.reset_user_preferences(user['id'])
+                session.pop('explore_preferences', None)
+                session.pop('program_degree', None)
+            else:
+                if kind == 'programs':
+                    db_functions.save_program_preferences(user['id'], values)
+                saved = session.get('explore_preferences', {})
+                views = deepcopy(saved.get('views', {})) if saved.get('user_id') == user['id'] else {}
+                views[kind] = values
+                session['explore_preferences'] = {'user_id': user['id'], 'views': views}
+        else:
+            guest_id, guest = get_or_create_guest_session()
+            state = deepcopy(guest['state'])
+            if body['action'] == 'reset':
+                state['explore_preferences'] = {}
+                state['preferences'] = {}
+            else:
+                state.setdefault('explore_preferences', {})[kind] = values
+            if db_functions.save_guest_session(guest_id, state, guest['version']) is None:
+                abort(409, description='Your session changed. Reload and try again.')
+        return jsonify(ok=True, url=url_for('web.explore', view=kind, preferences_applied='1', **values))
+    except HTTPException:
+        raise
+    except Exception:
+        current_app.logger.exception('Unable to save Explore preferences.')
+        abort(503, description='Preferences could not be updated. Please retry.')
+
+
+@web.post('/api/chat/reset')
+def reset_advisor_chat_api():
+    user = get_current_user()
+    try:
+        if user is not None:
+            db_functions.reset_user_chat(user['id'])
+        else:
+            guest_id, guest = get_or_create_guest_session()
+            state = deepcopy(guest['state'])
+            state.update(messages=[], keywords=[], recommendations=[])
+            if db_functions.save_guest_session(guest_id, state, guest['version']) is None:
+                abort(409, description='Your chat changed. Reload before resetting.')
+        return jsonify(ok=True)
+    except HTTPException:
+        raise
+    except Exception:
+        current_app.logger.exception('Unable to reset chat.')
+        abort(503, description='Chat could not be reset. Please retry.')

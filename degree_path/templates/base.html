@@ -8,8 +8,9 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 <script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>
 {% block extra_head %}{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/prototype-views.css') }}">
 </head>
-<body class="chat-app">
+<body class="chat-app {% block body_class %}{% endblock %}">
 <a class="skip-link" href="#page-title">Skip to content</a>
 {% include '_navigation.html' %}
 <main class="app-main">

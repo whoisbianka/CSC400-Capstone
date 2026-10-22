@@ -675,15 +675,18 @@ def get_page_programs(
 
     validate_program_filters(filters)
 
+    major_conditions = []
     if filters.get("cipcode") is not None:
-        conditions.append("p.cipcode=:cipcode")
+        major_conditions.append("p.cipcode=:cipcode")
         params["cipcode"]=filters["cipcode"]
     if filters.get("cipcodes") is not None:
-        conditions.append("p.cipcode IN :cipcodes")
+        major_conditions.append("p.cipcode IN :cipcodes")
         params["cipcodes"] = filters["cipcodes"]
     if filters.get("major_name"):
-        conditions.append("LOWER(m.cipdesc) = LOWER(:major_name)")
+        major_conditions.append("LOWER(m.cipdesc) = LOWER(:major_name)")
         params["major_name"] = filters["major_name"].strip()
+    if major_conditions:
+        conditions.append("(" + " OR ".join(major_conditions) + ")")
     if filters.get("unitid") is not None:
         conditions.append("p.unitid=:unitid")
         params["unitid"]=filters["unitid"]
@@ -1734,3 +1737,63 @@ def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
     with engine.connect() as connection:
         rows = connection.execute(statement, params).mappings().all()
     return {'rows': [dict(row) for row in rows[:page_count]], 'page': page, 'has_next': len(rows) > page_count}
+
+
+def get_program_preferences(user_id):
+    with engine.connect() as connection:
+        row = connection.execute(text('''
+            SELECT search_state, search_city, max_cost, degree_level
+            FROM public.user_info WHERE user_id = :user_id
+        '''), {'user_id': user_id}).mappings().one_or_none()
+    if row is None:
+        return {}
+    degree = row['degree_level'] or ''
+    if degree not in ('', '2', '3', '2,3'):
+        degree = ''
+    return {'state': [row['search_state'] or ''], 'city': [row['search_city'] or ''],
+            'net_price_max': [str(row['max_cost']) if row['max_cost'] is not None else ''],
+            'degrees': [degree]}
+
+
+def save_program_preferences(user_id, preferences):
+    with engine.begin() as connection:
+        connection.execute(text('''
+            INSERT INTO public.user_info (user_id, search_state, search_city, max_cost, degree_level)
+            VALUES (:user_id, :state, :city, :budget, :degree)
+            ON CONFLICT (user_id) DO UPDATE SET search_state = EXCLUDED.search_state,
+                search_city = EXCLUDED.search_city, max_cost = EXCLUDED.max_cost,
+                degree_level = EXCLUDED.degree_level
+        '''), {'user_id': user_id, 'state': preferences.get('state', [''])[0] or None,
+                 'city': preferences.get('city', [''])[0] or None,
+                 'budget': int(preferences['net_price_max'][0]) if preferences.get('net_price_max', [''])[0] else None,
+                 'degree': preferences.get('degrees', [''])[0] or None})
+
+
+def reset_user_preferences(user_id):
+    with engine.begin() as connection:
+        connection.execute(text('DELETE FROM public.user_info WHERE user_id = :user_id'), {'user_id': user_id})
+
+
+def reset_user_chat(user_id):
+    """Clear discovery history atomically, leaving favorites and preferences intact."""
+    with engine.begin() as connection:
+        connection.execute(text('SELECT id FROM public.users WHERE id = :user_id FOR UPDATE'), {'user_id': user_id})
+        for table in ('chatlog', 'user_keywords', 'major_rec', 'program_rec'):
+            connection.execute(text(f'DELETE FROM public.{table} WHERE user_id = :user_id'), {'user_id': user_id})
+
+
+def get_major_details(cipcode, user_id=None):
+    """Read a major even when its description or program statistics are missing."""
+    with engine.connect() as connection:
+        row = connection.execute(text("""
+            SELECT m.cipcode, m.cipdesc AS major, mi.mdn_earnings AS earnings,
+                   mi.major_description AS description,
+                   (SELECT COUNT(DISTINCT p.unitid) FROM public.programs p
+                    WHERE p.cipcode = m.cipcode) AS school_count,
+                   EXISTS (SELECT 1 FROM public.major_fav f
+                           WHERE f.cipcode = m.cipcode AND f.user_id = :user_id) AS is_favorite
+            FROM public.majors m
+            LEFT JOIN public.major_info mi ON mi.cipcode = m.cipcode
+            WHERE m.cipcode = :cipcode
+        """), {"cipcode": cipcode, "user_id": user_id}).mappings().one_or_none()
+    return dict(row) if row is not None else None

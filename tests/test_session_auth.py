@@ -12,7 +12,7 @@ class SessionAuthTests(unittest.TestCase):
         cls.database = ModuleType('db_functions')
         cls.database.create_or_update_user = Mock()
         cls.database.get_major_favorites = Mock()
-        for name in ('get_major_catalog_page', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'):
+        for name in ('get_program_preferences', 'save_program_preferences', 'reset_user_preferences', 'reset_user_chat', 'get_major_catalog_page', 'get_major_details', 'get_recommendations', 'get_guest_session', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'):
             setattr(cls.database, name, Mock())
         # Import the app with no Cloud SQL initialization.
         cls.modules_patch = patch.dict(sys.modules, {'db_functions': cls.database})
@@ -32,10 +32,13 @@ class SessionAuthTests(unittest.TestCase):
         self.client = self.app.test_client()
         self.database.create_or_update_user.reset_mock()
         self.database.get_major_favorites.reset_mock()
-        for name in ('get_major_catalog_page', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'):
+        for name in ('get_program_preferences', 'save_program_preferences', 'reset_user_preferences', 'reset_user_chat', 'get_major_catalog_page', 'get_major_details', 'get_recommendations', 'get_guest_session', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'):
             getattr(self.database, name).reset_mock()
         self.database.create_or_update_user.return_value = {'id': 42, 'clerk_user_id': 'user_test'}
+        self.database.get_program_preferences.return_value = {}
         self.database.get_major_favorites.return_value = []
+        self.database.get_recommendations.return_value = []
+        self.database.get_guest_session.return_value = None
         with self.client.session_transaction() as s:
             s['csrf'] = 'test-csrf'
 
@@ -133,16 +136,28 @@ class SessionAuthTests(unittest.TestCase):
         self.database.get_major_favorites.assert_not_called()
 
     def test_chat_and_explore_skip_account_choice(self):
-        for destination, expected in [('questionnaire', '/questionnaire'), ('explore', '/explore')]:
+        for destination, expected in [('questionnaire', '/chat'), ('explore', '/explore')]:
             response = self.client.get('/start/' + destination)
             self.assertEqual(response.status_code, 302)
             self.assertEqual(response.headers['Location'], expected)
         self.assertEqual(self.client.get('/start/evil').status_code, 404)
         html = self.client.get('/').get_data(as_text=True)
         self.assertNotIn('/start/', html)
-        self.assertIn('href="/questionnaire"', html)
+        self.assertIn('href="/chat"', html)
         self.assertIn('href="/explore"', html)
-        html = self.client.get('/questionnaire').get_data(as_text=True)
+        legacy = self.client.get('/questionnaire')
+        self.assertEqual(legacy.status_code, 301)
+        self.assertEqual(legacy.headers['Location'], '/chat')
+        html = self.client.get('/chat').get_data(as_text=True)
+        for element in ('chatMessages', 'userInput', 'sendButton', 'resetAdvisorChat',
+                        'recommendationsPanel', 'recommendationCards', 'reloadChat', 'chatStorageNote'):
+            self.assertIn('id="' + element + '"', html)
+        self.assertIn('js/chat-api.js', html)
+        self.assertIn('js/guided-chat.js', html)
+        self.assertIn('class="chat-workspace"', html)
+        self.assertLess(html.index('>Chat</a>'), html.index('>Explore</a>'))
+        self.assertLess(html.index('>Explore</a>'), html.index('>Favorites</a>'))
+        self.assertNotIn('href="/questionnaire"', html)
         self.assertIn('id="guided-chat"', html)
         self.assertNotIn('How would you like to continue', html)
 
@@ -230,7 +245,7 @@ class SessionAuthTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(get_page.call_args.args[3], {'state': 'NY', 'major_name': 'Biology'})
             self.assertIn('major_name=Biology', response.get_data(as_text=True))
-            self.assertEqual(self.client.get('/explore?major_filter=favorites').status_code, 302)
+            self.assertEqual(self.client.get('/explore?major_filter=favorites&favorite_major=7').status_code, 302)
             self.login()
             self.database.get_major_favorites.return_value = [{'cipcode':7, 'major':'Biology'}, {'cipcode':8, 'major':'Art'}]
             response = self.client.get('/explore?major_filter=favorites&favorite_major=7&favorite_major=8&degrees=3')
@@ -241,12 +256,87 @@ class SessionAuthTests(unittest.TestCase):
             self.assertIn('favorite_major=7', html)
             self.assertIn('favorite_major=8', html)
             self.assertIn('value="7" checked', html)
+            response = self.client.get('/explore?major_name=Biology&favorite_major=8&state=NY')
+            self.assertEqual(get_page.call_args.args[3], {'major_name': 'Biology', 'cipcodes': [8], 'state': 'NY'})
+            html = response.get_data(as_text=True)
+            self.assertIn('<summary>Majors</summary>', html)
+            self.assertNotIn('id="major-filter"', html)
+            self.assertNotIn('data-filter-toggle="program-school-search"', html)
+            self.assertIn('favorite_major=8', html)
+            self.assertIn('major_name=Biology', html)
+            self.client.get('/explore?preferences_applied=1&major_name=&school_name=&city=&state=')
+            self.assertEqual(get_page.call_args.args[3], {})
+
             self.client.get('/explore?major_filter=favorites')
-            self.assertEqual(get_page.call_args.args[3]['cipcodes'], [])
+            self.assertEqual(get_page.call_args.args[3], {})
             self.assertEqual(self.client.get('/explore?major_filter=favorites&favorite_major=999').status_code, 400)
             self.assertEqual(self.client.get('/explore?major_filter=favorites&favorite_major=oops').status_code, 400)
             self.assertEqual(self.client.get('/explore?major_filter=invalid').status_code, 400)
-            self.assertEqual(self.client.get('/explore?major_filter=name').status_code, 400)
+            self.assertEqual(self.client.get('/explore?major_filter=name').status_code, 200)
+
+    def test_favorites_detail_cards_use_owned_database_rows(self):
+        self.login()
+        self.database.get_comparison_favorites.return_value = [
+            {'id': 7, 'name': 'Biology', 'earnings': 50000, 'description': 'Study life'}
+        ]
+        response = self.client.get('/api/favorites?details=1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['favorites'][0]['cipcode'], 7)
+        self.assertEqual(response.json['favorites'][0]['earnings'], 50000)
+        self.database.get_comparison_favorites.assert_called_with(42, 'majors')
+        response = self.client.get('/api/program-favorites?details=1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['favorites'][0]['program_id'], 7)
+        self.assertIn('/7', response.json['favorites'][0]['url'])
+        self.database.get_comparison_favorites.assert_called_with(42, 'programs')
+
+    def test_major_details_page_and_missing_major(self):
+        self.database.get_major_details.return_value = {
+            'cipcode': 7, 'major': 'Biology', 'description': 'Study living organisms.',
+            'earnings': None, 'school_count': 4, 'is_favorite': False,
+        }
+        response = self.client.get('/majors/7')
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('Study living organisms.', html)
+        self.assertIn('Sign in to save favorites', html)
+        self.assertIn('cipcode=7', html)
+        self.database.get_major_details.assert_called_with(7, None)
+        self.login()
+        response = self.client.get('/majors/7')
+        self.assertIn('data-major-favorite="7"', response.get_data(as_text=True))
+        self.database.get_major_details.assert_called_with(7, 42)
+        self.database.get_major_details.return_value = None
+        self.assertEqual(self.client.get('/majors/999').status_code, 404)
+        self.assertEqual(self.client.get('/majors/0').status_code, 404)
+
+    def test_major_matching_interests_are_private_and_optional(self):
+        self.database.get_major_details.return_value = {
+            'cipcode': 7, 'major': 'Biology', 'description': None,
+            'earnings': None, 'school_count': 4, 'is_favorite': False,
+        }
+        rec = {'cipcode': 7, 'matching_keywords': 1,
+               'evidence': [{'keyword': 'Biology', 'evidence': 'I enjoy <biology>.'}]}
+        html = self.client.get('/majors/7').get_data(as_text=True)
+        self.assertNotIn('matching-interests-title', html)
+        self.database.get_guest_session.assert_not_called()
+        self.login()
+        self.database.get_recommendations.return_value = [rec]
+        html = self.client.get('/majors/7?user_id=99').get_data(as_text=True)
+        self.assertIn('1 matching interest', html)
+        self.assertIn('I enjoy &lt;biology&gt;.', html)
+        self.database.get_recommendations.assert_called_with(42)
+        self.database.get_recommendations.return_value = [{**rec, 'cipcode': 8}]
+        self.assertNotIn('matching-interests-title', self.client.get('/majors/7').get_data(as_text=True))
+        with self.client.session_transaction() as session:
+            session.pop('user_id', None)
+            session['guest_id'] = 'my-guest'
+        self.database.get_guest_session.return_value = {'state': {'recommendations': [rec]}}
+        html = self.client.get('/majors/7').get_data(as_text=True)
+        self.assertIn('1 matching interest', html)
+        self.database.get_guest_session.assert_called_with('my-guest')
+        self.database.get_guest_session.return_value = None
+        self.assertNotIn('matching-interests-title', self.client.get('/majors/7').get_data(as_text=True))
 
     def test_major_name_api_short_query_needs_no_database(self):
         response = self.client.get('/api/major-names?q=b')
@@ -262,7 +352,7 @@ class SessionAuthTests(unittest.TestCase):
             response = self.client.get('/explore?view=majors&q=bio&sort=earnings_desc&earnings_min=100&has_programs=1')
             self.assertEqual(response.status_code, 200)
             programs.assert_not_called()
-            self.database.get_major_catalog_page.assert_called_once_with(1, query='bio', sort='earnings_desc', earnings_min=100, favorites_only=False, has_programs=True, user_id=None)
+            self.database.get_major_catalog_page.assert_called_once_with(1, query='bio', sort='earnings_desc', earnings_min=100, favorites_only=False, user_id=None)
             html = response.get_data(as_text=True)
             self.assertIn('Explore majors</h1>', html)
             self.assertIn('q=bio', html)
@@ -276,6 +366,7 @@ class SessionAuthTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.database.get_major_catalog_page.call_args.kwargs['user_id'], 42)
         self.assertIn('data-major-favorite="7"', response.get_data(as_text=True))
+        self.database.get_program_preferences.return_value = {}
         self.database.get_major_favorites.return_value = []
         with patch('degree_path.routes.program_page', return_value={'page':1,'rows':[],'has_next':True}) as programs:
             response = self.client.get('/explore?view=programs&school_name=College&sort=net_price_asc&cipcode=7')
@@ -285,6 +376,122 @@ class SessionAuthTests(unittest.TestCase):
             self.assertEqual(programs.call_args.kwargs, {'sort_option':'npt4', 'sort_order':'ASC'})
             self.assertIn('sort=net_price_asc', response.get_data(as_text=True))
         self.assertEqual(self.client.get('/explore?sort=invalid').status_code, 400)
+
+
+
+
+
+
+    def test_explore_preferences_save_restore_reset_and_identity(self):
+        self.login()
+        with self.client.session_transaction() as state:
+            csrf = state['csrf']
+        filters = {'state': ['NY'], 'city': ['Albany'], 'net_price_max': ['0'],
+                   'degree_form': ['1'], 'degree': ['2', '3'], 'tuition_out_max': ['25000'],
+                   'sort': ['earnings_desc'], 'major_filter': ['all']}
+        body = {'action': 'save', 'view': 'programs', 'filters': filters, 'user_id': 99}
+        self.assertEqual(self.client.post('/api/explore/preferences', json=body).status_code, 400)
+        response = self.client.post('/api/explore/preferences', json=body, headers={'X-CSRF-Token': csrf})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.database.save_program_preferences.call_args.args[0], 42)
+        self.assertEqual(self.database.save_program_preferences.call_args.args[1]['degrees'], ['2,3'])
+        self.assertIn('tuition_out_max=25000', response.json['url'])
+        self.database.get_program_preferences.return_value = {'state':['NY'], 'city':['Albany'], 'net_price_max':['0'], 'degrees':['2,3']}
+        response = self.client.get('/explore?cipcode=7')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('cipcode=7', response.location)
+        self.assertIn('tuition_out_max=25000', response.location)
+        response = self.client.post('/api/explore/preferences', json={'action':'reset'}, headers={'X-CSRF-Token': csrf})
+        self.assertEqual(response.status_code, 200)
+        self.database.reset_user_preferences.assert_called_once_with(42)
+        with self.client.session_transaction() as state:
+            self.assertNotIn('explore_preferences', state)
+
+    def test_guest_preferences_and_chat_reset_preserve_other_state(self):
+        state = {'messages': [{'role':'user','content':'hello'}], 'keywords':[{'keyword_id':1}],
+                 'recommendations':[{'cipcode':7}], 'explore_preferences': {'majors':{'q':['bio']}}}
+        with patch('degree_path.routes.get_or_create_guest_session', return_value=('g', {'state':state,'version':4})), \
+             patch.object(self.database, 'save_guest_session', create=True, return_value=5) as save:
+            response = self.client.post('/api/explore/preferences', json={'action':'save', 'view':'programs',
+                'filters':{'state':['NY']}}, headers={'X-CSRF-Token':'test-csrf'})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(save.call_args.args[1]['messages'], state['messages'])
+            response = self.client.post('/api/chat/reset', json={}, headers={'X-CSRF-Token':'test-csrf'})
+            self.assertEqual(response.status_code, 200)
+            updated = save.call_args.args[1]
+            self.assertEqual(updated['messages'], [])
+            self.assertEqual(updated['keywords'], [])
+            self.assertEqual(updated['recommendations'], [])
+            self.assertEqual(updated['explore_preferences'], state['explore_preferences'])
+            self.assertEqual(state['keywords'], [{'keyword_id':1}])
+            save.return_value = None
+            self.assertEqual(self.client.post('/api/chat/reset', json={}, headers={'X-CSRF-Token':'test-csrf'}).status_code, 409)
+
+    def test_account_chat_reset_requires_csrf_and_uses_session(self):
+        self.login()
+        with self.client.session_transaction() as state:
+            csrf = state['csrf']
+        self.assertEqual(self.client.post('/api/chat/reset', json={}).status_code, 400)
+        response = self.client.post('/api/chat/reset', json={'user_id':99}, headers={'X-CSRF-Token':csrf})
+        self.assertEqual(response.status_code, 200)
+        self.database.reset_user_chat.assert_called_once_with(42)
+
+    def test_explore_preference_validation_and_major_view(self):
+        from degree_path.preferences import validate_explore_preferences
+        for values in [{'degree':['5'], 'degree_form':['1']}, {'acceptance_min':['90'], 'acceptance_max':['10']},
+                       {'sort':['sql']}, {'net_price_max':['-1']}, {'extra':['x']}]:
+            with self.assertRaises(ValueError):
+                validate_explore_preferences('programs', values)
+        self.assertEqual(validate_explore_preferences('majors', {'q':['bio'], 'earnings_min':['0']}),
+                         {'q':['bio'], 'earnings_min':['0']})
+        self.login()
+        with self.client.session_transaction() as state:
+            csrf = state['csrf']
+        response = self.client.post('/api/explore/preferences', json={'action':'save','view':'majors',
+            'filters':{'q':['bio'], 'sort':['earnings_desc']}}, headers={'X-CSRF-Token':csrf})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('q=bio', self.client.get('/explore?view=majors').location)
+        self.database.save_program_preferences.assert_not_called()
+
+    def test_missing_preferences_do_not_block_explore_or_check_filters(self):
+        self.login()
+        data = {'page':1, 'has_next':False, 'rows':[]}
+        with patch('degree_path.routes.program_page', return_value=data) as query:
+            for preferences in ({}, {'state':[''], 'city':[''], 'degrees':[''], 'net_price_max':['']},
+                                {'state':[None], 'degrees':[None]}):
+                self.database.get_program_preferences.return_value = preferences
+                response = self.client.get('/explore')
+                self.assertEqual(response.status_code, 200)
+                html = response.get_data(as_text=True)
+                self.assertNotRegex(html, r'<input[^>]*\schecked(?:\s|>)')
+                self.assertEqual(query.call_args.args[2], ())
+            self.database.get_program_preferences.side_effect = RuntimeError('Optional profile unavailable')
+            try:
+                with self.assertLogs(self.app.logger, level='ERROR'):
+                    self.assertEqual(self.client.get('/explore').status_code, 200)
+            finally:
+                self.database.get_program_preferences.side_effect = None
+
+    def test_visible_preferences_are_checked_and_used_for_program_query(self):
+        self.login()
+        self.database.get_program_preferences.return_value = {'state':['NY'], 'city':['Albany'],
+            'degrees':['3'], 'net_price_max':['0']}
+        data = {'page':1, 'has_next':False, 'rows':[]}
+        with patch('degree_path.routes.program_page', return_value=data) as query:
+            response = self.client.get('/explore', follow_redirects=True)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(query.call_args.args[2], (3,))
+            self.assertEqual(query.call_args.args[3]['state'], 'NY')
+            self.assertEqual(query.call_args.args[3]['net_price_max'], 0)
+            html = response.get_data(as_text=True)
+            self.assertNotIn('data-filter-toggle="filter-state"', html)
+            self.assertNotIn('data-filter-toggle=', html)
+            self.assertNotRegex(html, r"<details[^>]*\bopen\b")
+            self.assertIn('value="3" checked', html)
+            self.assertNotIn('data-filter-toggle="filter-tuition_in_max" checked', html)
+            self.client.get('/explore?preferences_applied=1')
+            self.assertEqual(query.call_args.args[3], {})
+            self.assertEqual(query.call_args.args[2], ())
 
 
 if __name__ == '__main__':

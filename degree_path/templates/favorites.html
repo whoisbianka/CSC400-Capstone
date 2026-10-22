@@ -11,8 +11,7 @@
 {% with gate_title='Favorites' %}{% include '_favorites_signin.html' %}{% endwith %}
 {% else %}
 <section class="page-workspace" id="favorites-page" data-csrf="{{ csrf_token }}" data-explore-url="{{ url_for('web.explore') }}">
-  <h1 id="page-title">Favorites</h1>
-  <p>Your saved majors and programs, all in one place.</p>
+  <h1 id="page-title" class="sr-only">Favorites</h1>
   <nav class="favorites-tabs" aria-label="Favorite type">
     <button type="button" data-favorite-kind="majors" aria-pressed="true">Majors</button>
     <button type="button" data-favorite-kind="programs" aria-pressed="false">Programs</button>

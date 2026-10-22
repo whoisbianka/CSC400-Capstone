@@ -29,6 +29,33 @@
         location.textContent = [favorite.city, favorite.state].filter(Boolean).join(', ');
         card.append(details, location);
       }
+      const facts = document.createElement('dl');
+      facts.className = 'favorite-facts';
+      const money = value => value == null ? 'Not reported' : new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: 'USD', maximumFractionDigits: 0,
+      }).format(Number(value));
+      const addFact = (label, value) => {
+        const item = document.createElement('div');
+        const term = document.createElement('dt'); term.textContent = label;
+        const detail = document.createElement('dd'); detail.textContent = value;
+        item.append(term, detail); facts.appendChild(item);
+      };
+      addFact(programs ? 'Reported earnings' : 'Median of reported program earnings', money(favorite.earnings));
+      if (programs) {
+        addFact('Average net price / year', money(favorite.npt4));
+        addFact('In-state tuition / year', money(favorite.tuitionfee_in));
+        addFact('Out-of-state tuition / year', money(favorite.tuitionfee_out));
+        addFact('Acceptance rate', favorite.adm_rate == null ? 'Not reported' : Math.round(Number(favorite.adm_rate) * 100) + '%');
+      } else {
+        addFact('Number of schools offering this major', favorite.school_count ?? 'Not reported');
+      }
+      card.appendChild(facts);
+      if (!programs) {
+        const majorLink = document.createElement('a');
+        majorLink.href = '/majors/' + Number(favorite.cipcode);
+        majorLink.textContent = 'View major →';
+        card.appendChild(majorLink);
+      }
       const link = document.createElement('a');
       if (programs) {
         link.href = favorite.url;
@@ -67,7 +94,7 @@
     document.getElementById('favorites-heading').textContent = `Favorite ${kind}`;
     tabs.forEach(tab => tab.setAttribute('aria-pressed', String(tab.dataset.favoriteKind === kind)));
     try {
-      const result = kind === 'programs' ? await api.loadProgramFavorites() : await api.loadFavorites();
+      const result = kind === 'programs' ? await api.loadProgramFavorites(true) : await api.loadFavorites(true);
       if (requestVersion !== version) return;
       render(result.favorites, requestVersion);
     } catch (error) {
