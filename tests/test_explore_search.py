@@ -97,7 +97,7 @@ class ExploreSearchTests(unittest.TestCase):
         self.assertEqual(without_associate['state'], ['CT'])
         self.assertIn('Remove Cost after aid up to: $0', chips)
 
-    def test_cards_lead_with_major_and_keep_admissions_in_more_details(self):
+    def test_cards_show_college_ownership_and_keep_score_details_collapsed(self):
         data = {'rows': [{'id': 1, 'cipcode': 1107, 'major': 'Computer Science',
                          'college': 'Elmwood', 'city': None, 'state': None,
                          'facts': {'adm_rate': 0.6, 'credlev': 3,
@@ -107,12 +107,14 @@ class ExploreSearchTests(unittest.TestCase):
             response = self.client.get('/explore')
         html = response.get_data(as_text=True)
         card = html.split('<article class="program-card">', 1)[1].split('</article>', 1)[0]
-        self.assertLess(card.index('Computer Science'), card.index('Elmwood'))
-        self.assertIn('Yearly cost after aid', card)
+        self.assertLess(card.index('Elmwood'), card.index('Computer Science'))
+        self.assertIn('Program at this college', card)
+        self.assertIn('program-college-header', card)
+        self.assertIn('Avg. yearly cost after aid', card)
         self.assertIn('Not reported', card)
         self.assertIn('Location not reported', card)
         summary = card.index('<summary>More details</summary>')
-        self.assertGreater(card.index('Acceptance rate'), summary)
+        self.assertLess(card.index('Accepted by the college'), summary)
         self.assertGreater(card.index('SAT Math'), summary)
         self.assertIn('View program', card)
         self.assertNotIn('active-filters', html)
