@@ -1,4 +1,4 @@
-// The reference UI applies valid filters immediately and restores loading state on Back.
+// Apply filters explicitly, synchronize degree values, and restore state on Back.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -8,9 +8,9 @@ let valid = true;
 let submissions = 0;
 const form = {
   querySelectorAll: () => choices,
-  addEventListener: (event, handler) => { handlers[event] = handler; },
+  addEventListener: (event, handler) => { (handlers[event] ||= []).push(handler); },
   reportValidity: () => valid,
-  requestSubmit: () => { submissions++; handlers.submit(); },
+  requestSubmit: () => { submissions++; handlers.submit.forEach(handler => handler()); },
 };
 const values = {value:''};
 const loading = {hidden:true};
@@ -25,7 +25,8 @@ vm.runInNewContext(fs.readFileSync('degree_path/static/js/explore.js','utf8'),{
   },
   window:{addEventListener:(_,handler)=>{pageshow=handler;}},
 });
-handlers.change();
+assert.equal(handlers.change, undefined, 'Editing filters must not submit before Apply filters');
+form.requestSubmit();
 assert.equal(submissions,1);
 assert.equal(values.value,'3');
 assert.equal(loading.hidden,false);
@@ -33,11 +34,8 @@ assert.equal(results['aria-busy'],'true');
 pageshow();
 assert.equal(loading.hidden,true);
 assert.equal(results['aria-busy'],undefined);
-valid=false;
-handlers.change();
-assert.equal(submissions,1,'Invalid filters must not submit');
 click({button:0,ctrlKey:true});
 assert.equal(loading.hidden,true,'Opening another tab must not leave this page loading');
 click({button:0});
 assert.equal(loading.hidden,false);
-console.log('Immediate filter submission, validation, loading feedback, and Back restoration passed.');
+console.log('Explicit filter submission, degree synchronization, loading feedback, and Back restoration passed.');

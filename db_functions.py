@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, text, bindparam
 import sqlalchemy
 import numpy as np
 import os
+import re
 from dotenv import load_dotenv
 from google.cloud.sql.connector import Connector
 from cloud_sql_connection import connect_with_connector, close_connector
@@ -13,6 +14,16 @@ import json
 load_dotenv()
 
 engine=connect_with_connector()
+
+SCHOOL_SEARCH_ALIASES = {
+    "uconn": ("University of Connecticut",),
+    "umass": ("University of Massachusetts",),
+    "mit": ("Massachusetts Institute of Technology",),
+    "caltech": ("California Institute of Technology",),
+    "ucla": ("University of California-Los Angeles", "University of California, Los Angeles"),
+    "upenn": ("University of Pennsylvania",),
+    "pennstate": ("Pennsylvania State University",),
+}
 
 ##CREATE Functions
 #Add User
@@ -675,6 +686,20 @@ def get_page_programs(
 
     validate_program_filters(filters)
 
+    # Search words may match either the major or the school name.
+    for index, word in enumerate(filters.get("q", "").split()):
+        key = f"search_{index}"
+        params[key] = "%" + word.lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
+        matches = [f"LOWER(s.instnm) LIKE :{key} ESCAPE '!'",
+                   f"LOWER(m.cipdesc) LIKE :{key} ESCAPE '!'"]
+        alias = re.sub(r"[^a-z0-9]", "", word.casefold())
+        for alias_index, school_name in enumerate(SCHOOL_SEARCH_ALIASES.get(alias, ())):
+            alias_key = f"search_alias_{index}_{alias_index}"
+            params[alias_key] = "%" + school_name.lower() + "%"
+            matches.append(f"LOWER(s.instnm) LIKE :{alias_key}")
+        conditions.append("(" + " OR ".join(matches) + ")")
+
+
     if filters.get("cipcode") is not None:
         conditions.append("p.cipcode=:cipcode")
         params["cipcode"]=filters["cipcode"]
@@ -826,6 +851,8 @@ def get_page_programs(
 
 #helper function to validate program filters
 def validate_program_filters(filters):
+    if "q" in filters and (not isinstance(filters["q"], str) or len(filters["q"]) > 200):
+        raise ValueError("Search must be text of at most 200 characters.")
     school_name = filters.get("school_name")
     if school_name is not None and (
         not isinstance(school_name, str) or not 1 <= len(school_name.strip()) <= 200
