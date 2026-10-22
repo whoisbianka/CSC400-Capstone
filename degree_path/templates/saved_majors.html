@@ -1,11 +1,43 @@
 {% extends 'base.html' %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/saved-majors.css', v='20261022') }}">
+<script src="{{ url_for('static', filename='js/saved-majors.js', v='20261022') }}" defer></script>
+{% endblock %}
 {% block content %}
-<div class="page-workspace">
-  <section class="workspace-page">
+<div class="page-workspace saved-workspace">
+  <header class="saved-header">
+    <p class="saved-kicker">YOUR NEXT CHAPTER</p>
     <h1 id="page-title">Saved majors</h1>
-    <div id="saved-majors-list"></div>
-
+    <p>Your shortlist, your next step. Select up to 3 college programs to compare side by side.</p>
+    <p id="saved-account-status" role="status">Verifying your account…</p>
+    <button type="button" class="primary-link" id="saved-open-comparison" hidden>Compare saved majors ↓</button>
+    <p id="saved-open-help" class="small-note" hidden>Start with one college program from each saved major, then change your selections below.</p>
+  </header>
+  <div id="saved-majors-list" aria-busy="true"></div>
+  <section id="saved-library" hidden aria-labelledby="saved-library-title">
+    <div class="saved-section-heading"><h2 id="saved-library-title">Your saved majors</h2><span id="saved-major-count"></span></div>
+    <p class="saved-context">Majors are saved across colleges. Choose the college programs you want to compare below.</p>
+    <div id="saved-program-groups"></div>
+  </section>
+  <section id="saved-empty" class="saved-empty" hidden aria-labelledby="saved-empty-title">
+    <h2 id="saved-empty-title">Your next chapter starts with a major.</h2>
+    <p>No saved majors yet. Save a major while exploring programs, then come back to compare your options.</p>
     <a class="primary-link" href="{{ url_for('web.explore') }}">Explore programs →</a>
   </section>
+  <section id="saved-comparison" class="saved-comparison" hidden aria-labelledby="saved-comparison-title">
+    <div class="saved-section-heading">
+      <div><h2 id="saved-comparison-title">Compare your shortlist</h2><p id="saved-selection-count" role="status" aria-live="polite"></p></div>
+      <label class="saved-differences"><input id="saved-differences" type="checkbox"> Differences only</label>
+    </div>
+    <p id="saved-comparison-prompt">Select at least two college programs above to compare them here.</p>
+    <div id="saved-comparison-results" hidden>
+      <div class="saved-table-scroll" role="region" aria-label="Program comparison" tabindex="0">
+        <table class="saved-comparison-table"><caption class="sr-only">Comparison of selected saved-major programs</caption><thead id="saved-comparison-head"></thead><tbody id="saved-comparison-body"></tbody></table>
+      </div>
+      <div class="saved-legend"><span><i class="saved-swatch saved-swatch-best" aria-hidden="true"></i> Best value</span><span><i class="saved-swatch saved-swatch-worse" aria-hidden="true"></i> Worse value</span><span>Ties and missing values stay neutral.</span></div>
+      <p class="small-note">Costs and admissions are college-wide. Earnings are for the program, 4 years after completion. Reported test scores are not admission requirements. {{ source_note }}</p>
+    </div>
+  </section>
+  <a class="saved-explore-link" href="{{ url_for('web.explore') }}">Explore more programs →</a>
 </div>
 {% endblock %}

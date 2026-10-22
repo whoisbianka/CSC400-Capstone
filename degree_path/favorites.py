@@ -105,3 +105,13 @@ def save_major_api(cipcode):
             connection.execute(text('''DELETE FROM saved_majors
                 WHERE clerk_user_id = :user_id AND cipcode = :cipcode'''), params)
     return jsonify(saved=body['saved'])
+
+
+@web.get('/api/account')
+@require_account
+def account_api():
+    # Only the server-verified Clerk subject establishes account identity.
+    return jsonify(clerk_user_id=g.clerk_user_id, provider='Clerk', verified=True)
+
+
+from . import saved_comparison  # Register after the shared account verifier.

@@ -1,5 +1,4 @@
 (() => {
-  let clerkPromise;
   let favorites = [];
   const list = document.getElementById('saved-majors-list');
   const notice = document.createElement('p');
@@ -59,59 +58,7 @@
     } finally { confirmLogin.disabled = false; }
   });
 
-  function loadScript(src, key) {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      const timer = setTimeout(() => { script.remove(); reject(new Error('Sign-in loading timed out. Try again.')); }, 20000);
-      script.src = src;
-      script.async = true;
-      script.crossOrigin = 'anonymous';
-      if (key) script.setAttribute('data-clerk-publishable-key', key);
-      script.onload = () => { clearTimeout(timer); resolve(); };
-      script.onerror = () => { clearTimeout(timer); script.remove(); reject(new Error('Sign-in is unavailable. Try again shortly.')); };
-      document.head.append(script);
-    });
-  }
-
-  function clerk() {
-    if (!clerkPromise) clerkPromise = (async () => {
-      const key = window.CLERK_PUBLISHABLE_KEY;
-      const decoded = atob(key.split('_')[2]);
-      const domain = decoded.slice(0, -1);
-      if (!decoded.endsWith('$') || !/^[a-z0-9]+(?:[.-][a-z0-9]+)+$/i.test(domain)) throw new Error('Sign-in configuration is unavailable.');
-      if (!window.Clerk) {
-        await loadScript(`https://${domain}/npm/@clerk/ui@1/dist/ui.browser.js`);
-        await loadScript(`https://${domain}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, key);
-      }
-      // Read the shared palette so sign-in dialogs match every application page.
-      // https://clerk.com/docs/js-frontend/guides/customizing-clerk/appearance-prop/variables
-      const theme = getComputedStyle(document.documentElement);
-      const color = name => theme.getPropertyValue(name).trim();
-      await window.Clerk.load({
-        ui: { ClerkUI: window.__internal_ClerkUICtor },
-        appearance: {
-          variables: {
-            colorPrimary: color('--primary'),
-            colorPrimaryForeground: color('--on-primary'),
-            colorBackground: color('--surface'),
-            colorForeground: color('--text'),
-            colorMuted: color('--surface-raised'),
-            colorMutedForeground: color('--muted'),
-            colorInput: color('--background'),
-            colorInputForeground: color('--text'),
-            colorNeutral: color('--text'),
-            colorBorder: color('--border'),
-            colorRing: color('--accent'),
-            borderRadius: '0.75rem',
-            fontFamily: theme.fontFamily,
-          },
-        },
-      });
-      return window.Clerk;
-    })().catch(error => { clerkPromise = undefined; throw error; });
-    return clerkPromise;
-  }
-
+  function clerk() { return window.DegreePathAccount.load(); }
   function openSignIn(auth) {
     auth.openSignIn({
       forceRedirectUrl: location.href,
@@ -150,7 +97,7 @@
   }
 
   function render() {
-    if (list) {
+    if (list && !window.SavedMajors) {
       // Preserve the account prompt and status nodes.
       list.querySelectorAll('.saved-major-row, .saved-majors-empty').forEach(node => node.remove());
       if (!favorites.length) {
@@ -199,8 +146,19 @@
 
   async function refresh() {
     notice.textContent = 'Loading saved majors…';
-    try { favorites = (await api('/api/saved-majors')).majors; render(); notice.textContent = ''; return true; }
+    if (list) list.setAttribute('aria-busy', 'true');
+    try {
+      if (list && window.DegreePathAccount) {
+        const account = await window.DegreePathAccount.verify();
+        if (!account.signedIn) { window.SavedMajors?.reset(); throw accountRequired(); }
+        document.getElementById('saved-account-status').textContent = '✓ Signed in via Clerk · ' + (account.user.fullName || account.user.firstName || account.user.username || 'Your account');
+      }
+      favorites = (await api('/api/saved-majors')).majors;
+      if (list && window.SavedMajors) await window.SavedMajors.refresh(api, favorites);
+      render(); notice.textContent = ''; return true;
+    }
     catch (error) { notice.textContent = error.message; return false; }
+    finally { if (list) list.setAttribute('aria-busy', 'false'); }
   }
 
   document.addEventListener('click', async event => {
@@ -229,6 +187,13 @@
       }
     }
     finally { button.disabled = false; }
+  });
+
+  window.addEventListener('degree-path-account-change', event => {
+    favorites = [];
+    if (list && window.SavedMajors) window.SavedMajors.reset();
+    if (event.detail.signedIn) void refresh();
+    else { render(); if (list) { gate.hidden = false; notice.textContent = 'Sign in to view your saved majors.'; } }
   });
 
   // Guests can browse immediately; their first save opens the account prompt.

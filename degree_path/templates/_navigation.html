@@ -2,7 +2,7 @@
 <header class="site-navigation">
   <a class="site-brand" href="{{ url_for('web.home') }}"><span aria-hidden="true">✳</span> Degree Path</a>
   <nav aria-label="Account navigation">
-    {% if request.endpoint in ['web.explore', 'web.program_details', 'web.saved_majors_page'] %}
+    {% if request.endpoint in ['web.explore', 'web.program_details', 'web.saved_majors_page', 'web.profile'] %}
     <a href="{{ url_for('web.saved_majors_page') }}" {% if request.endpoint == 'web.saved_majors_page' %}aria-current="page"{% endif %}>Saved majors</a>
     {% endif %}
     <a href="{{ url_for('web.profile') }}" {% if request.endpoint == 'web.profile' %}aria-current="page"{% endif %}>Profile</a>

@@ -8,14 +8,15 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 <script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/clerk-config.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/account.js', v='20261022') }}" defer></script>
 {% block extra_head %}{% endblock %}
 </head>
 <body class="chat-app">
 <a class="skip-link" href="#page-title">Skip to content</a>
 {% include '_navigation.html' %}
 {% if request.endpoint in ['web.explore', 'web.program_details', 'web.saved_majors_page'] %}
-<script src="{{ url_for('static', filename='js/clerk-config.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/favorites.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/favorites.js', v='20261022') }}" defer></script>
 {% endif %}
 <main class="app-main">
 {% block content %}{% endblock %}
