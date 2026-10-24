@@ -14,7 +14,7 @@
 <a class="skip-link" href="#page-title">Skip to content</a>
 {% include '_navigation.html' %}
 {% if request.endpoint in ['web.explore', 'web.program_details', 'web.saved_majors_page'] %}
-<script src="{{ url_for('static', filename='js/saved-major-controls.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/saved-major-controls.js', v='save-prompt-2') }}" defer></script>
 {% endif %}
 <main class="app-main">
 {% block content %}{% endblock %}

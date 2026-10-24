@@ -27,7 +27,7 @@
   loginTitle.textContent = 'Sign in to save';
   const loginMessage = document.createElement('p');
   loginMessage.id = 'favorites-login-message';
-  loginMessage.textContent = 'To save this college, you must sign in.';
+  loginMessage.textContent = 'Sign in or create an account to save this major.';
   const loginStatus = document.createElement('p');
   loginStatus.className = 'favorites-notice';
   loginStatus.setAttribute('role', 'status');
@@ -57,6 +57,12 @@
       if (!loginDialog.open) loginDialog.showModal();
     } finally { confirmLogin.disabled = false; }
   });
+
+  function showSignInPrompt(kind = 'major') {
+    loginMessage.textContent = `Sign in or create an account to save this ${kind}.`;
+    loginStatus.textContent = '';
+    if (!loginDialog.open) loginDialog.showModal();
+  }
 
   // Use prototype1's verified Flask session and existing Clerk sign-in flow.
   async function clerk() {
@@ -157,8 +163,19 @@
   }
 
   document.addEventListener('click', async event => {
+    const guestSave = event.target.closest('[data-save-requires-signin]');
+    if (guestSave && !guestSave.disabled) {
+      event.preventDefault();
+      showSignInPrompt(guestSave.dataset.saveRequiresSignin === 'program' ? 'program' : 'major');
+      return;
+    }
     const button = event.target.closest('[data-save-major]');
     if (!button || button.disabled) return;
+    if (!document.getElementById('account-navigation').dataset.userId) {
+      event.preventDefault();
+      showSignInPrompt('major');
+      return;
+    }
     button.disabled = true;
     if (!list) {
       // Keep feedback beside the clicked star instead of above the catalog.
@@ -175,8 +192,7 @@
     } catch (error) {
       if (error.requiresSignIn) {
         notice.textContent = '';
-        loginStatus.textContent = '';
-        if (!loginDialog.open) loginDialog.showModal();
+        showSignInPrompt('major');
       } else {
         notice.textContent = error.message;
       }
