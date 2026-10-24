@@ -1,44 +1,30 @@
-.workspace-page {
-        box-sizing: border-box;
-        min-height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }
-
-      .workspace-page > p, .workspace-page > h1 {
-        text-align: center;
-      }
-
-      #auth-component {
-        display: flex;
-        justify-content: center;
-        margin: 24px 0;
-        max-width: 100%;
-      }
-
-      #auth-component .cl-rootBox, #auth-component .cl-cardBox {
-        max-width: 100%;
-      }
-
-      .account-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        align-items: center;
-        justify-content: center;
-        margin: 24px 0;
-      }
-
-      .account-actions button {
-        border: 1px solid currentColor;
-        border-radius: 10px;
-        padding: 10px 16px;
-        background: transparent;
-        color: inherit;
-        cursor: pointer;
-      }
-
-      .account-actions [hidden], #auth-user-button[hidden] {
-        display: none;
-      }
+/* Account identity uses the shared site palette; account actions stay in the navbar. */
+.profile-workspace { max-width: 1200px; padding-top: 32px; }
+.profile-heading { margin-bottom: 24px; }
+.profile-heading h1 { margin: 0 0 6px; font-size: 22px; font-weight: 500; line-height: 1.4; letter-spacing: -.3px; }
+.profile-heading p { margin: 0; font-size: 14px; }
+.profile-account { max-width: 760px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); overflow: hidden; }
+.profile-identity { display: flex; align-items: center; gap: 18px; padding: 26px; }
+.profile-avatar { display: grid; place-items: center; width: 58px; height: 58px; flex: 0 0 58px; border-radius: 16px; background: var(--surface-raised); color: var(--accent); font-size: 23px; font-weight: 500; }
+.profile-person { min-width: 0; }
+.profile-person h2 { margin: 0 0 3px; font-size: 21px; font-weight: 500; line-height: 1.4; letter-spacing: 0; overflow-wrap: anywhere; }
+.profile-email { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.profile-signed-in { display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; color: #9ae1ca; font-size: 12px; }
+.profile-status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.profile-details { margin: 0; padding: 0 26px 12px; }
+.profile-details > div { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 16px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.profile-details dt { color: var(--muted); }
+.profile-details dd { margin: 0; text-align: right; overflow-wrap: anywhere; min-width: 0; }
+.profile-identity-status { padding: 0 26px; font-size: 12px; }
+.profile-identity-status:empty { display: none; }
+.profile-footer { padding: 18px 26px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+.profile-signed-out { padding: 28px; }
+.profile-signed-out h2 { margin: 0 0 8px; font-size: 20px; font-weight: 500; letter-spacing: 0; }
+.profile-signed-out p { margin: 0; font-size: 14px; }
+@media (max-width: 600px) {
+  .profile-workspace { padding-top: 24px; }
+  .profile-identity { padding: 20px; gap: 14px; }
+  .profile-details { padding: 0 20px 10px; }
+  .profile-footer { padding: 16px 20px; }
+}
+@media (max-width: 380px) { .profile-details > div { flex-direction: column; gap: 5px; } .profile-details dd { text-align: left; } }

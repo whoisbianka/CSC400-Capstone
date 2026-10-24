@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync('degree_path/static/js/account-auth.js', 'utf8');
 
-function fixture({userId = '', active = false, pending = {}, failLogout = false} = {}) {
+function fixture({userId = '', active = false, pending = {}, failLogout = false, profile = false, profileUser = null} = {}) {
   const calls = [];
   const storage = new Map(Object.entries(pending));
   const element = (dataset = {}) => ({dataset, hidden: true, disabled: false,
@@ -13,7 +13,10 @@ function fixture({userId = '', active = false, pending = {}, failLogout = false}
   const button = element({authAction: userId ? 'logout' : 'login'});
   const status = element();
   const retry = element();
+  const profileElements = Object.fromEntries(['profile-name','profile-email','profile-name-value','profile-email-value','profile-avatar','profile-identity-status'].map(id => [id, element()]));
+  if (profile) profileElements['profile-account'] = element({clerkUserId:'user_expected'});
   const clerk = {
+    user: profileUser,
     session: active ? {getToken: async () => 'token'} : null,
     load: async () => calls.push('load'),
     openSignIn: options => { calls.push('modal'); assert.equal(options.forceRedirectUrl, 'https://app.test/favorites'); },
@@ -23,7 +26,7 @@ function fixture({userId = '', active = false, pending = {}, failLogout = false}
   };
   const context = {
     document: {
-      getElementById: id => ({'account-navigation':nav,'account-status':status,'account-retry-logout':retry})[id],
+      getElementById: id => ({'account-navigation':nav,'account-status':status,'account-retry-logout':retry,...profileElements})[id],
       querySelectorAll: () => [button],
     },
     window: {Clerk:clerk, __internal_ClerkUICtor:{}, location:{href:'https://app.test/favorites',reload:()=>calls.push('reload')}},
@@ -38,7 +41,7 @@ function fixture({userId = '', active = false, pending = {}, failLogout = false}
     },
   };
   vm.runInNewContext(source, context);
-  return {calls, storage, button, retry, clerk, status};
+  return {calls, storage, button, retry, clerk, status, profileElements};
 }
 const flush = () => new Promise(resolve=>setImmediate(resolve));
 (async () => {
@@ -73,5 +76,28 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
   await f.retry.click();
   assert.equal(f.retry.hidden, true);
   assert.equal(f.storage.has('degree-path-logout-pending'), false);
-  console.log('Account UI checks passed: no automatic prompt, modal login, OAuth return, logout and failure recovery.');
+  f = fixture({userId:'42', active:true, profile:true, profileUser:{id:'user_expected', fullName:'Test Student', primaryEmailAddress:{emailAddress:'student@example.com'}}});
+  await flush();
+  assert.equal(f.profileElements['profile-name'].textContent, 'Test Student');
+  assert.equal(f.profileElements['profile-email-value'].textContent, 'student@example.com');
+  assert.equal(f.profileElements['profile-avatar'].textContent, 'TS');
+  assert.deepEqual(f.calls, ['load'], 'Profile loads details without opening a sign-in prompt');
+  await f.button.click();
+  assert.equal(f.calls.includes('/logout'), true);
+
+  f = fixture({userId:'42', active:true, profile:true, profileUser:{id:'user_other', fullName:'Wrong Account', primaryEmailAddress:{emailAddress:'wrong@example.com'}}});
+  await flush();
+  assert.equal(f.profileElements['profile-name'].textContent, undefined, 'Never display another Clerk account');
+  assert.equal(f.profileElements['profile-email-value'].textContent, 'Unavailable');
+  assert.match(f.profileElements['profile-identity-status'].textContent, /sign-in changed/);
+
+  f = fixture({userId:'42', active:true, profile:true, profileUser:{id:'user_expected'}});
+  await flush();
+  assert.equal(f.profileElements['profile-name-value'].textContent, 'Not provided');
+  assert.equal(f.profileElements['profile-email-value'].textContent, 'Not provided');
+
+  f = fixture({profile:true});
+  await flush();
+  assert.deepEqual(f.calls, [], 'Signed-out profiles must not load Clerk or open sign-in');
+  console.log('Account UI checks passed: login/logout, profile identity, account mismatch protection, missing details, and guest visits.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
