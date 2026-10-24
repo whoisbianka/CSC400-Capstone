@@ -7,7 +7,11 @@
   const saved = new Set();
   function label(button) {
     const favorite = saved.has(Number(button.dataset.programFavorite));
-    button.textContent = favorite ? 'Remove favorite' : 'Favorite program';
+    button.textContent = favorite ? '♥' : '♡';
+    const description = button.dataset.programLabel || 'this program';
+    const action = `${favorite ? 'Unfavorite' : 'Favorite'} ${description}`;
+    button.setAttribute('aria-label', action);
+    button.title = action;
     button.setAttribute('aria-pressed', String(favorite));
   }
   async function load() {
@@ -22,7 +26,11 @@
       status.textContent = '';
     } catch (error) {
       status.textContent = error.message;
-      buttons.forEach(button => {button.textContent = 'Favorites unavailable';});
+      buttons.forEach(button => {
+        button.textContent = '♡';
+        button.setAttribute('aria-label', 'Favorites unavailable. Use Retry favorites to try again.');
+        button.title = 'Favorites unavailable';
+      });
       retry.hidden = false;
     }
   }

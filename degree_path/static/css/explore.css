@@ -161,7 +161,7 @@
 .explore-programs-workspace .program-more[open] summary { margin-bottom: 12px; }
 .explore-programs-workspace .program-card-footer { justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 18px; color: var(--background); min-height: 48px; }
 .explore-programs-workspace .program-card-footer > span { font-size: 12px; color: inherit; margin-left: auto; }
-.program-favorite-button { position: relative; z-index: 2; border: 0; background: transparent; color: inherit; padding: 3px 0; font-size: 13px; cursor: pointer; text-align: left; }
+.program-favorite-button { position: relative; z-index: 2; border: 0; background: transparent; color: inherit; display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; font-size: 26px; line-height: 1; cursor: pointer; text-align: center; }
 .program-favorite-button[aria-pressed="true"] { font-weight: 600; }
 .explore-majors-workspace { max-width: 1280px; }
 .major-search-options { display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
