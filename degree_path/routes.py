@@ -161,6 +161,7 @@ def program(program_id):
         "costs": {key: row.get(key) for key in cost_fields},
         "sat": {key: row.get(key) for key in sat_fields},
         "act": {key: row.get(key) for key in act_fields},
+        "website": college_website_url(row.get("website")),
         "description": (row.get("description") or "").strip(),
         "description_source": (
             row.get("description_source") or ""

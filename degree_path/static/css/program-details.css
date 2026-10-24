@@ -43,3 +43,5 @@
 
 .details-about { margin-bottom: 24px; }
 .major-description { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.75; margin: 0; }
+
+.details-college .college-website-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; text-decoration: none; }
