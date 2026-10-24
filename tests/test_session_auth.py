@@ -217,11 +217,11 @@ class SessionAuthTests(unittest.TestCase):
         data = {'page': 1, 'has_next': False, 'rows': [{'id': 10, 'college': 'Test College', 'major': 'Biology', 'city': 'City', 'state': 'NY', 'cipcode': 7, 'facts': {}}]}
         with patch('degree_path.routes.program_page', return_value=data):
             html = self.client.get('/explore').get_data(as_text=True)
-            self.assertIn('data-save-major="7"', html)
+            self.assertIn('data-save-requires-signin="program"', html)
             self.assertNotIn('js/program-card-favorites.js', html)
             self.login()
             html = self.client.get('/explore').get_data(as_text=True)
-            self.assertIn('data-save-major="7"', html)
+            self.assertIn('data-program-favorite="10"', html)
             self.assertIn('js/saved-major-controls.js', html)
 
     def test_explore_major_search_and_favorite_selection_persist(self):
@@ -265,7 +265,7 @@ class SessionAuthTests(unittest.TestCase):
             programs.assert_not_called()
             self.database.get_major_catalog_page.assert_called_once_with(1, query='bio', sort='earnings_desc', earnings_min=100, favorites_only=False, has_programs=True, user_id=None)
             html = response.get_data(as_text=True)
-            self.assertIn('Explore majors</h1>', html)
+            self.assertIn('Find your field of study</h1>', html)
             self.assertIn('q=bio', html)
             self.assertIn('sort=earnings_desc', html)
             self.assertIn('cipcode=7', html)
@@ -276,7 +276,7 @@ class SessionAuthTests(unittest.TestCase):
         response = self.client.get('/explore?view=majors&favorites_only=1&user_id=99')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.database.get_major_catalog_page.call_args.kwargs['user_id'], 42)
-        self.assertIn('data-major-favorite="7"', response.get_data(as_text=True))
+        self.assertIn('data-save-major="7"', response.get_data(as_text=True))
         self.database.get_major_favorites.return_value = []
         with patch('degree_path.routes.program_page', return_value={'page':1,'rows':[],'has_next':True}) as programs:
             response = self.client.get('/explore?view=programs&school_name=College&sort=net_price_asc&cipcode=7')

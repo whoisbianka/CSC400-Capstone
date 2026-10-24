@@ -87,8 +87,8 @@
     const userId = document.getElementById('account-navigation').dataset.userId;
     const cipcode = path.split('/')[3];
     if (body) body = { cipcode: Number(cipcode), favorite: body.saved };
-    const isPrograms = path.endsWith('/programs') || path.includes('/programs?');
-    const response = await fetch(isPrograms ? path : '/api/favorites', {
+    const isLibraryRead = path.endsWith('/summary') || path.endsWith('/programs') || path.includes('/programs?');
+    const response = await fetch(isLibraryRead ? path : '/api/favorites', {
       method: body ? 'POST' : 'GET',
       headers: { 'X-App-User-ID': userId, 'Content-Type': 'application/json',
         'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
@@ -131,8 +131,9 @@
       const saved = favorites.some(major => String(major.cipcode) === button.dataset.saveMajor);
       button.setAttribute('aria-pressed', String(saved));
       const cardStar = button.closest('.program-card') !== null;
-      button.textContent = list ? 'Remove' : cardStar ? (saved ? '★' : '☆') : saved ? '★ Major saved' : '☆ Save major';
-      if (cardStar) {
+      const majorCard = button.closest('.major-catalog-card') !== null;
+      button.textContent = list ? (majorCard ? '★ Saved' : 'Remove') : cardStar ? (saved ? '★' : '☆') : saved ? '★ Major saved' : '☆ Save major';
+      if (cardStar || majorCard) {
         const label = saved ? 'Remove major from saved majors' : 'Save major';
         button.setAttribute('aria-label', label);
         button.title = label;

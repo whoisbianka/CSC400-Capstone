@@ -12,7 +12,7 @@ class ComparisonDataTests(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine('sqlite://')
         self.addCleanup(self.engine.dispose)
-        names = {'get_major_catalog_page', 'get_page_programs', 'validate_program_filters', 'get_major_name_suggestions', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'}
+        names = {'get_saved_major_summaries', 'get_major_catalog_page', 'get_page_programs', 'validate_program_filters', 'get_major_name_suggestions', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'}
         source = ast.parse((Path(__file__).resolve().parents[1] / 'db_functions.py').read_text())
         # Load the production functions without initializing a cloud connection.
         tree = ast.Module(body=[n for n in source.body if isinstance(n, ast.FunctionDef) and n.name in names], type_ignores=[])
@@ -41,6 +41,20 @@ class ComparisonDataTests(unittest.TestCase):
                 "INSERT INTO public.program_fav VALUES (42, 10), (99, 11)",
             ]:
                 c.execute(text(statement))
+
+    def test_saved_major_summaries_are_general_and_account_owned(self):
+        summaries = self.functions['get_saved_major_summaries'](42)
+        self.assertEqual([m['cipcode'] for m in summaries], [7])
+        self.assertEqual(summaries[0]['major'], 'Biology')
+        self.assertEqual(summaries[0]['program_count'], 2)
+        self.assertEqual(summaries[0]['school_count'], 1)
+        self.assertIsNone(summaries[0]['description'])
+        self.assertNotIn('programs', summaries[0])
+        self.assertNotIn('college', summaries[0])
+        other = self.functions['get_saved_major_summaries'](99)
+        self.assertEqual([m['cipcode'] for m in other], [8])
+        self.assertEqual(other[0]['program_count'], 0)
+        self.assertEqual(self.functions['get_saved_major_summaries'](12345), [])
 
     def test_only_owned_favorites_and_missing_optional_data(self):
         majors = self.functions['get_comparison_favorites'](42, 'majors')

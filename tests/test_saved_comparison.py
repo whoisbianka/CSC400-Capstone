@@ -90,7 +90,7 @@ class SavedComparisonTests(unittest.TestCase):
             self.assertEqual(self.client.get('/api/saved-majors/1107/programs?page='+page).status_code,400)
         page=self.client.get('/saved-majors')
         self.assertEqual(page.status_code,200)
-        for marker in (b'css/saved-majors.css',b'js/saved-majors.js',b'js/saved-major-controls.js',b'id="saved-comparison" class="saved-comparison" hidden'):
+        for marker in (b'css/saved-majors.css',b'js/saved-majors.js',b'js/saved-major-controls.js',b'id="saved-major-cards" class="major-catalog-grid"'):
             self.assertIn(marker,page.data)
 
 

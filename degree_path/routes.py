@@ -817,6 +817,15 @@ def explore_major_catalog():
                            pagination=pagination)
 
 
+@web.get('/api/saved-majors/summary')
+@database_errors
+def saved_major_summaries_api():
+    user = get_current_user()
+    if user is None:
+        abort(401, description='Sign in to view your saved majors.')
+    return jsonify(majors=db_functions.get_saved_major_summaries(user['id']))
+
+
 @web.get('/saved-majors')
 def saved_majors_page():
     return render_template('saved_majors.html', title='Saved majors')

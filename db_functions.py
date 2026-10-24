@@ -1615,6 +1615,32 @@ def get_major_favorites(user_id):
 
     return [dict(row) for row in rows]
 
+def get_saved_major_summaries(user_id):
+    """General major cards for the account library, without individual college programs."""
+    with engine.connect() as connection:
+        rows = connection.execute(text("""
+            SELECT m.cipcode, m.cipdesc AS major,
+                   mi.major_description AS description, mi.description_source,
+                   mi.mdn_earnings AS earnings,
+                   COALESCE(counts.program_count, 0) AS program_count,
+                   COALESCE(counts.school_count, 0) AS school_count
+            FROM public.major_fav f
+            JOIN public.majors m ON m.cipcode = f.cipcode
+            LEFT JOIN public.major_info mi ON mi.cipcode = m.cipcode
+            LEFT JOIN (
+                SELECT p.cipcode, COUNT(*) AS program_count,
+                       COUNT(DISTINCT p.unitid) AS school_count
+                FROM public.programs p
+                JOIN public.major_fav saved ON saved.cipcode = p.cipcode
+                WHERE saved.user_id = :user_id
+                GROUP BY p.cipcode
+            ) counts ON counts.cipcode = m.cipcode
+            WHERE f.user_id = :user_id
+            ORDER BY m.cipdesc, m.cipcode
+        """), {"user_id": user_id}).mappings().all()
+    return [dict(row) for row in rows]
+
+
 def get_comparison_favorites(user_id, kind):
     """Return only this user's favorites, including optional statistics."""
     if kind == "majors":
