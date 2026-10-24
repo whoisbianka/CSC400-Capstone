@@ -3,14 +3,14 @@
 {% if session.get("user_id") %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/favorites.css') }}">
 <script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/favorites.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/favorites.js', v='program-feedback-1') }}" defer></script>
 {% endif %}
 {% endblock %}
 {% block content %}
 {% if not session.get('user_id') %}
 {% with gate_title='Favorites' %}{% include '_favorites_signin.html' %}{% endwith %}
 {% else %}
-<section class="page-workspace" id="favorites-page" data-csrf="{{ csrf_token }}" data-explore-url="{{ url_for('web.explore') }}">
+<section class="page-workspace" id="favorites-page" data-initial-kind="{{ 'programs' if request.args.get('kind') == 'programs' else 'majors' }}" data-csrf="{{ csrf_token }}" data-explore-url="{{ url_for('web.explore') }}">
   <h1 id="page-title">Favorites</h1>
   <p>Your saved majors and programs, all in one place.</p>
   <nav class="favorites-tabs" aria-label="Favorite type">

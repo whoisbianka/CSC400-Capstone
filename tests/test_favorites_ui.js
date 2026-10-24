@@ -41,12 +41,12 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
   assert.match(ids['favoritesStatus'].textContent,/No favorite programs/);
 
   const buttons=[10,11].map(id=>{const b=new Element();b.dataset.programFavorite=String(id);return b;});
-  const status=new Element();const retry=new Element();let loads=0;let fail=false;
+  const status=new Element();const retry=new Element();let loads=0;let fail=false;const notifications=[];
   const api2={loadProgramFavorites:async()=>{loads++;return {favorites:[{program_id:10}]};},
     setProgramFavorite:async(id,favorite)=>{if(fail)throw Error('Save failed');return {favorite};}};
   await vm.runInNewContext(fs.readFileSync('degree_path/static/js/program-card-favorites.js','utf8'),{
     document:{querySelectorAll:()=>buttons,getElementById:id=>id==='program-favorites-status'?status:retry},
-    window:{chatApiReady:Promise.resolve(api2)},
+    window:{chatApiReady:Promise.resolve(api2),MajorSaveFeedback:{show:options=>notifications.push(options)}},
   });
   assert.equal(loads,1,'Load saved states once for the whole page');
   assert.equal(buttons[0].textContent,'♥');
@@ -55,10 +55,28 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
   assert.equal(buttons[1].attributes['aria-label'],'Favorite this program');
   await buttons[1].click();
   assert.equal(buttons[1].textContent,'♥');
+  assert.equal(notifications.length,1,'A confirmed program save shows feedback');
+  assert.equal(notifications[0].programName,'This program');
+  fail=true;
+  await assert.rejects(notifications[0].onUndo(),/Save failed/);
+  assert.equal(buttons[1].textContent,'♥','Failed Undo preserves the saved heart');
+  assert.equal(buttons[1].disabled,false);
+  fail=false;
+  await notifications[0].onUndo();
+  assert.equal(buttons[1].textContent,'♡','Undo clears the heart after the server confirms removal');
+  assert.equal(notifications.length,1);
   fail=true;
   await buttons[1].click();
-  assert.equal(buttons[1].textContent,'♥','Failed requests preserve confirmed state');
+  assert.equal(buttons[1].textContent,'♡','Failed requests preserve confirmed state');
+  assert.equal(notifications.length,1,'Failed saves must not show a new success notification');
   assert.equal(buttons[1].disabled,false);
   assert.equal(status.textContent,'Save failed');
-  console.log('Favorites UI passed: tab race protection, program removal, batch card states and failed saves.');
+  ids['favorites-page'].dataset.initialKind='programs';
+  await vm.runInNewContext(fs.readFileSync('degree_path/static/js/favorites.js','utf8'),{
+    document:{getElementById:id=>ids[id],querySelectorAll:()=>tabs,createElement:tag=>new Element(tag)},
+    window:{chatApiReady:Promise.resolve({loadProgramFavorites:async()=>({favorites:[]}),loadFavorites:async()=>{throw Error('Wrong initial tab');}}),location:{origin:'https://app.test'}},URL,
+  });
+  assert.equal(ids['favorites-heading'].textContent,'Favorite programs');
+  assert.equal(tabs[1].attributes['aria-pressed'],'true');
+  console.log('Favorites UI passed: program feedback, Undo, failed saves, deep links and tab race protection.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

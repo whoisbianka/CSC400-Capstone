@@ -1,8 +1,8 @@
-// Shared, server-confirmed save feedback for Explore, program details, and Saved majors.
+// Shared, server-confirmed feedback for saved majors and favorited college programs.
 (() => {
   const toast = document.createElement('section');
   toast.className = 'major-save-toast';
-  toast.setAttribute('aria-label', 'Saved major notification');
+  toast.setAttribute('aria-label', 'Save notification');
   toast.hidden = true;
   const icon = document.createElement('span');
   icon.className = 'major-save-toast-check';
@@ -44,6 +44,7 @@
   let revision = 0;
   let action;
   let name;
+  let collection;
   function stopTimer() { clearTimeout(timer); }
   function hide() { stopTimer(); toast.hidden = true; }
   function schedule() {
@@ -60,7 +61,8 @@
     if (!action || undo.disabled) return;
     const current = revision;
     const undoAction = action;
-    const majorName = name;
+    const itemName = name;
+    const currentCollection = collection;
     stopTimer();
     undo.disabled = true;
     error.textContent = '';
@@ -69,7 +71,7 @@
       // An older request must not replace feedback for a more recent save.
       if (current !== revision) return;
       title.textContent = 'Save undone';
-      detail.textContent = `${majorName} was removed from your saved majors.`;
+      detail.textContent = `${itemName} was removed from your ${currentCollection}.`;
       undo.hidden = true;
       action = null;
     } catch (problem) {
@@ -79,12 +81,16 @@
     }
   });
   window.MajorSaveFeedback = {
-    show({ majorName, onUndo, button }) {
+    show({ majorName, programName, onUndo, button }) {
+      const isProgram = Boolean(programName);
       revision++;
-      name = majorName;
+      name = programName || majorName;
+      collection = isProgram ? 'favorited programs' : 'saved majors';
       action = onUndo;
-      title.textContent = 'Major saved';
-      detail.textContent = `${majorName} was added to your saved majors.`;
+      title.textContent = isProgram ? 'Program saved' : 'Major saved';
+      detail.textContent = `${name} was added to your ${collection}.`;
+      view.href = isProgram ? '/favorites?kind=programs' : '/saved-majors';
+      view.textContent = isProgram ? 'View favorited programs →' : 'View saved majors →';
       error.textContent = '';
       undo.hidden = !onUndo;
       undo.disabled = false;
@@ -92,11 +98,12 @@
       toast.classList.remove('major-save-toast-enter');
       void toast.offsetWidth;
       toast.classList.add('major-save-toast-enter');
-      if (button?.isConnected && button.textContent.startsWith('★')) {
+      const symbol = isProgram ? '♥' : '★';
+      if (button?.isConnected && button.textContent.startsWith(symbol)) {
         const text = button.textContent;
         const star = document.createElement('span');
         star.className = 'major-save-star-pop';
-        star.textContent = '★';
+        star.textContent = symbol;
         star.setAttribute('aria-hidden', 'true');
         button.replaceChildren(star, document.createTextNode(text.slice(1)));
       }

@@ -42,6 +42,23 @@
       if (result.favorite) saved.add(id); else saved.delete(id);
       label(button);
       status.textContent = result.favorite ? 'Program added to favorites.' : 'Program removed from favorites.';
+      if (result.favorite && window.MajorSaveFeedback) {
+        status.textContent = '';
+        window.MajorSaveFeedback.show({
+          programName: button.dataset.programLabel || 'This program',
+          button,
+          onUndo: async () => {
+            button.disabled = true;
+            try {
+              const undone = await api.setProgramFavorite(id, false);
+              if (undone.favorite !== false) throw new Error('Could not remove this favorite. Please try again.');
+              saved.delete(id);
+              label(button);
+              status.textContent = 'Program removed from favorites.';
+            } finally { button.disabled = false; }
+          },
+        });
+      }
     } catch (error) {status.textContent = error.message;}
     finally {button.disabled = false;}
   }));

@@ -6,7 +6,7 @@
   const retry = document.getElementById('retryFavorites');
   const tabs = document.querySelectorAll('[data-favorite-kind]');
   const api = await window.chatApiReady;
-  let kind = 'majors';
+  let kind = page.dataset.initialKind === 'programs' ? 'programs' : 'majors';
   let version = 0;
   function emptyMessage() {
     return kind === 'majors'
