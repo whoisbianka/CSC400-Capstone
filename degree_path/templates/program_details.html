@@ -7,7 +7,7 @@
 
 <h1 id="page-title">{{ program.major }}</h1>
 <button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false">☆ Save Program</button>
-<div class="details-college"><span class="details-monogram" aria-hidden="true">{{ program.college[:1] }}</span><div><h2>{{ program.college }}</h2><p>{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p></div></div>
+<div class="details-college"><span class="details-monogram" aria-hidden="true">{{ program.college[:1] }}</span><div><h2>{{ program.college }}</h2><p>{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p>{% if program.website %}<a class="college-website-link" href="{{ program.website }}" target="_blank" rel="noopener noreferrer">College website <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a>{% endif %}</div></div>
 </header>
 
 <div class="details-overview" aria-label="Program at a glance">
