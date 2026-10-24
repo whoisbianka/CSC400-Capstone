@@ -53,7 +53,7 @@ def format_program_cards(data):
     fact_fields = (
         "credlev",
         "npt4", "tuitionfee_in", "tuitionfee_out",
-        "adm_rate",
+        "adm_rate", "enrollment",
         "satmt25", "satmt75", "satvr25", "satvr75",
         "actmt25", "actmt75", "acten25", "acten75",
     )
@@ -356,6 +356,17 @@ def explore():
         display = (f'${value:,}' if key.endswith('_max') and not key.startswith('acceptance_')
                    else f'{value}%' if key.startswith('acceptance_') else str(value))
         add_chip(f'{labels[key]}: {display}', key)
+    if major_filter == 'name':
+        remaining = {key: value for key, value in active_params.items()
+                     if key not in ('major_name', 'cipcode', 'major_filter')}
+        remaining['major_filter'] = 'all'
+        filter_chips.insert(0, {'label': f'Major: {major_query or ("CIP " + str(cipcode))}',
+                                'url': url_for('web.explore', **remaining)})
+    elif major_filter == 'favorites':
+        remaining = {key: value for key, value in active_params.items()
+                     if key not in ('favorite_major', 'major_filter')}
+        remaining['major_filter'] = 'all'
+        filter_chips.insert(0, {'label': 'My saved majors', 'url': url_for('web.explore', **remaining)})
     for degree in degrees:
         add_chip('Associate degree' if degree == 2 else 'Bachelor’s degree', 'degrees',
                  ','.join(str(other) for other in degrees if other != degree))

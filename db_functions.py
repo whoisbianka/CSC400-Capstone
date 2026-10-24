@@ -808,6 +808,7 @@ def get_page_programs(
                     s.city,
                     s.stabbr AS state,
                     s.insturl AS website,
+                    s.ug12mn AS enrollment,
                     c.npt4,
                     c.tuitionfee_in,
                     c.tuitionfee_out,
