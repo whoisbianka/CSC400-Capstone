@@ -183,12 +183,35 @@
       notice.textContent = '';
     }
     const cipcode = button.dataset.saveMajor;
+    const majorName = button.dataset.majorName || document.getElementById('page-title')?.textContent || 'This major';
     try {
       // Read current account state before changing it, including after sign-in.
       const current = (await api('/api/saved-majors')).majors;
       const saved = !current.some(major => String(major.cipcode) === cipcode);
       await api(`/api/saved-majors/${cipcode}`, { saved });
-      if (await refresh()) notice.textContent = saved ? 'Major saved to your account.' : 'Major removed from your saved majors.';
+      if (await refresh()) {
+        notice.textContent = saved ? 'Major saved to your account.' : 'Major removed from your saved majors.';
+        if (saved) {
+          if (window.MajorSaveFeedback) notice.textContent = '';
+          const confirmed = favorites.find(major => String(major.cipcode) === cipcode);
+          window.MajorSaveFeedback?.show({
+            majorName: confirmed?.name || majorName,
+            button: button.isConnected ? button : document.querySelector(`[data-save-major="${cipcode}"]`),
+            onUndo: async () => {
+              try {
+                await api(`/api/saved-majors/${cipcode}`, { saved: false });
+                // The write succeeded even if reloading a comparison later fails.
+                favorites = favorites.filter(major => String(major.cipcode) !== cipcode);
+                render();
+                await refresh();
+              } catch (error) {
+                if (error.requiresSignIn) showSignInPrompt('major');
+                throw error;
+              }
+            },
+          });
+        }
+      }
     } catch (error) {
       if (error.requiresSignIn) {
         notice.textContent = '';

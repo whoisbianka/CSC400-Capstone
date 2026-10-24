@@ -30,8 +30,8 @@ function fixture(userId = '') {
   signIn.listeners.click = () => { signIns++; };
   const major = new Element('button'); major.dataset.saveMajor = '1107'; major.parentElement = new Element();
   const program = new Element('button'); program.dataset.saveRequiresSignin = 'program';
-  const listeners = {}, requests = [];
-  let expire = false;
+  const listeners = {}, requests = [], notifications = [];
+  let expire = false, failSave = false, favorites = [];
   vm.runInNewContext(source, {
     document: {
       body, createElement: tag => new Element(tag),
@@ -40,15 +40,22 @@ function fixture(userId = '') {
       querySelectorAll: selector => selector === '[data-save-major]' ? [major] : [],
       addEventListener: (event, handler) => { listeners[event] = handler; },
     },
-    window: {},
+    window: {MajorSaveFeedback:{show:options=>notifications.push(options)}},
     fetch: async (path, options) => {
       requests.push({path, options});
-      return {ok: !expire, status: expire ? 401 : 200,
-        json: async () => expire ? {error:'Sign in required'} : {favorites:[], favorite:true}};
+      if (expire) return {ok:false,status:401,json:async()=>({error:'Sign in required'})};
+      if (options.method === 'POST') {
+        if (failSave) return {ok:false,status:503,json:async()=>({error:'Save unavailable'})};
+        const value = JSON.parse(options.body);
+        favorites = value.favorite ? [{cipcode:value.cipcode,major:'Computer Science'}] : [];
+        return {ok:true,status:200,json:async()=>({favorite:value.favorite})};
+      }
+      return {ok:true,status:200,json:async()=>({favorites})};
     },
   });
   const dialog = body.children.find(child => child.tag === 'dialog');
-  return {major, program, dialog, requests,
+  return {major, program, dialog, requests, notifications,
+    failSave() { failSave = true; },
     get signIns() { return signIns; },
     expire() { expire = true; },
     click: target => listeners.click({target, preventDefault() {}}),
@@ -73,6 +80,7 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(guest.dialog.open, false);
   assert.equal(guest.signIns, 1, 'Sign in forwards to the existing account action');
   assert.equal(guest.requests.length, 0);
+  assert.equal(guest.notifications.length, 0, 'Guest attempts must never announce a successful save');
   const account = fixture('42');
   await flush();
   await account.click(account.major);
@@ -81,9 +89,23 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(saved.path, '/api/favorites');
   assert.deepEqual(JSON.parse(saved.options.body), {cipcode:1107, favorite:true});
   assert.equal(saved.options.headers['X-CSRF-Token'], 'csrf');
+  assert.equal(account.notifications.length, 1);
+  assert.equal(account.notifications[0].majorName, 'Computer Science');
+  await account.notifications[0].onUndo();
+  const undo = account.requests.filter(r => r.options.method === 'POST').at(-1);
+  assert.deepEqual(JSON.parse(undo.options.body), {cipcode:1107,favorite:false});
+  assert.equal(account.major.attributes['aria-pressed'], 'false');
+  const failed = fixture('42');
+  await flush();
+  failed.failSave();
+  await failed.click(failed.major);
+  assert.equal(failed.notifications.length, 0, 'Failed saves must never show a success notification');
+  assert.equal(failed.major.attributes['aria-pressed'], 'false');
+
   account.expire();
   await account.click(account.major);
   assert.equal(account.dialog.open, true, 'Expired sessions show the major sign-in prompt');
   assert.match(account.dialog.children[1].textContent, /save this major/);
-  console.log('Save prompts passed: guest majors/programs, Cancel, Sign in, authenticated saves, and expired sessions.');
+  assert.equal(account.notifications.length, 1, 'Expired sessions must not add success notifications');
+  console.log('Save prompts and feedback passed: guests, authenticated saves, Undo, failed saves, and expired sessions.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
