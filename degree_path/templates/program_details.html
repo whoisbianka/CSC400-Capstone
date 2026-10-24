@@ -6,7 +6,7 @@
 <header class="details-hero">
 
 <h1 id="page-title">{{ program.major }}</h1>
-<button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false">☆ Save major</button>
+<button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false">☆ Save Program</button>
 <div class="details-college"><span class="details-monogram" aria-hidden="true">{{ program.college[:1] }}</span><div><h2>{{ program.college }}</h2><p>{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p></div></div>
 </header>
 
