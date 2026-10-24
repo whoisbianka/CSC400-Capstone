@@ -82,11 +82,11 @@ class SessionAuthTests(unittest.TestCase):
             self.assertEqual(s['login_expires_at'], expires)
 
     def test_navigation_uses_session(self):
-        html = self.client.get('/favorites').get_data(as_text=True)
+        html = self.client.get('/favorites', follow_redirects=True).get_data(as_text=True)
         self.assertIn('data-auth-action="login"', html)
         self.assertIn('>Profile</a>', html)
         self.login()
-        html = self.client.get('/favorites').get_data(as_text=True)
+        html = self.client.get('/favorites', follow_redirects=True).get_data(as_text=True)
         self.assertIn('data-auth-action="logout"', html)
         self.assertIn('data-user-id="42"', html)
 
@@ -123,7 +123,7 @@ class SessionAuthTests(unittest.TestCase):
             s['login_expires_at'] = time.time() - 1
         response = self.client.get('/api/chat', headers={'X-App-User-ID': '42'})
         self.assertEqual(response.status_code, 401)
-        html = self.client.get('/favorites').get_data(as_text=True)
+        html = self.client.get('/favorites', follow_redirects=True).get_data(as_text=True)
         self.assertIn('data-auth-action="login"', html)
 
     def test_account_switch_rejects_old_tab(self):
@@ -146,19 +146,20 @@ class SessionAuthTests(unittest.TestCase):
         self.assertIn('id="guided-chat"', html)
         self.assertNotIn('How would you like to continue', html)
 
-    def test_guest_favorites_has_signin_and_home_without_data_requests(self):
-        html = self.client.get('/favorites').get_data(as_text=True)
-        self.assertIn('Back to home', html)
+    def test_old_favorites_redirects_to_shared_saved_library(self):
+        response = self.client.get('/favorites')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/saved-majors')
+        html = self.client.get('/favorites', follow_redirects=True).get_data(as_text=True)
         self.assertIn('data-auth-action="login"', html)
-        self.assertNotIn('js/favorites.js', html)
-        self.assertNotIn('Loading favorites', html)
+        self.assertNotIn('js/saved-programs.js', html)
         self.database.get_major_favorites.assert_not_called()
         self.login()
-        html = self.client.get('/favorites').get_data(as_text=True)
-        self.assertIn('js/favorites.js', html)
-        self.assertIn('data-favorite-kind="majors"', html)
-        self.assertIn('data-favorite-kind="programs"', html)
-        self.assertNotIn('Back to home', html)
+        html = self.client.get('/favorites?kind=programs', follow_redirects=True).get_data(as_text=True)
+        self.assertIn('js/saved-programs.js', html)
+        self.assertIn('data-saved-view="majors"', html)
+        self.assertIn('data-saved-view="programs"', html)
+        self.assertNotIn('js/favorites.js', html)
 
     def test_comparison_requires_login_and_valid_kind(self):
         self.assertEqual(self.client.get('/api/compare').status_code, 401)

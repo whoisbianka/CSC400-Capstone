@@ -5,7 +5,6 @@
     <a href="{{ url_for('web.explore') }}" {% if request.endpoint in ['web.explore', 'web.program_details'] %}aria-current="page"{% endif %}>Explore</a>
     <a href="{{ url_for('web.saved_majors_page') }}" {% if request.endpoint == 'web.saved_majors_page' %}aria-current="page"{% endif %}>Saved majors</a>
     {% if request.endpoint in ['web.favorites', 'web.compare'] %}
-    <a href="{{ url_for('web.favorites') }}" {% if request.endpoint == 'web.favorites' %}aria-current="page"{% endif %}>Favorites</a>
     <a href="{{ url_for('web.compare') }}" {% if request.endpoint == 'web.compare' %}aria-current="page"{% endif %}>Compare</a>
     {% endif %}
     <a href="{{ url_for('web.profile') }}" {% if request.endpoint == 'web.profile' %}aria-current="page"{% endif %}>Profile</a>

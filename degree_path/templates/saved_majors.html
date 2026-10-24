@@ -1,16 +1,24 @@
 {% extends 'base.html' %}
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/saved-majors.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/saved-majors.css', v='saved-programs-1') }}">
 <script src="{{ url_for('static', filename='js/saved-majors.js') }}" defer></script>
+{% if session.get('user_id') %}
+<script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/saved-programs.js', v='1') }}" defer></script>
+{% endif %}
 {% endblock %}
 {% block content %}
-<div class="page-workspace saved-workspace">
+<div class="page-workspace saved-workspace" id="saved-workspace" data-initial-saved-view="{{ 'programs' if request.args.get('view') == 'programs' else 'majors' }}">
   <header class="saved-header">
     <p class="saved-kicker">YOUR NEXT CHAPTER</p>
     <h1 id="page-title">Saved majors</h1>
-    <p>Your shortlist, your next step. Select up to 3 college programs to compare side by side.</p>
+    <p>Your saved majors and favorited programs, together in one place.</p>
   </header>
   <div id="saved-majors-list" aria-busy="true"></div>
+  {% if session.get('user_id') %}
+  <nav class="saved-view-tabs" aria-label="Saved item type"><button type="button" id="saved-majors-tab" data-saved-view="majors" aria-controls="saved-majors-panel" aria-pressed="{{ 'false' if request.args.get('view') == 'programs' else 'true' }}">Saved majors</button><button type="button" id="saved-programs-tab" data-saved-view="programs" aria-controls="saved-programs-panel" aria-pressed="{{ 'true' if request.args.get('view') == 'programs' else 'false' }}">Favorited programs</button></nav>
+  {% endif %}
+  <div id="saved-majors-panel" {% if session.get('user_id') and request.args.get('view') == 'programs' %}hidden{% endif %}>
   <section id="saved-library" hidden aria-labelledby="saved-library-title">
     <div class="saved-section-heading"><h2 id="saved-library-title">Your saved majors</h2><span id="saved-major-count"></span></div>
     <p class="saved-context">Majors are saved across colleges. Choose the college programs you want to compare below.</p>
@@ -35,6 +43,16 @@
       <p class="small-note">Costs and admissions are college-wide. Earnings are for the program, 4 years after completion. Reported test scores are not admission requirements. {{ source_note }}</p>
     </div>
   </section>
+  </div>
+  {% if session.get('user_id') %}
+  <section id="saved-programs-panel" aria-labelledby="saved-programs-tab" {% if request.args.get('view') != 'programs' %}hidden{% endif %}>
+    <div class="saved-section-heading"><h2>Your favorited programs</h2><span id="saved-program-count"></span></div>
+    <p class="saved-context">Specific college programs you saved with the heart button.</p>
+    <p id="saved-programs-status" role="status" aria-live="polite"></p>
+    <button id="saved-programs-retry" class="secondary-button" type="button" hidden>Retry programs</button>
+    <div id="favorited-program-cards" class="saved-program-grid"></div>
+  </section>
+  {% endif %}
   <a class="saved-explore-link" href="{{ url_for('web.explore') }}">Explore more programs →</a>
 </div>
 {% endblock %}

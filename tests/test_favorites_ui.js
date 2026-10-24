@@ -14,31 +14,33 @@ const deferred = () => {let resolve,reject;const promise=new Promise((a,b)=>{res
 const flush = () => new Promise(resolve=>setImmediate(resolve));
 (async () => {
   const ids={};
-  for(const id of ['favorites-page','favoriteCards','favoritesStatus','retryFavorites','favorites-heading']) ids[id]=new Element();
-  ids['favorites-page'].dataset.exploreUrl='/explore';
-  const tabs=['majors','programs'].map(kind=>{const tab=new Element();tab.dataset.favoriteKind=kind;return tab;});
-  const requests=[]; const changes=[];
-  const request=kind=>{const d=deferred();requests.push({kind,...d});return d.promise;};
-  const api={loadFavorites:()=>request('majors'),loadProgramFavorites:()=>request('programs'),
-    setProgramFavorite:async(id,value)=>{changes.push([id,value]);},setFavorite:async()=>{throw Error('Wrong favorite API');}};
-  vm.runInNewContext(fs.readFileSync('degree_path/static/js/favorites.js','utf8'),{
+  for(const id of ['saved-workspace','saved-majors-panel','saved-programs-panel','favorited-program-cards','saved-programs-status','saved-program-count','saved-programs-retry']) ids[id]=new Element();
+  ids['saved-workspace'].dataset.initialSavedView='programs';
+  const tabs=['majors','programs'].map(kind=>{const tab=new Element();tab.dataset.savedView=kind;return tab;});
+  const requests=[], changes=[];
+  const api={loadProgramFavorites:()=>{const d=deferred();requests.push(d);return d.promise;},setProgramFavorite:async(id,value)=>{changes.push([id,value]);}};
+  vm.runInNewContext(fs.readFileSync('degree_path/static/js/saved-programs.js','utf8'),{
     document:{getElementById:id=>ids[id],querySelectorAll:()=>tabs,createElement:tag=>new Element(tag)},
-    window:{chatApiReady:Promise.resolve(api),location:{origin:'https://app.test'}},URL,
+    window:{chatApiReady:Promise.resolve(api)},
   });
   await flush();
+  tabs[0].click();
   tabs[1].click();
-  requests[1].resolve({favorites:[{program_id:10,major:'Biology',college:'College',credential:'Bachelor',url:'/programs/10'}]});
+  requests[1].resolve({favorites:[{program_id:10,major:'Biology',college:'College',credential:'Bachelor',city:'City',state:'CT'}]});
   await flush();
-  requests[0].resolve({favorites:[{cipcode:7,major:'Stale major'}]});
+  requests[0].resolve({favorites:[{program_id:99,major:'Stale program'}]});
   await flush();
-  let cards=ids['favoriteCards'].children;
-  assert.equal(cards.length,1);
+  const cards=ids['favorited-program-cards'].children;
+  assert.equal(cards.length,1,'Old tab requests must not replace current saved programs');
   assert.equal(cards[0].children[0].textContent,'Biology');
-  assert.equal(cards[0].children.find(c=>c.tag==='a').href,'/programs/10');
-  await cards[0].children.find(c=>c.tag==='button').click();
+  const controls=cards[0].children[3];
+  assert.equal(controls.children[0].href,'/programs/10');
+  assert.equal(controls.children[0].target,'_blank');
+  await controls.children[1].click();
   assert.deepEqual(changes,[[10,false]]);
-  assert.equal(ids['favoriteCards'].children.length,0);
-  assert.match(ids['favoritesStatus'].textContent,/No favorite programs/);
+  assert.equal(ids['favorited-program-cards'].children.length,0);
+  assert.match(ids['saved-programs-status'].textContent,/No favorite programs/);
+  assert.equal(tabs[1].attributes['aria-pressed'],'true');
 
   const buttons=[10,11].map(id=>{const b=new Element();b.dataset.programFavorite=String(id);return b;});
   const status=new Element();const retry=new Element();let loads=0;let fail=false;const notifications=[];
@@ -71,12 +73,5 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
   assert.equal(notifications.length,1,'Failed saves must not show a new success notification');
   assert.equal(buttons[1].disabled,false);
   assert.equal(status.textContent,'Save failed');
-  ids['favorites-page'].dataset.initialKind='programs';
-  await vm.runInNewContext(fs.readFileSync('degree_path/static/js/favorites.js','utf8'),{
-    document:{getElementById:id=>ids[id],querySelectorAll:()=>tabs,createElement:tag=>new Element(tag)},
-    window:{chatApiReady:Promise.resolve({loadProgramFavorites:async()=>({favorites:[]}),loadFavorites:async()=>{throw Error('Wrong initial tab');}}),location:{origin:'https://app.test'}},URL,
-  });
-  assert.equal(ids['favorites-heading'].textContent,'Favorite programs');
-  assert.equal(tabs[1].attributes['aria-pressed'],'true');
-  console.log('Favorites UI passed: program feedback, Undo, failed saves, deep links and tab race protection.');
+  console.log('Favorites UI passed: shared saved library, program feedback, Undo, failed saves and tab race protection.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

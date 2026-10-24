@@ -619,10 +619,10 @@ def apply_guest_chat_turn(state, message, turn, catalog):
 
 @web.get("/favorites")
 def favorites():
-    return render_template(
-        "favorites.html",
-        title="Favorites",
-    )
+    # Keep old bookmarks working without maintaining a separate Favorites page.
+    if request.args.get('kind') == 'programs':
+        return redirect(url_for('web.saved_majors_page', view='programs'))
+    return redirect(url_for('web.saved_majors_page'))
 
 
 @web.route("/api/favorites", methods=["GET", "POST"])

@@ -89,8 +89,8 @@
       action = onUndo;
       title.textContent = isProgram ? 'Program saved' : 'Major saved';
       detail.textContent = `${name} was added to your ${collection}.`;
-      view.href = isProgram ? '/favorites?kind=programs' : '/saved-majors';
-      view.textContent = isProgram ? 'View favorited programs →' : 'View saved majors →';
+      view.href = isProgram ? '/saved-majors?view=programs' : '/saved-majors';
+      view.textContent = isProgram ? 'View saved programs →' : 'View saved majors →';
       error.textContent = '';
       undo.hidden = !onUndo;
       undo.disabled = false;
