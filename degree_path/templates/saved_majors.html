@@ -17,7 +17,7 @@
   <header class="saved-header">
     <div><p class="saved-kicker">YOUR NEXT CHAPTER</p>
     <h1 id="page-title">Saved majors</h1>
-    <p class="saved-subtitle">Keep what interests you. Compare when you’re ready.</p></div>
+    <p class="saved-subtitle">Central hub to review your saved majors and programs.</p></div>
     <a class="primary-link" id="saved-compare-header" href="{{ url_for('web.compare', view='favorites', kind='programs' if request.args.get('view') == 'programs' else 'majors') }}">Compare</a>
   </header>
   <div id="saved-majors-list" aria-busy="true"></div>
@@ -38,19 +38,21 @@
     <a class="primary-link" href="{{ url_for('web.explore', view='majors') }}">Explore majors →</a>
   </section>
 
+  <!-- For programs section-->
   </div>
   {% if session.get('user_id') %}
   <section id="saved-programs-panel" aria-labelledby="saved-programs-tab" {% if request.args.get('view') != 'programs' %}hidden{% endif %}>
     <div class="saved-section-heading"><h2>Your favorited programs</h2><span id="saved-program-count"></span></div>
-    <p class="saved-context">Costs are college-wide annual averages after aid. Earnings are reported 4 years after program completion.</p>
     <p id="saved-programs-status" role="status" aria-live="polite"></p>
     <button id="saved-programs-retry" class="secondary-button" type="button" hidden>Retry programs</button>
     <div id="favorited-program-cards" class="saved-program-grid"></div>
   </section>
+
+  <!-- end of programs section-->
   {% endif %}
   {% if session.get('user_id') %}
   <section class="saved-compare-tray" id="saved-compare-tray" aria-labelledby="saved-tray-title">
-    <div class="saved-tray-copy"><h2 id="saved-tray-title">Your comparison starts here</h2>
+    <div class="saved-tray-copy"><h2 id="saved-tray-title">Items to compare</h2>
       <div class="saved-tray-items" id="saved-tray-items"></div>
       <p id="saved-tray-hint" role="status" aria-live="polite">Select two or three options to compare.</p>
     </div>
