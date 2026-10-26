@@ -8,8 +8,10 @@ class Element {
   setAttribute(k, v) { this.attributes[k] = v; }
   addEventListener(k, fn) { this[k] = fn; }
   querySelector() { return null; }
+  scrollIntoView() { this.scrolled = true; }
+  focus() { this.focused = true; }
 }
-const ids = Object.fromEntries(['saved-program-groups','saved-library','saved-empty','saved-major-count','saved-comparison','saved-comparison-results','saved-comparison-prompt','saved-differences','saved-selection-count','saved-comparison-head','saved-comparison-body'].map(id => [id, new Element()]));
+const ids = Object.fromEntries(['saved-compare-button','saved-comparison-title','saved-program-groups','saved-library','saved-empty','saved-major-count','saved-comparison','saved-comparison-results','saved-comparison-prompt','saved-differences','saved-selection-count','saved-comparison-head','saved-comparison-body'].map(id => [id, new Element()]));
 const window = {};
 vm.runInNewContext(fs.readFileSync('degree_path/static/js/saved-major-comparison.js','utf8'), {
   document: {getElementById: id => ids[id], createElement: tag => new Element(tag), querySelector: () => null}, window, Intl,
@@ -28,7 +30,12 @@ const nodes = element => [element,...element.children.flatMap(nodes)];
   await window.SavedMajors.refresh(api,[{cipcode:1107}]);
   assert.equal(requests[0],'/api/saved-majors/programs');
   select(1); assert.equal(ids['saved-comparison-results'].hidden,true);
+  assert.equal(ids['saved-compare-button'].disabled,true);
   select(2); assert.equal(ids['saved-comparison-results'].hidden,false);
+  assert.equal(ids['saved-compare-button'].disabled,false);
+  ids['saved-compare-button'].click();
+  assert.equal(ids['saved-comparison'].scrolled,true);
+  assert.equal(ids['saved-comparison-title'].focused,true);
   assert.equal(ids['saved-comparison-head'].children[0].children.length,3);
   assert.ok(nodes(ids['saved-comparison-body']).some(n=>n.textContent==='✓ $2,000 less / year'));
   const allRows = ids['saved-comparison-body'].children.length;

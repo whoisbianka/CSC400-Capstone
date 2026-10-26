@@ -72,5 +72,23 @@ const reply = (index, items) => requests[index].resolve({ok:true,json:async()=>(
   assert.equal(Number(inputs[0].value),9);
   assert.equal(ids['favorite-list-title'].textContent,'Favorite programs');
   assert.match(ids['compare-status'].textContent,/at least two/);
+  // The saved library hands off selections without asking users to select again.
+  requests.length=0;
+  const persisted={};
+  context.window.sessionStorage={getItem:key=>persisted[key]||null,setItem:(key,value)=>{persisted[key]=value;}};
+  context.window.location.href='https://app.test/compare?view=favorites&kind=programs&ids=9,10,999,11';
+  vm.runInNewContext(fs.readFileSync('degree_path/static/js/compare.js','utf8'),context);
+  assert.equal(new URL(requests[0].url).searchParams.get('kind'),'programs');
+  reply(0,[{id:9,name:'Program A'},{id:10,name:'Program B'},{id:11,name:'Program C'}]);
+  await flush();
+  assert.equal(ids['compare-table-container'].hidden,false);
+  assert.equal(ids['selection-count'].textContent,'2 of 3 selected');
+  inputs=ids['compare-favorites'].querySelectorAll('input');
+  assert.equal(inputs[0].checked,true);
+  assert.equal(inputs[1].checked,true);
+  assert.equal(inputs[2].checked,false,'Ignore unavailable selections and cap URL IDs to three');
+  assert.deepEqual(JSON.parse(persisted['saved-comparison:42']).programs,[9,10]);
+  ids['compare-clear'].click();
+  assert.deepEqual(JSON.parse(persisted['saved-comparison:42']).programs,[]);
   console.log('Comparison UI checks passed: selection limit, reset, empty table and stale-response protection.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

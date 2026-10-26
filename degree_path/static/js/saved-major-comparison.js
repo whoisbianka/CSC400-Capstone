@@ -115,6 +115,8 @@
     byId('saved-comparison-results').hidden = !enough;
     byId('saved-comparison-prompt').hidden = enough;
     byId('saved-differences').disabled = !enough;
+    byId('saved-compare-button').disabled = !enough;
+    byId('saved-compare-button').textContent = enough ? `Compare ${selected.length} programs` : 'Compare';
     byId('saved-selection-count').textContent = `${selected.length} of 3 programs selected`;
     const head = byId('saved-comparison-head');
     const body = byId('saved-comparison-body');
@@ -232,6 +234,12 @@
     announce('Program removed from comparison. Your saved majors are unchanged.');
   });
   byId('saved-differences').addEventListener('change', renderComparison);
+  byId('saved-compare-button').addEventListener('click', () => {
+    if (selected.length < 2) return;
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    byId('saved-comparison').scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+    byId('saved-comparison-title').focus({ preventScroll: true });
+  });
   window.SavedMajors = {
     async refresh(request, favorites) {
       api = request;

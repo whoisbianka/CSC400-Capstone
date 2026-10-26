@@ -10,7 +10,11 @@ class Element {
 }
 (async()=>{
   const ids=Object.fromEntries(['saved-major-cards','saved-library','saved-empty','saved-major-count'].map(id=>[id,new Element()]));
-  const window={};
+  const synced=[];
+  const window={SavedCompare:{
+    button:(kind,item)=>{const b=new Element('button');b.textContent='Add to compare';b.dataset.compareKind=kind;b.dataset.libraryCompare=item.id;return b;},
+    sync:(kind,items)=>synced.push({kind,items}),
+  }};
   vm.runInNewContext(fs.readFileSync('degree_path/static/js/saved-majors.js','utf8'),{
     document:{getElementById:id=>ids[id],createElement:tag=>new Element(tag)},window,Intl,
   });
@@ -26,7 +30,12 @@ class Element {
   assert.equal(heading.children[0].textContent,'Computer Science');
   assert.equal(heading.children[1].dataset.saveMajor,'1107');
   assert.equal(body.children[2].textContent,'Study computing.');
-  assert.equal(card.children[1].children[0].href,'/explore?view=programs&cipcode=1107');
+  assert.equal(card.children[1].children[1].href,'/explore?view=programs&cipcode=1107');
+  assert.equal(card.children[1].children[0].textContent,'Add to compare');
+  assert.equal(card.children[1].children[0].dataset.compareKind,'majors');
+  assert.equal(card.children[1].children[0].dataset.libraryCompare,1107);
+  assert.equal(synced[0].kind,'majors');
+  assert.equal(synced[0].items.length,2);
   const nodes=[];function collect(n){nodes.push(n);n.children.forEach(collect);}collect(ids['saved-major-cards']);
   assert.equal(nodes.some(n=>n.className==='saved-program-card'),false);
   assert.equal(nodes.some(n=>n.tag==='input'),false,'No comparison checkboxes in general-major cards');

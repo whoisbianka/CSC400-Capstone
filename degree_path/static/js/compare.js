@@ -11,13 +11,28 @@
   const placeholder = document.getElementById('compare-placeholder');
   const modes = document.querySelectorAll('[data-compare-kind]');
   const maxSelections = 3;
-  let kind = 'majors';
+  const params = new URL(window.location.href || window.location.origin).searchParams;
+  const initialKind = params.get('kind') === 'programs' ? 'programs' : 'majors';
+  let initialIds = [...new Set((params.get('ids') || '').split(',')
+    .filter(value => /^\d+$/.test(value)).map(Number)
+    .filter(id => Number.isSafeInteger(id) && id > 0))].slice(0, maxSelections);
+  let kind = initialKind;
   let items = [];
   let metrics = [];
   let selected = [];
   let requestNumber = 0;
   let controller;
 
+  function rememberSelection() {
+    if (!nav.dataset.userId) return;
+    try {
+      const key = `saved-comparison:${nav.dataset.userId}`;
+      const stored = JSON.parse(window.sessionStorage.getItem(key) || '{}');
+      const snapshot = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
+      snapshot[kind] = selected;
+      window.sessionStorage.setItem(key, JSON.stringify(snapshot));
+    } catch (_) { /* Selection works even when browser storage is unavailable. */ }
+  }
   function title(item) {
     return kind === 'majors' ? item.name : `${item.name} · ${item.college} · ${item.credential}`;
   }
@@ -80,7 +95,7 @@
       input.addEventListener('change', () => {
         if (input.checked && selected.length < maxSelections) selected.push(item.id);
         else selected = selected.filter(id => id !== item.id);
-        updateChoices(); renderTable();
+        updateChoices(); renderTable(); rememberSelection();
       });
       label.append(input, text); choices.appendChild(label);
     }
@@ -107,7 +122,13 @@
       if (!response.ok) throw new Error(result.error || 'Unable to load comparisons.');
       if (version !== requestNumber) return;
       items = result.items; metrics = result.metrics;
-      renderChoices();
+      selected = kind === initialKind ? initialIds.filter(id => items.some(item => item.id === id)) : [];
+      initialIds = [];
+      renderChoices(); updateChoices(); renderTable(); rememberSelection();
+      if (selected.length >= 2 && window.location.hash === '#compare-table-container') {
+        container.scrollIntoView({block:'start'});
+        container.focus({preventScroll:true});
+      }
       status.textContent = items.length < 2
         ? `Save at least two ${kind} to compare. ${kind === 'programs' ? 'Use Favorite program on a program detail page.' : 'Use Favorite on a chat recommendation.'}`
         : 'Select two or three favorites. Uncheck one to choose another.';
@@ -119,7 +140,7 @@
     }
   }
   modes.forEach(button => button.addEventListener('click', () => load(button.dataset.compareKind)));
-  clear.addEventListener('click', () => {selected = []; updateChoices(); renderTable();});
+  clear.addEventListener('click', () => {selected = []; updateChoices(); renderTable(); rememberSelection();});
   retry.addEventListener('click', () => load(kind));
-  load('majors');
+  load(initialKind);
 })();
