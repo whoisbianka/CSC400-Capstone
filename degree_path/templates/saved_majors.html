@@ -14,6 +14,7 @@
     <p class="saved-kicker">YOUR NEXT CHAPTER</p>
     <h1 id="page-title">Saved majors</h1>
     <p>Your saved majors and favorited programs, together in one place.</p>
+    <a href="{{ url_for('web.compare') }}">Compare programs from your saved majors →</a>
   </header>
   <div id="saved-majors-list" aria-busy="true"></div>
   {% if session.get('user_id') %}

@@ -702,7 +702,9 @@ def logout():
 
 @web.get("/compare")
 def compare():
-    return render_template("compare.html", title="Compare")
+    if request.args.get("view") == "favorites":
+        return render_template("compare.html", title="Compare favorites")
+    return render_template("saved_major_comparison.html", title="Compare programs")
 
 
 @web.get("/api/compare")
