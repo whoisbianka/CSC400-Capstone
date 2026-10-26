@@ -13,8 +13,9 @@
   <header class="saved-header">
     <p class="saved-kicker">YOUR NEXT CHAPTER</p>
     <h1 id="page-title">Saved majors</h1>
+    <a href="{{ url_for('web.compare') }}">Compare programs from your saved majors →</a>
   </header>
-  <div id="saved-majors-list" aria-busy="true">
+  <div id="saved-majors-list" aria-busy="true"></div>
   {% if session.get('user_id') %}
   <nav class="saved-view-tabs" aria-label="Saved item type"><button type="button" id="saved-majors-tab" data-saved-view="majors" aria-controls="saved-majors-panel" aria-pressed="{{ 'false' if request.args.get('view') == 'programs' else 'true' }}">Saved majors</button><button type="button" id="saved-programs-tab" data-saved-view="programs" aria-controls="saved-programs-panel" aria-pressed="{{ 'true' if request.args.get('view') == 'programs' else 'false' }}">Favorited programs</button></nav>
   {% endif %}
