@@ -8,7 +8,7 @@
 .compare-sidebar > a { display: block; margin-top: 16px; color: var(--accent); }
 #compare-favorites { max-height: 60vh; overflow-y: auto; margin-bottom: 16px; }
 .compare-choice { display: flex; align-items: flex-start; gap: 12px; padding: 14px 10px; border-bottom: 1px solid var(--border); cursor: pointer; overflow-wrap: anywhere; }
-.compare-choice:has(input:checked) { background: #a6c6ff12; }
+.compare-choice:has(input:checked) { background: var(--accent-soft); }
 .compare-choice input { margin-top: 4px; flex-shrink: 0; accent-color: var(--accent); }
 .compare-choice strong, .compare-choice small { display: block; }
 .compare-choice small { color: var(--muted); margin-top: 6px; }

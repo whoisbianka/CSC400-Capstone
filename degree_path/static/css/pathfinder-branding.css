@@ -1,0 +1,12 @@
+/* Pathfinder identity and shared accent. Keep page layout and backgrounds intact. */
+html { scrollbar-gutter: stable; }
+body { font-family: "Trebuchet MS", system-ui, sans-serif; }
+.feature-card h2 { font-family: Georgia, serif; font-weight: 400; }
+.site-navigation { padding-inline: 24px; box-sizing: border-box; width: 100%; }
+.site-navigation .site-brand { flex: 0 0 auto; white-space: nowrap; font-family: "Trebuchet MS", system-ui, sans-serif; font-size: 20px; font-weight: 750; line-height: 36px; letter-spacing: -.7px; color: var(--accent); }
+.site-navigation .site-brand:hover, .site-navigation .site-brand:focus { color: var(--accent); }
+.site-brand span { width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: var(--on-primary); }
+.site-brand svg { display: block; width: 24px; height: 24px; }
+.major-catalog-heading .save-major-button[aria-pressed="true"] { color: var(--on-primary); }
+.major-catalog-footer a:focus-visible, .program-card-footer .program-favorite-button:focus-visible { outline-color: var(--on-primary); outline-offset: -5px; }
+@media (max-width: 600px) { .site-navigation { padding-inline: 16px; } }

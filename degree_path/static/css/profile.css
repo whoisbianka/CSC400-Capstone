@@ -9,7 +9,7 @@
 .profile-person { min-width: 0; }
 .profile-person h2 { margin: 0 0 3px; font-size: 21px; font-weight: 500; line-height: 1.4; letter-spacing: 0; overflow-wrap: anywhere; }
 .profile-email { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
-.profile-signed-in { display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; color: #9ae1ca; font-size: 12px; }
+.profile-signed-in { display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; color: var(--accent); font-size: 12px; }
 .profile-status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .profile-details { margin: 0; padding: 0 26px 12px; }
 .profile-details > div { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 16px 0; border-top: 1px solid var(--border); font-size: 13px; }

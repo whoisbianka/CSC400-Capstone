@@ -1,4 +1,4 @@
-// Enhance only the cards; navigation and the hero keep their existing behavior.
+// Enhance the two homepage cards without changing navigation.
 const section = document.querySelector('.path-section');
 const cards = [...document.querySelectorAll('.path-section .feature-card')];
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');

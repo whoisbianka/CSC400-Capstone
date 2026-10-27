@@ -111,7 +111,7 @@
     const label = document.createElement("strong");
 
     label.textContent =
-      role === "user" ? "You:" : "Degree Path Explorer:";
+      role === "user" ? "You:" : "Pathfinder:";
 
     const text = document.createElement("span");
 

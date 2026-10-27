@@ -1,6 +1,7 @@
 <!-- The shared sticky header keeps navigation and account actions available on every page. -->
+{% from '_pathfinder_icons.html' import compass %}
 <header class="site-navigation" id="account-navigation" data-user-id="{{ session.get('user_id', '') }}" data-csrf="{{ csrf_token }}" data-clerk-key="{{ clerk_publishable_key }}">
-  <a class="site-brand" href="{{ url_for('web.home') }}"><span aria-hidden="true">✳</span> Degree Path</a>
+  <a class="site-brand" href="{{ url_for('web.home') }}"><span aria-hidden="true">{{ compass() }}</span> Pathfinder</a>
   <nav aria-label="Account navigation">
     <a href="{{ url_for('web.explore') }}" {% if request.endpoint in ['web.explore', 'web.program_details'] %}aria-current="page"{% endif %}>Explore</a>
     <a href="{{ url_for('web.saved_majors_page') }}" {% if request.endpoint == 'web.saved_majors_page' %}aria-current="page"{% endif %}>Saved majors</a>

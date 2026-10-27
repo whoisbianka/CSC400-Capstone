@@ -70,7 +70,7 @@ tbody tr:hover { background: var(--accent-faint); }
 /* Non-blocking save confirmation; the native sign-in dialog stays above it. */
 .major-save-toast { position: fixed; z-index: 110; right: 24px; bottom: 24px; width: min(430px, calc(100% - 48px)); display: flex; align-items: start; gap: 12px; padding: 15px 16px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface-raised); color: var(--text); box-shadow: 0 12px 32px var(--shadow); }
 .major-save-toast-enter { animation: major-save-toast-in .24s ease-out; }
-.major-save-toast-check { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; background: var(--surface); color: #9ae1ca; font-size: 18px; }
+.major-save-toast-check { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; background: var(--surface); color: var(--accent); font-size: 18px; }
 .major-save-toast-content { flex: 1; min-width: 0; }
 .major-save-toast p { margin: 0; }
 .major-save-toast .major-save-toast-title { color: var(--text); font-size: 14px; font-weight: 500; }

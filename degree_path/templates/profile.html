@@ -4,7 +4,7 @@
 {% endblock %}
 {% block content %}
 <div class="page-workspace profile-workspace">
-  <header class="profile-heading"><h1 id="page-title">Profile</h1><p>Your Degree Path account.</p></header>
+  <header class="profile-heading"><h1 id="page-title">Profile</h1><p>Your Pathfinder account.</p></header>
   <section class="profile-account" id="profile-account" aria-label="Your account" data-clerk-user-id="{{ session.get('clerk_user_id', '') }}">
     {% if session.get('user_id') %}
     <div class="profile-identity"><span class="profile-avatar" id="profile-avatar" aria-hidden="true">?</span><div class="profile-person"><h2 id="profile-name">Your account</h2><p class="profile-email" id="profile-email">Loading account details…</p><span class="profile-signed-in"><span class="profile-status-dot" aria-hidden="true"></span>You’re signed in</span></div></div>

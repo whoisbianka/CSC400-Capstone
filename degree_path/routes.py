@@ -224,7 +224,7 @@ def chat():
     if request.method == 'POST':
         question = text_value(request.form.get('question'))
         result = recommendations([question])
-    return render_template('chat.html', title='Degree Path Assistant', question=question, result=result)
+    return render_template('chat.html', title='Pathfinder Assistant', question=question, result=result)
 
 
 @web.post('/chat/reset')
