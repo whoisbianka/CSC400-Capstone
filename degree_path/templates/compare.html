@@ -11,9 +11,9 @@
 {% with gate_title='Compare favorites' %}{% include '_favorites_signin.html' %}{% endwith %}
 {% else %}
 <section class="page-workspace compare-page" id="compare-page" data-api-url="{{ url_for('web.compare_api') }}" data-explore-url="{{ url_for('web.explore') }}">
-  <header><p class="eyebrow">Find your fit</p><h1 id="page-title">Compare your options</h1>
-    <p>Select two or three favorites to see their statistics side by side.</p></header>
-  <p><a href="{{ url_for('web.compare') }}">Compare college programs from your saved majors →</a></p>
+  <header><h1 id="page-title">Compare your options</h1>
+    <p>Select two or three favorites to see their statistics.</p></header>
+  <p><a href="{{ url_for('web.explore') }}">Back to explore programs/majors →</a></p>
   <nav class="compare-modes" aria-label="Comparison type">
     <button type="button" data-compare-kind="majors" aria-pressed="true">Majors</button>
     <button type="button" data-compare-kind="programs" aria-pressed="false">Programs</button>
@@ -26,16 +26,13 @@
       <p id="compare-status" role="status"></p>
       <button id="compare-retry" type="button" class="secondary-button" hidden>Retry</button>
       <button id="compare-clear" type="button" class="secondary-button" disabled>Clear selection</button>
-      <a href="{{ url_for('web.saved_majors_page') }}">View saved majors</a>
-      <a href="{{ url_for('web.explore') }}">Explore programs</a>
     </aside>
     <section class="compare-results" aria-labelledby="comparison-title" aria-busy="false">
       <h2 id="comparison-title">Major comparison</h2>
       <p class="compare-legend">The highest earnings and lowest costs among reported values are highlighted. Ties for the best value share a label. Missing data is not treated as zero. Other statistics have no universal best value.</p>
       <p id="compare-placeholder">Choose two or three favorite majors to compare.</p>
       <div class="tbl-scroll" id="compare-table-container" tabindex="0" role="region" aria-label="Comparison table; scroll horizontally to view all selections" hidden>
-        <table id="compare-table"><caption class="sr-only">Selected favorites and their database statistics</caption><thead></thead><tbody></tbody></table>
-      </div>
+      <table id="compare-table"><caption class="sr-only">Selected favorites and their database statistics</caption><thead></thead><tbody></tbody></table>
       <p class="small-note">These figures describe the database records, not a guarantee of future earnings or personal costs. School costs and admissions apply to the institution, not the individual program. Different credentials and reporting cohorts may not be directly comparable.</p>
     </section>
   </div>

@@ -35,8 +35,9 @@
     about.append(node('p', 'small-note', `Median of reported program earnings: ${money(major.earnings)}. This summarizes program-level four-year earnings medians and is not graduate-weighted.`));
     body.append(about);
     const footer = node('footer', 'major-catalog-footer');
-    const link = node('a', '', 'Find colleges for this major →');
+    const link = node('a', '', 'Find colleges →');
     link.href = `/explore?view=programs&cipcode=${Number(major.cipcode)}`;
+    if (window.SavedCompare) footer.append(window.SavedCompare.button('majors', {id:Number(major.cipcode), label:major.major}));
     footer.append(link);
     article.append(body, footer);
     return article;
@@ -48,6 +49,9 @@
       byId('saved-library').hidden = data.majors.length === 0;
       byId('saved-empty').hidden = data.majors.length !== 0;
       byId('saved-major-count').textContent = `${data.majors.length} saved`;
+      const tabCount = byId('saved-majors-tab-count');
+      if (tabCount) tabCount.textContent = String(data.majors.length);
+      window.SavedCompare?.sync('majors', data.majors.map(major => ({id:Number(major.cipcode), label:major.major})));
     },
   };
 })();

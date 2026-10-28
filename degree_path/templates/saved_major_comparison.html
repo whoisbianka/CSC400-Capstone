@@ -9,7 +9,7 @@
 <div class="page-workspace saved-workspace">
   <header class="saved-header">
     <h1 id="page-title">Compare programs</h1>
-    <p>Select two or three programs from your saved majors to compare.</p>
+    <p>Select two or three programs from your saved majors, then click Compare to jump to the table.</p>
   </header>
   <nav class="saved-view-tabs" aria-label="Comparison type">
     <a href="{{ url_for('web.compare') }}" aria-current="page">Programs from saved majors</a>
@@ -19,7 +19,10 @@
   <div id="saved-majors-list" aria-busy="true"></div>
   <section id="saved-library" hidden aria-labelledby="saved-library-title">
     <div class="saved-section-heading"><h2 id="saved-library-title">Your saved majors</h2><span id="saved-major-count"></span></div>
-    <p class="saved-context">Select up to three college programs to compare.</p>
+    <div class="saved-section-heading">
+      <p class="saved-context">Select up to three college programs to compare.</p>
+      <button class="primary-link" id="saved-compare-button" type="button" aria-controls="saved-comparison-results" disabled>Compare</button>
+    </div>
     <div id="saved-program-groups"></div>
   </section>
   <section id="saved-empty" class="saved-empty" hidden aria-labelledby="saved-empty-title">
@@ -29,7 +32,7 @@
   </section>
   <section id="saved-comparison" class="saved-comparison" hidden aria-labelledby="saved-comparison-title">
     <div class="saved-section-heading">
-      <div><h2 id="saved-comparison-title">Compare your shortlist</h2><p id="saved-selection-count" role="status" aria-live="polite"></p></div>
+      <div><h2 id="saved-comparison-title" tabindex="-1">Compare your shortlist</h2><p id="saved-selection-count" role="status" aria-live="polite"></p></div>
       <label class="saved-differences"><input id="saved-differences" type="checkbox"> Differences only</label>
     </div>
     <p id="saved-comparison-prompt">Select at least two college programs above to compare them here.</p>

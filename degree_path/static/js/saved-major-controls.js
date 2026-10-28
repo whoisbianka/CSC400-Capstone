@@ -9,7 +9,7 @@
   gate.className = 'favorites-account';
   gate.hidden = true;
   const explanation = document.createElement('p');
-  explanation.textContent = 'Sign in or create an account to save majors and view your favorites.';
+  explanation.textContent = 'You cannot see your saved majors until you sign in or create an account.';
   const signIn = document.createElement('button');
   signIn.type = 'button';
   signIn.className = 'primary-link';
@@ -159,7 +159,7 @@
       if (list && window.SavedMajors) await window.SavedMajors.refresh(api, favorites);
       render(); notice.textContent = ''; return true;
     }
-    catch (error) { notice.textContent = error.message; return false; }
+    catch (error) { notice.textContent = error.requiresSignIn ? '' : error.message; return false; }
     finally { if (list) list.setAttribute('aria-busy', 'false'); }
   }
 
