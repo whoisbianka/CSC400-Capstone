@@ -66,6 +66,7 @@ def create_app(test_config=None):
         return response
 
     from .routes import web
+    from . import favorites
     app.register_blueprint(web)
 
     #initialize database connection on initial connection to website

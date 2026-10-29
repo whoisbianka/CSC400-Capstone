@@ -1,44 +1,7 @@
-.workspace-page {
-        box-sizing: border-box;
-        min-height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }
-
-      .workspace-page > p, .workspace-page > h1 {
-        text-align: center;
-      }
-
-      #auth-component {
-        display: flex;
-        justify-content: center;
-        margin: 24px 0;
-        max-width: 100%;
-      }
-
-      #auth-component .cl-rootBox, #auth-component .cl-cardBox {
-        max-width: 100%;
-      }
-
-      .account-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        align-items: center;
-        justify-content: center;
-        margin: 24px 0;
-      }
-
-      .account-actions button {
-        border: 1px solid currentColor;
-        border-radius: 10px;
-        padding: 10px 16px;
-        background: transparent;
-        color: inherit;
-        cursor: pointer;
-      }
-
-      .account-actions [hidden], #auth-user-button[hidden] {
-        display: none;
-      }
+.profile-page { max-width: 720px; margin: 0 auto; }
+.profile-page h1 { margin-top: 12px; }
+.profile-page h2 { margin: 18px 0 6px; overflow-wrap: anywhere; }
+.profile-verified { display: inline-block; padding: 7px 12px; color: #a1e4ba; background: #204536; border-radius: 8px; font-size: 13px; }
+.profile-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+#profile-email { overflow-wrap: anywhere; }
+#profile-retry { margin-top: 18px; }

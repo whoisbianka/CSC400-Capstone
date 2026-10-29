@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='3') }}">
-<script src="{{ url_for('static', filename='js/explore.js') }}" defer></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='8') }}">
+<script src="{{ url_for('static', filename='js/explore.js', v='2') }}" defer></script>
 {% endblock %}
 {% block content %}
 <div class="page-workspace explore-workspace">
@@ -11,9 +11,16 @@
 <header class="explore-hero">
 <p class="eyebrow">Find your next chapter</p>
 <h1 id="page-title">Explore college programs</h1>
-<p>Look through our massive database of college programs in the US. Use the filters to narrow your search to find schools that fit your criteria.</p>
+<p>Explore majors and the schools that offer them.</p>
 
 </header>
+<div class="explore-search" role="search" aria-label="Program search">
+<label for="program-search">Search majors or colleges</label>
+<div class="explore-search-controls">
+<input id="program-search" form="degree-filter-form" type="search" name="q" maxlength="200" value="{{ filters.get('q', '') }}" placeholder="Try a major, college, or nickname (e.g. UConn)">
+<button class="primary-link" form="degree-filter-form" type="submit">Search <span aria-hidden="true">→</span></button>
+</div>
+</div>
 <div class="explore-layout">
 <aside class="explore-sidebar" aria-labelledby="browse-title">
 <div class="sidebar-heading"><h2 id="browse-title">Filter programs</h2><a href="{{ url_for('web.explore') }}">Reset</a></div>
@@ -42,39 +49,59 @@
 {% if heading == 'Annual cost' %}{% endif %}
 </details>
 {% endfor %}
-<noscript><button type="submit" class="secondary-button">Update results</button></noscript>
+<button type="submit" class="primary-link apply-filters">Apply filters</button>
 </form>
 </aside>
 
 <section class="explore-results" aria-labelledby="results-title">
 <div class="results-heading"><div><p class="results-kicker">RESULTS</p><h2 id="results-title">{% if cipcode %}{{ major_name or ('CIP ' ~ cipcode ) }}{% else %}Programs found{% endif %}</h2></div><span class="page-badge">Page {{ data.page }}</span></div>
 <p class="results-count" role="status">{% if data.rows %}Showing {{ (data.page - 1) * 25 + 1 }}–{{ (data.page - 1) * 25 + data.rows|length }} programs{% else %}No programs on this page{% endif %}</p>
+{% if filter_chips %}
+<nav class="active-filters" aria-label="Active filters">
+{% for chip in filter_chips %}<a class="filter-chip" href="{{ chip.url }}" aria-label="Remove {{ chip.label }}">{{ chip.label }} <span aria-hidden="true">×</span></a>{% endfor %}
+<a class="clear-filters" href="{{ url_for('web.explore') }}">Clear all</a>
+</nav>
+{% endif %}
 <div class="program-cards">
 {% for program in data.rows %}
 <article class="program-card">
-<div class="college-monogram" aria-hidden="true">{{ program.college[:1] }}</div>
-<div class="program-card-content">
-<p class="program-location">{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p>
-<h3><a href="{{ url_for('web.program_details', program_id=program.id) }}">{{ program.college }}</a></h3>
-<div class="program-subject"><span class="subject-label">PROGRAM</span><p>{{ program.major }}</p></div>
 {% set facts = program.facts %}
-{% if facts.get('credlev') in [2, 3] %}<p class="program-degree">{{ 'Associate degree' if facts.credlev == 2 else 'Bachelor’s degree' }}</p>{% endif %}
-<dl class="program-facts">
-{% if facts.get('adm_rate') is not none %}<div><dt>Acceptance rate</dt><dd>{{ '%.0f'|format(facts.adm_rate * 100) }}%</dd></div>{% endif %}
-{% for key, label in [('npt4', 'Average net price'), ('tuitionfee_in', 'In-state tuition & fees'), ('tuitionfee_out', 'Out-of-state tuition & fees')] %}
+<header class="program-college-header">
+<span class="college-monogram" aria-hidden="true">{{ (program.college or '?')[:1] }}</span>
+<div class="program-college-identity">
+<h3 class="program-college">{{ program.college }}</h3>
+<p class="program-location">{% if program.city %}{{ program.city }}{% if program.state %}, {{ program.state }}{% endif %}{% elif program.state %}{{ program.state }}{% else %}Location not reported{% endif %}</p>
+</div>
+</header>
+<dl class="program-facts program-key-facts">
+<div><dt>Avg. yearly cost after aid</dt><dd>{% if facts.get('npt4') is not none %}{{ facts.npt4|money }}{% else %}<span class="fact-unavailable">Not reported</span>{% endif %}</dd></div>
+<div><dt>Accepted by the college</dt><dd>{% if facts.get('adm_rate') is not none %}{{ '%.0f'|format(facts.adm_rate * 100) }}%{% else %}<span class="fact-unavailable">Not reported</span>{% endif %}</dd></div>
+</dl>
+<div class="program-card-content">
+<p class="program-section-label">Program at this college</p>
+<h4 class="program-name"><a href="{{ url_for('web.program_details', program_id=program.id) }}">{{ program.major }}</a></h4>
+<p class="program-degree">{{ 'Associate degree' if facts.get('credlev') == 2 else 'Bachelor’s degree' if facts.get('credlev') == 3 else 'Degree not reported' }}</p>
+{% set more = namespace(available=false) %}
+{% for key in ['tuitionfee_in', 'tuitionfee_out'] %}{% if facts.get(key) is not none %}{% set more.available = true %}{% endif %}{% endfor %}
+{% for key in ['satmt', 'satvr', 'actmt', 'acten'] %}{% if facts.get(key+'25') is not none and facts.get(key+'75') is not none %}{% set more.available = true %}{% endif %}{% endfor %}
+{% if more.available %}
+<details class="program-more"><summary>More details</summary><dl class="program-facts">
+{% for key, label in [('tuitionfee_in', 'In-state tuition & fees'), ('tuitionfee_out', 'Out-of-state tuition & fees')] %}
 {% if facts.get(key) is not none %}<div><dt>{{ label }}</dt><dd>{{ facts[key]|money }}<span> / year</span></dd></div>{% endif %}
 {% endfor %}
 {% for key, label in [('satmt', 'SAT Math'), ('satvr', 'SAT Reading'), ('actmt', 'ACT Math'), ('acten', 'ACT English')] %}
 {% if facts.get(key+'25') is not none and facts.get(key+'75') is not none %}<div><dt>{{ label }} range</dt><dd>{{ facts[key+'25'] }}–{{ facts[key+'75'] }}</dd></div>{% endif %}
 {% endfor %}
-</dl>
-<div class="program-card-footer">{% if facts.get('website') %}<a href="{{ facts.website }}" target="_blank" rel="noopener noreferrer">College website ↗</a>{% endif %}<a href="{{ url_for('web.program_details', program_id=program.id) }}">View program <span aria-hidden="true">→</span></a></div>
+</dl></details>
+{% endif %}
 </div>
+<div class="program-card-footer"><a href="{{ url_for('web.program_details', program_id=program.id) }}">View program <span aria-hidden="true">→</span></a><button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" aria-pressed="false" aria-label="Save {{ program.major }} to saved majors" title="Save major">☆</button></div>
 </article>
 {% else %}
 <div class="explore-empty"><h3>No programs found here.</h3><p>Try broadening your filters or return to the full catalog.</p><a class="primary-link" href="{{ url_for('web.explore') }}">Browse all programs</a></div>
 {% endfor %}
 </div>
+<p class="card-facts-note">Cost after aid is the college-wide average after grants and scholarships. Your cost may differ.</p>
 <nav class="explore-pagination" aria-label="Catalog pages">
 {% if data.page > 1 %}<a class="secondary-button" href="{{ url_for('web.explore', page=data.page-1, cipcode=cipcode, degrees=degree_query, **filters) }}">← Previous</a>{% endif %}
 <span>Page {{ data.page }}</span>

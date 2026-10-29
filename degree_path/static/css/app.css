@@ -51,3 +51,18 @@ tbody tr:hover { background: var(--accent-faint); }
 .table-sort { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
 .table-sort:hover { color: var(--highlight); }
 .table-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 2px; }
+
+.save-major-button { align-self: flex-start; display: inline-block; margin: 12px 0; padding: 9px 14px; border: 1px solid var(--accent-border); border-radius: 10px; background: var(--surface-raised); color: var(--accent); cursor: pointer; }
+.save-major-button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+.save-major-button:disabled { opacity: .6; cursor: wait; }
+.favorites-account { padding: 18px; margin: 0 0 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.favorites-account p { margin-top: 0; }
+.favorites-notice:empty { display: none; }
+.saved-major-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+#saved-majors-list { margin-bottom: 24px; }
+@media (max-width: 600px) { .site-navigation { flex-wrap: wrap; } .site-navigation nav { flex-wrap: wrap; } }
+
+.favorites-login-dialog { width: min(420px, calc(100% - 32px)); padding: 28px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text); box-shadow: 0 24px 80px var(--shadow); }
+.favorites-login-dialog::backdrop { background: var(--overlay); backdrop-filter: blur(4px); }
+.favorites-login-dialog h2 { margin: 0 0 12px; }
+.favorites-login-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 24px; }

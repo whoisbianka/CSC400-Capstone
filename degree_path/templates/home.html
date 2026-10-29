@@ -15,12 +15,11 @@
 
 <header class="home-hero"><div class="container px-lg-5"><div class="hero"><h1>Let us help you<br><span>plan your future.</span></h1>
      <p>We created this website with the intention of
-          <br class="desktop-break"> helping high school students plan out their future.
-          <br>Choose a starting point!</p></div></div></header>
+          <br class="desktop-break"> helping high school students plan out their future!</p></div></div></header>
 <!-- Both cards link directly to the existing guest-friendly paths. -->
 <section id="choose-path" class="path-section" aria-labelledby="paths-title">
   <div class="container px-lg-5">
-    <div class="path-heading"><h2 id="paths-title">Where are you starting?</h2><p>Two ways forward. You choose.</p></div>
+    <div class="path-heading"><h2 id="paths-title">Choose your path!</h2></div>
       <div class="path-grid">
         <a class="feature-card guided-card" href="{{ url_for('web.questionnaire') }}" aria-labelledby="guided-title guided-action">
           <div class="card-topline"><span class="path-label">DISCOVER YOUR INTERESTS</span></div>
@@ -28,24 +27,21 @@
           <div class="card-art guided-art" aria-hidden="true">
             <svg viewBox="0 0 400 130"><path class="route-line" d="M45 112C45 40 155 122 197 63S320 25 354 17"/><circle class="route-point" cx="45" cy="112" r="6"/><circle class="route-point" cx="197" cy="63" r="5"/><path class="route-arrow" d="m340 14 16 2-5 15"/><g class="compass"><circle cx="202" cy="63" r="42"/><circle cx="202" cy="63" r="32"/><path d="m216 43-7 28-21 12 7-28 21-12Z"/><path d="m202 58 7 13"/></g><path class="art-spark" d="M300 70v16m-8-8h16M104 20v10m-5-5h10"/></svg>
           </div>
-          <p class="card-description">Explore your interests in a guided conversation and discover majors related to what you enjoy.</p>
-          <ul class="card-benefits"><li>Questions about your interests</li><li>Majors to research next</li></ul>
+          <p class="card-description">Explore your interests by engaging in a guided conversation with our chatbot and discover majors related to what you enjoy.</p>
+          <ul class="card-benefits"><li>Real time, instant responses</li><li>Constant recommendations</li></ul>
           <div class="card-action"><span id="guided-action">Find my path</span><span class="action-arrow" aria-hidden="true">→</span></div>
-          <p class="card-guest-note">No account required</p>
         </a>
         <a class="feature-card explore-card" href="{{ url_for('web.explore') }}" aria-labelledby="explore-title explore-action">
           <div class="card-topline"><span class="path-label">EXPLORE YOUR OPTIONS</span></div>
-          <h2 id="explore-title">Ready to explore programs?</h2>
+          <h2 id="explore-title">Know what you want?</h2>
           <div class="card-art explore-art" aria-hidden="true">
             <svg viewBox="0 0 400 130"><g class="catalog-back"><rect x="111" y="13" width="182" height="99" rx="10"/></g><g class="catalog-front"><rect x="102" y="24" width="182" height="99" rx="10"/><path d="M120 46h83m-83 13h51"/><rect x="120" y="77" width="41" height="28" rx="4"/><rect x="171" y="77" width="41" height="28" rx="4"/><rect x="222" y="77" width="41" height="28" rx="4"/></g><g class="search-symbol"><circle cx="273" cy="44" r="24"/><circle cx="270" cy="41" r="8"/><path d="m276 47 6 6"/></g><path class="art-spark" d="M69 48v16m-8-8h16M325 89v10m-5-5h10"/></svg>
           </div>
-          <p class="card-description">Browse college programs and narrow your options by degree, location, cost, and admissions.</p>
-          <ul class="card-benefits"><li>Associate &amp; bachelor’s degrees</li><li>Location, cost &amp; admission filters</li></ul>
+          <p class="card-description">Go through our database of college programs and use our filters to help you find the best fit.</p>
+          <ul class="card-benefits"><li>Large assortment of college programs</li><li>Comparison system of programs to help you decide</li></ul>
           <div class="card-action"><span id="explore-action">Browse programs</span><span class="action-arrow" aria-hidden="true">→</span></div>
-          <p class="card-guest-note">No account required</p>
         </a>
       </div>
-    <p class="hint">Two ways to begin. One step closer to what’s next.</p>
   </div>
 </section>
 </main>

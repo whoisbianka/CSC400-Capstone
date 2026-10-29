@@ -1,9 +1,20 @@
 {% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css', v='20261022') }}">
+<script src="{{ url_for('static', filename='js/profile.js', v='20261022') }}" defer></script>
+{% endblock %}
 {% block content %}
-<div class="page-workspace"><section class="workspace-page" aria-labelledby="page-title">
-  <p class="eyebrow">Coming soon</p>
+<div class="page-workspace"><section class="workspace-page profile-page" aria-labelledby="page-title">
+  <p class="eyebrow">Your account</p>
   <h1 id="page-title">Profile</h1>
-  <p>Student profiles and saved preferences are coming soon.</p>
-  <a class="primary-link" href="{{ url_for('web.home') }}">Back to home →</a>
+  <p id="profile-status" role="status" aria-live="polite">Verifying your Clerk sign-in…</p>
+  <div id="profile-signed-in" hidden>
+    <span class="profile-verified">✓ Signed in via Clerk</span>
+    <h2 id="profile-name"></h2><p id="profile-email"></p>
+    <p>Your saved majors are connected to this account.</p>
+    <div class="profile-actions"><a class="primary-link" href="{{ url_for('web.saved_majors_page') }}">View saved majors &amp; compare →</a><button type="button" class="secondary-button" id="profile-sign-out">Sign out</button></div>
+  </div>
+  <div id="profile-signed-out" hidden><p>Sign in with Clerk to view your saved majors and compare programs.</p><button type="button" class="primary-link" id="profile-sign-in">Sign in / Create account</button></div>
+  <button type="button" class="secondary-button" id="profile-retry" hidden>Check sign-in again</button>
 </section></div>
 {% endblock %}

@@ -231,6 +231,9 @@ def questionnaire():
 def explore():
     page = positive_arg('page', 1, 100000)
     cipcode = positive_arg('cipcode')
+    query = request.args.get('q', '').strip()
+    if len(query) > 200:
+        abort(400, description='Search must be at most 200 characters.')
     # No selected degrees means no degree restriction.
     degree_values = (request.args.getlist('degree') if 'degree_form' in request.args
                      else request.args.get('degrees', '').split(','))
@@ -238,6 +241,8 @@ def explore():
         abort(400, description='Invalid degree level.')
     degrees = tuple(sorted({int(value) for value in degree_values if value}))
     filters = {}
+    if query:
+        filters['q'] = query
     for key in ('state', 'city'):
         value = request.args.get(key, '').strip()
         if value:
@@ -264,9 +269,38 @@ def explore():
     major_name=None
     if cipcode is not None and data["rows"]:
         major_name=data["rows"][0]["major"]
+    # Build removal links from validated filters, resetting pagination only.
+    active_params = {**filters}
+    if cipcode is not None:
+        active_params['cipcode'] = cipcode
+    if degrees:
+        active_params['degrees'] = ','.join(map(str, degrees))
+    filter_chips = []
+
+    def add_chip(label, key, replacement=None):
+        remaining = {**active_params}
+        remaining.pop(key, None)
+        if replacement:
+            remaining[key] = replacement
+        filter_chips.append({'label': label, 'url': url_for('web.explore', **remaining)})
+
+    labels = {'q': 'Search', 'state': 'State', 'city': 'City',
+              'net_price_max': 'Cost after aid up to', 'tuition_in_max': 'In-state tuition up to',
+              'tuition_out_max': 'Out-of-state tuition up to',
+              'acceptance_min': 'Acceptance at least', 'acceptance_max': 'Acceptance up to'}
+    for key, value in filters.items():
+        display = (f'${value:,}' if key.endswith('_max') and not key.startswith('acceptance_')
+                   else f'{value}%' if key.startswith('acceptance_') else str(value))
+        add_chip(f'{labels[key]}: {display}', key)
+    if cipcode is not None:
+        add_chip(major_name or 'Selected major', 'cipcode')
+    for degree in degrees:
+        add_chip('Associate degree' if degree == 2 else 'Bachelor’s degree', 'degrees',
+                 ','.join(str(other) for other in degrees if other != degree))
     return render_template('explore.html', title='Explore programs', data=data,
                            major_name=major_name, cipcode=cipcode, degrees=degrees,
-                           degree_query=','.join(map(str, degrees)), filters=filters)
+                           degree_query=','.join(map(str, degrees)), filters=filters,
+                           filter_chips=filter_chips)
 
 @web.get('/programs/<int:program_id>')
 def program_details(program_id):
