@@ -1,0 +1,989 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Degree Path Explorer | Gemini AI</title>
+
+  <style>
+    :root {
+      --background: #080d1a;
+      --sidebar: #0e1629;
+      --panel: #121c31;
+      --panel-light: #1c2942;
+      --border: #293650;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --primary: #818cf8;
+      --secondary: #38bdf8;
+      --success: #34d399;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: var(--background);
+      color: var(--text);
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      display: flex;
+      min-height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+
+    .sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 25px 17px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 38px;
+    }
+
+    .brand-icon {
+      width: 45px;
+      height: 45px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #6366f1, #38bdf8);
+      font-size: 24px;
+    }
+
+    .brand-name {
+      font-weight: 800;
+      font-size: 17px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .sidebar-label {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      margin: 0 0 15px 12px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 14px;
+      border-radius: 11px;
+      color: #cbd5e1;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .nav-item.active {
+      background: #242d54;
+      color: #c7d2fe;
+      font-weight: 700;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 18px 12px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      background: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 12px #34d39977;
+    }
+
+    .sidebar-note {
+      margin-top: 12px;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    /* Main workspace */
+
+    .workspace {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(
+          ellipse at 50% 0%,
+          #20234b 0%,
+          transparent 52%
+        ),
+        var(--background);
+    }
+
+    .topbar {
+      height: 76px;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 35px;
+      border-bottom: 1px solid #ffffff0d;
+    }
+
+    .topbar-title {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .topbar-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .new-chat {
+      background: #1c2942;
+      color: var(--text);
+      border: 1px solid #384763;
+      border-radius: 10px;
+      padding: 11px 15px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: 0.2s;
+    }
+
+    .new-chat:hover {
+      background: #303d61;
+    }
+
+    /* Conversation area */
+
+    .messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 30px 25px;
+      scroll-behavior: smooth;
+    }
+
+    .conversation {
+      max-width: 850px;
+      margin: 0 auto;
+    }
+
+    .welcome {
+      text-align: center;
+      padding: 45px 0 35px;
+    }
+
+    .welcome-icon {
+      width: 75px;
+      height: 75px;
+      border-radius: 23px;
+      margin: 0 auto 22px;
+      display: grid;
+      place-items: center;
+      font-size: 35px;
+      background: linear-gradient(135deg, #4f46e5, #0891b2);
+      box-shadow: 0 15px 55px #6366f133;
+    }
+
+    .welcome h1 {
+      margin: 0;
+      font-size: clamp(26px, 4vw, 37px);
+      letter-spacing: -1.3px;
+    }
+
+    .gradient-text {
+      background: linear-gradient(90deg, #a5b4fc, #67e8f9);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .welcome p {
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 490px;
+      margin: 15px auto 0;
+      font-size: 14px;
+    }
+
+    /* Suggested prompts */
+
+    .suggestions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 13px;
+      max-width: 680px;
+      margin: 10px auto 0;
+    }
+
+    .suggestion {
+      background: #17233b;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 17px;
+      text-align: left;
+      color: var(--text);
+      transition: 0.2s;
+    }
+
+    .suggestion:hover {
+      border-color: var(--primary);
+      background: #202d4d;
+      transform: translateY(-2px);
+    }
+
+    .suggestion-icon {
+      display: block;
+      font-size: 21px;
+      margin-bottom: 10px;
+    }
+
+    .suggestion-title {
+      display: block;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .suggestion-description {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* Chat messages */
+
+    .chat-row {
+      display: flex;
+      gap: 13px;
+      margin: 22px 0;
+      align-items: flex-start;
+    }
+
+    .chat-row.user-row {
+      flex-direction: row-reverse;
+    }
+
+    .avatar {
+      width: 35px;
+      height: 35px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      font-size: 17px;
+      background: linear-gradient(135deg, #6366f1, #0891b2);
+    }
+
+    .user-row .avatar {
+      background: #334155;
+    }
+
+    .chat-content {
+      max-width: min(85%, 700px);
+      min-width: 0;
+    }
+
+    .chat-author {
+      color: #a5b4fc;
+      font-size: 12px;
+      font-weight: 700;
+      margin: 0 0 8px;
+    }
+
+    .user-row .chat-author {
+      text-align: right;
+      color: #cbd5e1;
+    }
+
+    .chat-bubble {
+      padding: 16px 19px;
+      border-radius: 15px;
+      line-height: 1.75;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+      background: #17243b;
+      border: 1px solid #2b3b59;
+      white-space: pre-wrap;
+    }
+
+    .user-row .chat-bubble {
+      background: #31346b;
+      border-color: #494c91;
+    }
+
+    .chat-bubble p {
+      margin: 0 0 12px;
+    }
+
+    .chat-bubble p:last-child {
+      margin-bottom: 0;
+    }
+
+    .chat-bubble strong {
+      color: #e0e7ff;
+    }
+
+    .chat-bubble ul,
+    .chat-bubble ol {
+      padding-left: 23px;
+    }
+
+    .chat-bubble li {
+      margin-bottom: 7px;
+    }
+
+    .chat-bubble h3 {
+      font-size: 15px;
+      color: #a5b4fc;
+      margin: 16px 0 9px;
+    }
+
+    .chat-bubble code {
+      background: #0f172a;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+
+    .typing {
+      color: #a5b4fc;
+      animation: pulse 1.3s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.45; }
+      50% { opacity: 1; }
+    }
+
+    /* Composer */
+
+    .composer-section {
+      flex-shrink: 0;
+      padding: 16px 30px 22px;
+      background: linear-gradient(transparent, #080d1a 25%);
+    }
+
+    .composer {
+      max-width: 850px;
+      margin: 0 auto;
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      padding: 11px 12px 11px 18px;
+      background: #19263d;
+      border: 1px solid #394864;
+      border-radius: 17px;
+      box-shadow: 0 12px 40px #00000033;
+    }
+
+    .composer:focus-within {
+      border-color: #818cf8;
+    }
+
+    textarea {
+      flex: 1;
+      resize: none;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: white;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 44px;
+      max-height: 140px;
+      padding: 12px 0;
+    }
+
+    textarea::placeholder {
+      color: #94a3b8;
+    }
+
+    .send-button {
+      width: 45px;
+      height: 45px;
+      flex-shrink: 0;
+      border: none;
+      border-radius: 12px;
+      color: white;
+      background: linear-gradient(135deg, #6366f1, #0891b2);
+      font-size: 21px;
+      transition: 0.2s;
+    }
+
+    .send-button:hover:not(:disabled) {
+      filter: brightness(1.2);
+    }
+
+    .send-button:disabled {
+      opacity: 0.45;
+      cursor: wait;
+    }
+
+    .footer-note {
+      max-width: 850px;
+      margin: 12px auto 0;
+      text-align: center;
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 760px) {
+      .sidebar {
+        display: none;
+      }
+
+      .topbar {
+        padding: 0 17px;
+      }
+
+      .messages {
+        padding: 20px 15px;
+      }
+
+      .welcome {
+        padding-top: 30px;
+      }
+
+      .suggestions {
+        grid-template-columns: 1fr;
+      }
+
+      .composer-section {
+        padding: 12px 13px 18px;
+      }
+
+      .chat-content {
+        max-width: 88%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">🎓</div>
+        <div>
+          <div class="brand-name">Degree Path</div>
+          <div class="brand-subtitle">Explorer AI</div>
+        </div>
+      </div>
+
+      <div class="sidebar-label">WORKSPACE</div>
+
+      <div class="nav-item active">
+        ✦ &nbsp; AI Career Counselor
+      </div>
+
+      <div class="nav-item">
+        ◇ &nbsp; Explore Your Future
+      </div>
+
+      <div class="sidebar-bottom">
+        <div class="status">
+          <span class="status-dot"></span>
+          Gemini AI Demo
+        </div>
+
+        <div class="sidebar-note">
+          Discover majors, explore careers, and
+          build a path toward your future.
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="workspace">
+
+      <header class="topbar">
+        <div>
+          <div class="topbar-title">
+            AI Career Counselor
+          </div>
+          <div class="topbar-subtitle">
+            Powered by Google Gemini
+          </div>
+        </div>
+
+        <button class="new-chat" id="newChatButton" type="button">
+          ↻ New Conversation
+        </button>
+      </header>
+
+      <!-- Chat conversation -->
+      <section
+        class="messages"
+        id="messages"
+        role="log"
+        aria-label="Chat conversation"
+        aria-live="polite"
+        aria-relevant="additions text">
+
+        <div class="conversation" id="conversation">
+
+          <div class="welcome" id="welcome">
+            <div class="welcome-icon">✦</div>
+
+            <h1>
+              Discover your
+              <span class="gradient-text">future.</span>
+            </h1>
+
+            <p>
+              Not sure what to study or where to begin?
+              Your AI career counselor is here to help
+              you explore college majors, discover career
+              opportunities, and find your direction.
+            </p>
+
+            <div class="suggestions">
+              <button
+                class="suggestion"
+                type="button"
+                data-prompt="I want to go to college, but I don't know what major to choose. Can you help me?">
+
+                <span class="suggestion-icon">🎓</span>
+                <span class="suggestion-title">
+                  Find My Major
+                </span>
+                <span class="suggestion-description">
+                  Discover majors that fit your interests.
+                </span>
+              </button>
+
+              <button
+                class="suggestion"
+                type="button"
+                data-prompt="Can you help me explore different career paths based on my strengths and interests?">
+
+                <span class="suggestion-icon">🧭</span>
+                <span class="suggestion-title">
+                  Explore Careers
+                </span>
+                <span class="suggestion-description">
+                  Learn about possible career directions.
+                </span>
+              </button>
+
+              <button
+                class="suggestion"
+                type="button"
+                data-prompt="I enjoy technology and creative projects. What college majors could be a good fit for me?">
+
+                <span class="suggestion-icon">💻</span>
+                <span class="suggestion-title">
+                  Technology & Creativity
+                </span>
+                <span class="suggestion-description">
+                  Connect your interests to college majors.
+                </span>
+              </button>
+
+              <button
+                class="suggestion"
+                type="button"
+                data-prompt="I'm a high school student preparing for college. What steps should I take to explore my options?">
+
+                <span class="suggestion-icon">🚀</span>
+                <span class="suggestion-title">
+                  Prepare for College
+                </span>
+                <span class="suggestion-description">
+                  Get guidance on where to start.
+                </span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Message composer -->
+      <div class="composer-section">
+        <form class="composer" id="chatForm">
+
+          <label for="question" style="display:none">
+            Your question
+          </label>
+
+          <textarea
+            id="question"
+            rows="1"
+            maxlength="500"
+            placeholder="Ask me anything about college or careers..."
+            required></textarea>
+
+          <button
+            class="send-button"
+            id="sendButton"
+            type="submit"
+            aria-label="Send message">
+            ➤
+          </button>
+        </form>
+
+        <div class="footer-note">
+          AI guidance is for exploration.
+          Verify college programs, costs, and admissions
+          details with official sources.
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("question");
+    const messages = document.getElementById("messages");
+    const conversation = document.getElementById("conversation");
+    const button = document.getElementById("sendButton");
+    const welcome = document.getElementById("welcome");
+    const newChatButton = document.getElementById("newChatButton");
+
+    // Conversation memory for the current browser session
+    const conversationHistory = [];
+
+    // Used to prevent old requests from updating a new chat
+    let conversationVersion = 0;
+    let activeRequest = null;
+
+    function scrollToBottom() {
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    // Safely format basic Gemini Markdown without injecting HTML
+    function formatGeminiText(text, container) {
+      const lines = String(text).split("\n");
+      let currentList = null;
+      let currentListType = null;
+
+      function addInlineFormatting(value, parent) {
+        const parts = value.split(/(\*\*[^*]+\*\*)/g);
+
+        for (const part of parts) {
+          if (part.startsWith("**") && part.endsWith("**")) {
+            const strong = document.createElement("strong");
+            strong.textContent = part.slice(2, -2);
+            parent.appendChild(strong);
+          } else {
+            parent.appendChild(document.createTextNode(part));
+          }
+        }
+      }
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          currentList = null;
+          currentListType = null;
+          continue;
+        }
+
+        const heading = trimmed.match(/^#{1,3}\s+(.+)$/);
+        const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+        const numbered = trimmed.match(/^\d+\.\s+(.+)$/);
+
+        if (heading) {
+          currentList = null;
+          currentListType = null;
+          const h = document.createElement("h3");
+          addInlineFormatting(heading[1], h);
+          container.appendChild(h);
+          continue;
+        }
+
+        if (bullet || numbered) {
+          const type = bullet ? "ul" : "ol";
+
+          if (!currentList || currentListType !== type) {
+            currentList = document.createElement(type);
+            currentListType = type;
+            container.appendChild(currentList);
+          }
+
+          const li = document.createElement("li");
+          addInlineFormatting(
+            bullet ? bullet[1] : numbered[1],
+            li
+          );
+          currentList.appendChild(li);
+          continue;
+        }
+
+        currentList = null;
+        currentListType = null;
+
+        const p = document.createElement("p");
+        addInlineFormatting(trimmed, p);
+        container.appendChild(p);
+      }
+    }
+
+    // Create a chat bubble
+    function addMessage(text, role, formatted = false) {
+      const row = document.createElement("div");
+      row.className = "chat-row";
+
+      if (role === "user") {
+        row.classList.add("user-row");
+      }
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = role === "user" ? "👤" : "✦";
+
+      const content = document.createElement("div");
+      content.className = "chat-content";
+
+      const author = document.createElement("div");
+      author.className = "chat-author";
+      author.textContent =
+        role === "user" ? "You" : "Degree Path AI";
+
+      const bubble = document.createElement("div");
+      bubble.className = "chat-bubble";
+
+      if (formatted) {
+        formatGeminiText(text, bubble);
+      } else {
+        bubble.textContent = text;
+      }
+
+      content.appendChild(author);
+      content.appendChild(bubble);
+
+      row.appendChild(avatar);
+      row.appendChild(content);
+
+      conversation.appendChild(row);
+      scrollToBottom();
+
+      return bubble;
+    }
+
+    // Send a question to Flask and Gemini
+    async function sendQuestion(question) {
+      question = question.trim();
+
+      if (!question || question.length > 500 || button.disabled) {
+        return;
+      }
+
+      // Hide welcome cards once the conversation starts
+      welcome.hidden = true;
+      welcome.style.display = "none";
+
+      addMessage(question, "user");
+      input.value = "";
+      input.style.height = "auto";
+      button.disabled = true;
+
+      const reply = addMessage(
+        "Gemini is thinking...",
+        "model"
+      );
+      reply.classList.add("typing");
+
+      const requestVersion = conversationVersion;
+      const controller = new AbortController();
+      activeRequest = controller;
+
+      try {
+        const response = await fetch("/api/gemini", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            question: question,
+            history: conversationHistory
+          }),
+          signal: controller.signal
+        });
+
+        const data = await response.json();
+
+        if (requestVersion !== conversationVersion) {
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Gemini request failed."
+          );
+        }
+
+        reply.classList.remove("typing");
+        reply.replaceChildren();
+        formatGeminiText(data.response, reply);
+
+        // Remember successful exchanges
+        conversationHistory.push({
+          role: "user",
+          text: question
+        });
+
+        conversationHistory.push({
+          role: "model",
+          text: data.response
+        });
+
+        // Limit history to the latest 12 messages
+        if (conversationHistory.length > 12) {
+          conversationHistory.splice(
+            0,
+            conversationHistory.length - 12
+          );
+        }
+
+      } catch (error) {
+        if (requestVersion !== conversationVersion) {
+          return;
+        }
+
+        if (error.name === "AbortError") {
+          return;
+        }
+
+        console.error("Gemini request failed:", error);
+
+        reply.classList.remove("typing");
+        reply.textContent =
+          "Sorry, the AI assistant is temporarily unavailable. " +
+          "Please try sending your question again.";
+
+      } finally {
+        if (requestVersion === conversationVersion) {
+          button.disabled = false;
+          activeRequest = null;
+          input.focus();
+          scrollToBottom();
+        }
+      }
+    }
+
+    // Submit the typed message
+    form.addEventListener("submit", function(event) {
+      event.preventDefault();
+      sendQuestion(input.value);
+    });
+
+    // Enter sends; Shift+Enter creates a new line
+    input.addEventListener("keydown", function(event) {
+      if (
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        !event.isComposing
+      ) {
+        event.preventDefault();
+        sendQuestion(input.value);
+      }
+    });
+
+    // Resize textarea as the student types
+    input.addEventListener("input", function() {
+      input.style.height = "auto";
+      input.style.height =
+        Math.min(input.scrollHeight, 140) + "px";
+    });
+
+    // Suggested question cards
+    document.querySelectorAll(".suggestion").forEach(
+      function(card) {
+        card.addEventListener("click", function() {
+          sendQuestion(card.dataset.prompt);
+        });
+      }
+    );
+
+    // Start a fresh conversation
+    newChatButton.addEventListener("click", function() {
+      conversationVersion++;
+
+      // Cancel the previous browser request if still running
+      if (activeRequest) {
+        activeRequest.abort();
+        activeRequest = null;
+      }
+
+      // Clear previous messages from memory
+      conversationHistory.length = 0;
+
+      // Remove chat bubbles but keep the welcome section
+      conversation.querySelectorAll(".chat-row").forEach(
+        function(row) {
+          row.remove();
+        }
+      );
+
+      welcome.hidden = false;
+      welcome.style.display = "";
+
+      input.value = "";
+      input.style.height = "auto";
+      button.disabled = false;
+
+      messages.scrollTop = 0;
+      input.focus();
+    });
+  </script>
+</body>
+</html>

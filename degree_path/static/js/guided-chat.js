@@ -300,7 +300,64 @@
 
     // Show recommendations
     addBotMessage(recommendationMessage);
+
+    // Keep Bryan's existing database recommendations
     loadDatabaseExamples(recommendations);
+
+    // Request personalized guidance from Google Gemini
+    loadGeminiGuidance();
+  }
+
+  // Get personalized college and career guidance from Gemini
+  async function loadGeminiGuidance() {
+    const root = document.getElementById("guided-chat");
+
+    const box = document.createElement("div");
+    box.className = "bot-message";
+    box.textContent = "Gemini is preparing your personalized guidance...";
+    chatMessages.appendChild(box);
+
+    const question = [
+      "Based on the following student interests and goals,",
+      "suggest college majors and career paths to explore.",
+      "Explain why they might be a good fit.",
+      "Keep your answer brief and easy to understand.",
+      "Interests: " + userProfile.interests,
+      "Strengths: " + userProfile.strengths,
+      "Career interests: " + userProfile.careerInterest,
+      "Additional career interests: " + userProfile.careerFollowUp,
+      "Major interests: " + userProfile.majorInterest
+    ].join("\n").slice(0, 500);
+
+    try {
+      const response = await fetch(root.dataset.geminiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": root.dataset.csrf
+        },
+        body: JSON.stringify({ question: question })
+      });
+
+      if (!response.ok) {
+        throw new Error("Gemini request failed");
+      }
+
+      const result = await response.json();
+
+      // Display AI text safely without interpreting it as HTML
+      box.textContent =
+        "Degree Path Explorer AI:\n\n" + result.response;
+      box.style.whiteSpace = "pre-wrap";
+
+    } catch (error) {
+      console.error("Gemini error:", error);
+      box.textContent =
+        "AI guidance is temporarily unavailable. " +
+        "You can still explore the recommended majors and colleges.";
+    }
+
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
 

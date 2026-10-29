@@ -1,4 +1,5 @@
 from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
+from .gemini_service import ask_gemini
 import re
 import secrets
 from urllib.parse import urlsplit
@@ -335,3 +336,32 @@ def recommendations_api():
         abort(400, description='Send between 1 and 20 major names.')
     terms = [text_value(term) for term in body['majors']]
     return jsonify(recommendations(terms))
+
+
+@web.post('/api/gemini')
+def gemini_api():
+    # Make sure the request contains JSON
+    if not request.is_json:
+        return jsonify(error="Please send JSON."), 415
+
+    data = request.get_json(silent=True)
+
+    # Validate the student's question
+    if not isinstance(data, dict):
+        return jsonify(error="Invalid request."), 400
+
+    question = data.get("question")
+
+    if not isinstance(question, str) or not 1 <= len(question.strip()) <= 500:
+        return jsonify(error="Enter a question between 1 and 500 characters."), 400
+
+    try:
+        # Send the student's question to Google Gemini
+        answer = ask_gemini(question.strip())
+
+        # Return Gemini's response to the website
+        return jsonify(response=answer)
+
+    except Exception:
+        current_app.logger.exception("Gemini request failed")
+        return jsonify(error="The AI assistant is temporarily unavailable."), 503
