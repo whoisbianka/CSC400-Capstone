@@ -203,3 +203,8 @@
 .explore-workspace .explore-intro h1 { font-weight: 500; }
 .explore-workspace .catalog-filter-group summary { font-weight: 500; }
 .explore-workspace .explore-search-controls .primary-link { font-weight: 500; }
+
+/* Search moves beside the existing sort controls; sort styling stays unchanged. */
+.explore-results-toolbar .explore-search { flex: 1 1 220px; min-width: min(220px, 100%); margin-bottom: 0; }
+.explore-results-toolbar .explore-sort { flex-shrink: 0; }
+.explore-results-meta .results-count { margin: 0 0 16px; font-size: 13px; }

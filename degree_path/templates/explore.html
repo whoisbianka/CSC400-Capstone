@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='separate-search-2') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='search-sort-row-1') }}">
 <script src="{{ url_for('static', filename='js/explore.js', v='4') }}" defer></script>
 <script src="{{ url_for('static', filename='js/explore-preferences.js') }}" defer></script>
 {% if session.get('user_id') %}
@@ -13,10 +13,7 @@
   <div id="explore-loading" class="explore-loading" role="status" aria-live="polite" hidden><span class="explore-spinner" aria-hidden="true"></span><span>Loading programs…</span></div>
   {% include '_explore_tabs.html' %}
   <header class="explore-intro"><h1 id="page-title">Find a college program</h1><p>Compare schools offering the major and degree you want.</p></header>
-  <div class="explore-search" role="search" aria-label="College program search">
-    <label for="program-search">College or major</label>
-    <div class="explore-search-controls"><input id="program-search" form="degree-filter-form" type="search" name="q" maxlength="200" value="{{ filters.get('q', '') }}" placeholder="College name or major"><button class="primary-link" form="degree-filter-form" type="submit">Search <span aria-hidden="true">→</span></button></div>
-  </div>
+
   <div class="explore-layout">
     <aside class="explore-sidebar" aria-labelledby="browse-title">
       <div class="sidebar-heading"><h2 id="browse-title">Filter programs</h2><a href="{{ url_for('web.explore', view='programs') }}">Clear</a></div>
@@ -45,7 +42,11 @@
       </form>
     </aside>
     <section class="explore-results" aria-labelledby="results-title">
-      <div class="explore-results-toolbar"><div><h2 id="results-title" class="sr-only">College programs</h2><p class="results-count" role="status">{% if data.rows %}Showing {{ (data.page - 1) * 25 + 1 }}–{{ (data.page - 1) * 25 + data.rows|length }} college programs{% else %}No college programs found{% endif %}</p></div><div class="explore-sort"><span class="page-badge">Page {{ data.page }}</span><label for="program-sort">Sort by</label><select id="program-sort" form="degree-filter-form" name="sort">{% for value, label in [('school_asc', 'School name A–Z'), ('school_desc', 'School name Z–A'), ('earnings_desc', 'Highest program earnings'), ('net_price_asc', 'Lowest cost after aid'), ('tuition_in_asc', 'Lowest in-state tuition'), ('tuition_out_asc', 'Lowest out-of-state tuition')] %}<option value="{{ value }}" {% if program_sort == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div></div>
+      <div class="explore-results-toolbar"><div class="explore-search" role="search" aria-label="College program search">
+    <label for="program-search">College or major</label>
+    <div class="explore-search-controls"><input id="program-search" form="degree-filter-form" type="search" name="q" maxlength="200" value="{{ filters.get('q', '') }}" placeholder="College name or major"><button class="primary-link" form="degree-filter-form" type="submit">Search <span aria-hidden="true">→</span></button></div>
+  </div><div class="explore-sort"><span class="page-badge">Page {{ data.page }}</span><label for="program-sort">Sort by</label><select id="program-sort" form="degree-filter-form" name="sort">{% for value, label in [('school_asc', 'School name A–Z'), ('school_desc', 'School name Z–A'), ('earnings_desc', 'Highest program earnings'), ('net_price_asc', 'Lowest cost after aid'), ('tuition_in_asc', 'Lowest in-state tuition'), ('tuition_out_asc', 'Lowest out-of-state tuition')] %}<option value="{{ value }}" {% if program_sort == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div></div>
+    <div class="explore-results-meta"><h2 id="results-title" class="sr-only">College programs</h2><p class="results-count" role="status">{% if data.rows %}Showing {{ (data.page - 1) * 25 + 1 }}–{{ (data.page - 1) * 25 + data.rows|length }} college programs{% else %}No college programs found{% endif %}</p></div>
       {% if filter_chips %}<nav class="active-filters" aria-label="Active filters">{% for chip in filter_chips %}<a class="filter-chip" href="{{ chip.url }}" aria-label="Remove {{ chip.label }}">{{ chip.label }} <span aria-hidden="true">×</span></a>{% endfor %}</nav>{% endif %}
       {% if session.get('user_id') %}<p id="program-favorites-status" role="status" aria-live="polite"></p><button id="program-favorites-retry" class="secondary-button" type="button" hidden>Retry favorites</button>{% endif %}
       <div class="program-cards">
