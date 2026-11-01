@@ -2,7 +2,8 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='search-sort-row-1') }}">
 <script src="{{ url_for('static', filename='js/explore.js', v='4') }}" defer></script>
-<script src="{{ url_for('static', filename='js/explore-preferences.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/saved-filter-store.js', v='1') }}" defer></script>
+<script src="{{ url_for('static', filename='js/explore-preferences.js', v='saved-filters-1') }}" defer></script>
 {% if session.get('user_id') %}
 <script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/program-card-favorites.js', v='program-feedback-1') }}" defer></script>
@@ -38,7 +39,8 @@
         {% endfor %}
         <button type="submit" class="primary-link apply-filters">Apply filters</button>
         <button type="button" class="secondary-button preference-button" data-save-explore-preferences>Save preferences</button><button type="button" class="secondary-button preference-button" data-restore-explore-preferences>Restore preferences</button>
-        <p class="small-note" data-explore-preferences-status role="status" aria-live="polite">Preferences are saved in this browser tab.</p>
+        <a class="saved-filters-link" href="{{ url_for('web.saved_majors_page', view='filters') }}">View saved filters →</a>
+        <p class="small-note" data-explore-preferences-status role="status" aria-live="polite">Saved filters stay in this browser.</p>
       </form>
     </aside>
     <section class="explore-results" aria-labelledby="results-title">

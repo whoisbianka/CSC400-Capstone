@@ -2,32 +2,38 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/saved-majors.css', v='saved-tray-1') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='separate-search-2') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/saved-library.css', v='1') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/saved-library.css', v='saved-filters-1') }}">
 {% if session.get('user_id') %}
 <script src="{{ url_for('static', filename='js/saved-compare-tray.js', v='1') }}" defer></script>
 {% endif %}
+<script src="{{ url_for('static', filename='js/saved-filter-store.js', v='1') }}" defer></script>
+<script src="{{ url_for('static', filename='js/saved-filters.js', v='1') }}" defer></script>
+<script src="{{ url_for('static', filename='js/saved-library-tabs.js', v='1') }}" defer></script>
 <script src="{{ url_for('static', filename='js/saved-majors.js', v='saved-tray-1') }}" defer></script>
 {% if session.get('user_id') %}
 <script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/saved-programs.js', v='saved-tray-1') }}" defer></script>
+<script src="{{ url_for('static', filename='js/saved-programs.js', v='saved-filters-1') }}" defer></script>
 {% endif %}
 {% endblock %}
 {% block content %}
-<div class="page-workspace saved-workspace explore-majors-workspace saved-library-page" id="saved-workspace" data-compare-url="{{ url_for('web.compare') }}" data-initial-saved-view="{{ 'programs' if request.args.get('view') == 'programs' else 'majors' }}">
+{% set saved_view = request.args.get('view') if request.args.get('view') in ['programs', 'filters'] else 'majors' %}
+<div class="page-workspace saved-workspace explore-majors-workspace saved-library-page" id="saved-workspace" data-compare-url="{{ url_for('web.compare') }}" data-initial-saved-view="{{ saved_view }}">
   <header class="saved-header">
     <div><p class="saved-kicker">YOUR NEXT CHAPTER</p>
     <h1 id="page-title">Saved majors</h1>
-    <p class="saved-subtitle">Central hub to review your saved majors and programs.</p></div>
-    <a class="primary-link" id="saved-compare-header" href="{{ url_for('web.compare', view='favorites', kind='programs' if request.args.get('view') == 'programs' else 'majors') }}">Compare</a>
+    <p class="saved-subtitle">Central hub to review your saved majors, programs, and filters.</p></div>
+    <a class="primary-link" id="saved-compare-header" {% if saved_view == 'filters' %}hidden{% endif %} href="{{ url_for('web.compare', view='favorites', kind='programs' if request.args.get('view') == 'programs' else 'majors') }}">Compare</a>
   </header>
-  <div id="saved-majors-list" aria-busy="true"></div>
+  <div id="saved-majors-list" aria-busy="true" {% if saved_view == 'filters' %}hidden{% endif %}></div>
+  <nav class="saved-view-tabs" aria-label="Saved item type">
+    <button type="button" id="saved-majors-tab" data-saved-view="majors" aria-controls="saved-majors-panel" aria-pressed="{{ 'true' if saved_view == 'majors' else 'false' }}">Majors · <span id="saved-majors-tab-count">—</span></button>
+    {% if session.get('user_id') %}<button type="button" id="saved-programs-tab" data-saved-view="programs" aria-controls="saved-programs-panel" aria-pressed="{{ 'true' if saved_view == 'programs' else 'false' }}">Programs · <span id="saved-programs-tab-count">—</span></button>{% endif %}
+    <button type="button" id="saved-filters-tab" data-saved-view="filters" aria-controls="saved-filters-panel" aria-pressed="{{ 'true' if saved_view == 'filters' else 'false' }}">Saved filters · <span id="saved-filters-tab-count">—</span></button>
+  </nav>
   {% if session.get('user_id') %}
-  <nav class="saved-view-tabs" aria-label="Saved item type"><button type="button" id="saved-majors-tab" data-saved-view="majors" aria-controls="saved-majors-panel" aria-pressed="{{ 'false' if request.args.get('view') == 'programs' else 'true' }}">Majors · <span id="saved-majors-tab-count">—</span></button><button type="button" id="saved-programs-tab" data-saved-view="programs" aria-controls="saved-programs-panel" aria-pressed="{{ 'true' if request.args.get('view') == 'programs' else 'false' }}">Programs · <span id="saved-programs-tab-count">—</span></button></nav>
+  <p class="saved-selection-help" id="saved-compare-guidance" {% if saved_view == 'filters' %}hidden{% endif %}>Select up to 3 majors to compare</p>
   {% endif %}
-  {% if session.get('user_id') %}
-  <p class="saved-selection-help" id="saved-compare-guidance">Select up to 3 majors to compare</p>
-  {% endif %}
-  <div id="saved-majors-panel" {% if session.get('user_id') and request.args.get('view') == 'programs' %}hidden{% endif %}>
+  <div id="saved-majors-panel" {% if saved_view == 'filters' or (session.get('user_id') and saved_view == 'programs') %}hidden{% endif %}>
   <section id="saved-library" hidden aria-labelledby="saved-library-title">
     <div class="saved-section-heading"><h2 id="saved-library-title">Your saved majors</h2><span id="saved-major-count"></span></div>
 
@@ -50,8 +56,15 @@
 
   <!-- end of programs section-->
   {% endif %}
+  <section id="saved-filters-panel" aria-labelledby="saved-filters-tab" data-explore-url="{{ url_for('web.explore') }}" {% if saved_view != 'filters' %}hidden{% endif %}>
+    <div class="saved-section-heading"><h2>Your saved filters</h2></div>
+    <p class="small-note">Filter sets are saved in this browser{% if session.get('user_id') %} for your account{% endif %}.</p>
+    <p id="saved-filters-status" role="status" aria-live="polite"></p>
+    <div id="saved-filter-cards" class="saved-filter-grid"></div>
+    <a class="saved-explore-link" href="{{ url_for('web.explore', view='programs') }}">Find programs and save filters →</a>
+  </section>
   {% if session.get('user_id') %}
-  <section class="saved-compare-tray" id="saved-compare-tray" aria-labelledby="saved-tray-title">
+  <section class="saved-compare-tray" id="saved-compare-tray" {% if saved_view == 'filters' %}hidden{% endif %} aria-labelledby="saved-tray-title">
     <div class="saved-tray-copy"><h2 id="saved-tray-title">Items to compare</h2>
       <div class="saved-tray-items" id="saved-tray-items"></div>
       <p id="saved-tray-hint" role="status" aria-live="polite">Select two or three options to compare.</p>

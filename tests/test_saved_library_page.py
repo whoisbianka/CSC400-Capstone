@@ -68,6 +68,21 @@ class SavedLibraryPageTests(unittest.TestCase):
         self.assertNotIn('id="saved-programs-panel"', html)
         self.assertNotIn('js/saved-programs.js', html)
 
+    def test_saved_filters_available_for_guests_and_signed_in_users(self):
+        for owner in (None, 42):
+            with self.client.session_transaction() as state:
+                state.clear()
+                if owner:
+                    state['user_id'] = owner
+            html = self.client.get('/saved-majors?view=filters').get_data(as_text=True)
+            self.assertIn('data-initial-saved-view="filters"', html)
+            self.assertIn('id="saved-filters-panel"', html)
+            self.assertIn('id="saved-filters-tab"', html)
+            self.assertIn('js/saved-filter-store.js', html)
+            self.assertIn('js/saved-library-tabs.js', html)
+            self.assertIn('id="saved-majors-panel" hidden', html)
+            self.assertNotIn('id="saved-filters-panel" hidden', html)
+
 
 if __name__ == '__main__':
     unittest.main()

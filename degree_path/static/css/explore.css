@@ -208,3 +208,5 @@
 .explore-results-toolbar .explore-search { flex: 1 1 220px; min-width: min(220px, 100%); margin-bottom: 0; }
 .explore-results-toolbar .explore-sort { flex-shrink: 0; }
 .explore-results-meta .results-count { margin: 0 0 16px; font-size: 13px; }
+
+.saved-filters-link { display:inline-block; margin-top:12px; font-size:13px; }

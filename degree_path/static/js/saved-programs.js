@@ -3,12 +3,10 @@
   const workspace = document.getElementById('saved-workspace');
   const panel = document.getElementById('saved-programs-panel');
   if (!workspace || !panel) return;
-  const majors = document.getElementById('saved-majors-panel');
   const cards = document.getElementById('favorited-program-cards');
   const status = document.getElementById('saved-programs-status');
   const count = document.getElementById('saved-program-count');
   const retry = document.getElementById('saved-programs-retry');
-  const tabs = document.querySelectorAll('[data-saved-view]');
   const api = await window.chatApiReady;
   let version = 0;
   let favorites = [];
@@ -85,14 +83,11 @@
     }
   }
   function select(view) {
-    const programs = view === 'programs';
-    panel.hidden = !programs; majors.hidden = programs;
-    tabs.forEach(tab => tab.setAttribute('aria-pressed', String(tab.dataset.savedView === view)));
-    window.SavedCompare.setKind(programs ? 'programs' : 'majors');
-    if (programs) void load(); else version++;
+    if (view === 'programs') void load(); else version++;
   }
-  tabs.forEach(tab => tab.addEventListener('click', () => select(tab.dataset.savedView)));
+  workspace.addEventListener('saved-view-change', event => select(event.detail.view));
   retry.addEventListener('click', load);
-  select(workspace.dataset.initialSavedView === 'programs' ? 'programs' : 'majors');
-  if (workspace.dataset.initialSavedView !== 'programs') void load();
+  // The tab controller may have switched views while account initialization was pending.
+  select(workspace.dataset.activeSavedView || workspace.dataset.initialSavedView);
+  if ((workspace.dataset.activeSavedView || workspace.dataset.initialSavedView) !== 'programs') void load();
 })();

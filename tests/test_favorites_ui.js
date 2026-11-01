@@ -24,8 +24,8 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
     window:{chatApiReady:Promise.resolve(api),SavedCompare:{button:()=>new Element('button'),sync:()=>{},remove:()=>{},setKind:()=>{}}},
   });
   await flush();
-  tabs[0].click();
-  tabs[1].click();
+  ids['saved-workspace']['saved-view-change']({detail:{view:'filters'}});
+  ids['saved-workspace']['saved-view-change']({detail:{view:'programs'}});
   requests[1].resolve({items:[{id:10,name:'Biology',college:'College',credential:'Bachelor',city:'City',state:'CT'}]});
   await flush();
   requests[0].resolve({items:[{id:99,name:'Stale program'}]});
@@ -40,7 +40,6 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(changes,[[10,false]]);
   assert.equal(ids['favorited-program-cards'].children.length,0);
   assert.match(ids['saved-programs-status'].textContent,/No favorite programs/);
-  assert.equal(tabs[1].attributes['aria-pressed'],'true');
 
   const buttons=[10,11].map(id=>{const b=new Element();b.dataset.programFavorite=String(id);return b;});
   const status=new Element();const retry=new Element();let loads=0;let fail=false;const notifications=[];
