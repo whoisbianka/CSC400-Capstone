@@ -1,0 +1,49 @@
+/* Shared keyboard, target-size, reflow, and motion safeguards. */
+:root { --a11y-header-height: 96px; --a11y-toast-height: 0px; }
+html { scroll-padding-block-start: calc(var(--a11y-header-height) + 16px); scroll-padding-block-end: calc(var(--a11y-toast-height) + 24px); }
+main, #page-title, #main-content { scroll-margin-block-start: calc(var(--a11y-header-height) + 16px); }
+.skip-link:focus, .home-skip-link:focus { position: fixed; inset-block-start: 12px; inset-inline-start: 16px; z-index: 1000; width: auto; height: auto; clip-path: none; overflow: visible; padding: 12px 20px; border-radius: 8px; background: var(--primary); color: var(--on-primary); }
+:where(main, article, section, header, footer, nav) { min-width: 0; }
+:where(h1,h2,h3,h4,p,li,dt,dd,a,label) { overflow-wrap: anywhere; }
+:where(button, input, select, textarea) { max-width: 100%; }
+button, summary, select, input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), .primary-link, .secondary-button, #guided-chat button { min-height: 48px; }
+button, .program-favorite-button, .saved-chip-remove, .saved-remove-favorite, .saved-comparison-remove { min-width: 48px; }
+.site-navigation nav a, .site-navigation .nav-auth-button { min-height: 48px; padding-block: 12px; }
+.site-navigation nav a { display: inline-flex; align-items: center; }
+:where(.filter-checkbox, .saved-card-check, .saved-differences, .compare-choice) { min-height: 48px; padding-block: 10px; }
+:where(.filter-checkbox input, .saved-card-check input, .saved-differences input, .compare-choice input) { flex-shrink: 0; }
+summary { cursor: pointer; padding-block: 12px; }
+.major-catalog-heading .save-major-button, .saved-library-page .saved-add-compare { min-height: 48px; padding: 10px 12px; border-radius: 10px; }
+.major-catalog-heading .save-major-button { font-size: 14px; }
+.saved-library-page .saved-view-tabs button, .compare-modes button, .explore-workspace .explore-tabs a { min-height: 48px; }
+.major-save-toast .major-save-toast-actions a, .major-save-toast .major-save-toast-actions button { display: inline-flex; align-items: center; min-height: 48px; padding-inline: 10px; }
+.major-save-toast .major-save-toast-dismiss { min-width: 48px; min-height: 48px; }
+/* A visible inner ring survives rounded containers and clipped ripple hosts. */
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible { outline: 3px solid var(--accent); outline-offset: -4px; }
+.primary-link:focus-visible, .read-more:focus-visible, #guided-chat button:focus-visible,
+.save-major-button[aria-pressed="true"]:focus-visible { outline-color: var(--on-primary); }
+.secondary-button:focus-visible, .nav-auth-button:focus-visible,
+.saved-view-tabs button[aria-pressed="true"]:focus-visible, .compare-modes button[aria-pressed="true"]:focus-visible { outline-color: var(--color-on-secondary-container); }
+main:focus-visible { outline: none; }
+/* Text links keep a cue in addition to color; navigation and filled actions retain their shapes. */
+p a, li a, .small-note a, .details-source a, .material-preview-help p a { text-decoration: underline; text-underline-offset: .18em; }
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--color-error); }
+@media(max-width: 560px) {
+  .major-catalog-heading { flex-wrap: wrap; }
+  .site-navigation nav { gap: 4px 8px; }
+  .site-navigation nav a { padding-inline: 10px; }
+  .major-save-toast { inset-inline: 12px; width: auto; padding: 12px; gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+@media (forced-colors: active) {
+  :where(a,button,input,select,textarea,summary,[tabindex]):focus-visible { outline: 3px solid Highlight; }
+  button, input, select, textarea, .primary-link, .secondary-button { border: 1px solid ButtonText; }
+  [aria-pressed="true"], [aria-current="page"] { outline: 2px solid Highlight; outline-offset: -3px; }
+}
+
+.catalog-filter-group summary { min-height: 48px; }
+
+.skip-link:not(:focus), .home-skip-link:not(:focus) { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.program-card-footer .program-favorite-button { min-height: 48px; min-width: 48px; }

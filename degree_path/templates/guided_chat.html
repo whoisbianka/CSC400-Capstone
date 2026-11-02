@@ -2,6 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
+
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>Find my path | Pathfinder</title>
@@ -38,12 +39,14 @@
   ></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/prototype-views.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pathfinder-branding.css', v='1') }}">
+{% include '_site_enhancements.html' %}
 </head>
 
 <body class="guided-page">
+  <a class="skip-link" href="#main-content">Skip to content</a>
   {% include '_navigation.html' %}
 
-  <main class="guided-center">
+  <main class="guided-center" id="main-content" tabindex="-1">
     <section
       id="guided-chat"
       aria-labelledby="page-title"
@@ -55,7 +58,7 @@
 
         <div
           class="chat-messages"
-          id="chatMessages"
+          id="chatMessages" tabindex="0" aria-label="Conversation"
           role="log"
           aria-live="polite"
           aria-label="Conversation"

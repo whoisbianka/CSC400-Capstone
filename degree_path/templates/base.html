@@ -2,6 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>{{ title }} | Pathfinder</title>
 <meta name="csrf-token" content="{{ csrf_token }}">
 <link rel="icon" href="{{ url_for('static', filename='img/pathfinder.svg') }}">
@@ -10,15 +11,16 @@
 <script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>
 {% block extra_head %}{% endblock %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pathfinder-branding.css', v='1') }}">
+{% include '_site_enhancements.html' %}
 </head>
 <body class="chat-app">
-<a class="skip-link" href="#page-title">Skip to content</a>
+<a class="skip-link" href="#main-content">Skip to content</a>
 {% include '_navigation.html' %}
 {% if request.endpoint in ['web.explore', 'web.program_details', 'web.saved_majors_page'] %}
 <script src="{{ url_for('static', filename='js/saved-major-feedback.js', v='3') }}" defer></script>
 <script src="{{ url_for('static', filename='js/saved-major-controls.js', v='general-majors-1') }}" defer></script>
 {% endif %}
-<main class="app-main">
+<main class="app-main" id="main-content" tabindex="-1">
 {% block content %}{% endblock %}
 </main>
 </body>

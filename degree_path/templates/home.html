@@ -2,6 +2,7 @@
 <html lang="en" data-bs-theme="dark">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+
 <meta name="description" content="Find a major that fits your interests or explore academic programs with Pathfinder.">
 <title>Pathfinder</title>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/pathfinder.svg') }}">
@@ -9,11 +10,12 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pathfinder-branding.css', v='1') }}">
+{% include '_site_enhancements.html' %}
 </head>
 <body>
 <a class="home-skip-link" href="#main-content">Skip to content</a>
 {% include '_navigation.html' %}
-<main id="main-content">
+<main id="main-content" tabindex="-1">
 
 <!-- Both cards link directly to the existing guest-friendly paths. -->
 <section id="choose-path" class="path-section" aria-labelledby="paths-title">
@@ -45,7 +47,7 @@
 </section>
 </main>
 
-<script src="{{ url_for('static', filename='js/home.js') }}" defer></script>
+
 <!-- Layout adapted from Start Bootstrap Heroic Features (MIT License).
 Copyright (c) 2013-2023 Start Bootstrap LLC.
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:

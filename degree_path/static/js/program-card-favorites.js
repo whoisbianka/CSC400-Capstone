@@ -23,9 +23,9 @@
       saved.clear();
       result.favorites.forEach(item => saved.add(Number(item.program_id)));
       buttons.forEach(button => {label(button); button.disabled = false;});
-      status.textContent = '';
+      status.dataset.feedback = 'neutral'; status.textContent = '';
     } catch (error) {
-      status.textContent = error.message;
+      status.dataset.feedback = 'error'; status.textContent = error.message;
       buttons.forEach(button => {
         button.textContent = '♡';
         button.setAttribute('aria-label', 'Favorites unavailable. Use Retry favorites to try again.');
@@ -41,9 +41,9 @@
       const result = await api.setProgramFavorite(id, !saved.has(id));
       if (result.favorite) saved.add(id); else saved.delete(id);
       label(button);
-      status.textContent = result.favorite ? 'Program added to favorites.' : 'Program removed from favorites.';
+      status.dataset.feedback = 'success'; status.textContent = result.favorite ? 'Program added to favorites.' : 'Program removed from favorites.';
       if (result.favorite && window.MajorSaveFeedback) {
-        status.textContent = '';
+        status.dataset.feedback = 'neutral'; status.textContent = '';
         window.MajorSaveFeedback.show({
           programName: button.dataset.programLabel || 'This program',
           button,
@@ -54,12 +54,12 @@
               if (undone.favorite !== false) throw new Error('Could not remove this favorite. Please try again.');
               saved.delete(id);
               label(button);
-              status.textContent = 'Program removed from favorites.';
+              status.dataset.feedback = 'success'; status.textContent = 'Program removed from favorites.';
             } finally { button.disabled = false; }
           },
         });
       }
-    } catch (error) {status.textContent = error.message;}
+    } catch (error) {status.dataset.feedback = 'error'; status.textContent = error.message;}
     finally {button.disabled = false;}
   }));
   retry.addEventListener('click', load);

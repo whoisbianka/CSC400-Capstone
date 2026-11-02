@@ -10,3 +10,97 @@ body { font-family: "Trebuchet MS", system-ui, sans-serif; }
 .major-catalog-heading .save-major-button[aria-pressed="true"] { color: var(--on-primary); }
 .major-catalog-footer a:focus-visible, .program-card-footer .program-favorite-button:focus-visible { outline-color: var(--on-primary); outline-offset: -5px; }
 @media (max-width: 600px) { .site-navigation { padding-inline: 16px; } }
+
+/* Apply semantic roles to the existing components without changing their layout. */
+.feature-card { background: var(--color-surface-container); }
+.feature-card::before { background: none; }
+.explore-card .card-action { background: var(--primary); color: var(--on-primary); }
+.explore-card .card-art svg { stroke: var(--color-secondary); }
+.explore-card .search-symbol > circle:first-child { fill: var(--color-tertiary-container); }
+.explore-card .search-symbol > circle:nth-child(2),
+.explore-card .search-symbol > path { stroke: var(--color-on-tertiary-container); }
+.explore-card .path-label::before { background: var(--color-tertiary); }
+.site-navigation nav a[aria-current] { color: var(--color-secondary); }
+.site-navigation .nav-auth-button,
+.secondary-button { background: var(--color-secondary-container); color: var(--color-on-secondary-container); }
+.explore-workspace .explore-tabs a[aria-current="page"] { color: var(--color-secondary); box-shadow: 0 2px var(--color-secondary); }
+.explore-sidebar { background: var(--color-surface-container-low); }
+.explore-programs-workspace .program-card-heading { background: var(--color-surface-container-high); }
+.major-catalog-footer,
+.explore-programs-workspace .program-card-footer { background: var(--color-primary-container); color: var(--color-on-primary-container); }
+.major-catalog-footer a,
+.explore-programs-workspace .program-card-footer > a,
+.explore-programs-workspace .program-card-footer .program-favorite-button { color: var(--color-on-primary-container); }
+.major-catalog-footer a:hover,
+.explore-programs-workspace .program-card-footer > a:hover { background: var(--color-surface-container-highest); color: var(--color-on-surface); }
+.major-catalog-footer a:focus-visible,
+.program-card-footer .program-favorite-button:focus-visible { outline-color: var(--color-on-primary-container); }
+.page-badge { background: var(--color-tertiary-container); color: var(--color-on-tertiary-container); }
+.filter-chip,
+#guided-chat .user-message,
+.message.user { background: var(--color-primary-container); color: var(--color-on-primary-container); }
+
+/* State layers use the same role on every screen and at every breakpoint. */
+.site-navigation nav a:hover,
+.explore-workspace .explore-tabs a:hover { color: var(--color-on-secondary-container); background: var(--color-secondary-container); }
+.primary-link:hover,
+.read-more:hover { background: var(--primary-hover); color: var(--on-primary); }
+.secondary-button:not(:disabled):hover,
+.site-navigation .nav-auth-button:not(:disabled):hover {
+  background: color-mix(in srgb, var(--color-secondary-container), var(--color-on-secondary-container) 8%);
+  color: var(--color-on-secondary-container);
+}
+.secondary-button:not(:disabled):active,
+.site-navigation .nav-auth-button:not(:disabled):active {
+  background: color-mix(in srgb, var(--color-secondary-container), var(--color-on-secondary-container) 12%);
+}
+.saved-view-tabs button[aria-pressed="true"],
+.compare-modes button[aria-pressed="true"] {
+  background: var(--color-secondary-container); color: var(--color-on-secondary-container);
+  box-shadow: inset 0 -3px var(--color-secondary);
+}
+.saved-library-page .saved-view-tabs button[aria-pressed="true"] span { color: inherit; }
+.saved-library-page article[data-selected="true"] {
+  border-color: var(--color-secondary);
+  box-shadow: inset 0 0 0 1px var(--color-secondary);
+  background: var(--color-secondary-container);
+}
+.saved-library-page article[data-selected="true"] .saved-add-compare,
+.saved-library-page article[data-selected="true"] .saved-compare-chip { color: var(--color-on-secondary-container); }
+.saved-library-page .saved-add-compare[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 4px; }
+.saved-library-page .saved-compare-tray,
+.favorites-login-dialog { background: var(--color-surface-container-high); }
+.saved-library-page .saved-compare-chip { background: var(--color-secondary-container); color: var(--color-on-secondary-container); }
+.compare-sidebar { background: var(--color-surface-container-low); }
+.compare-results, .details-panel { background: var(--color-surface-container); }
+.profile-avatar, .details-monogram { background: var(--color-secondary-container); color: var(--color-on-secondary-container); }
+.profile-footer { background: var(--color-surface-container-low); }
+.profile-signed-in { color: var(--color-on-primary-container); }
+.major-save-toast-check { background: var(--color-primary-container); color: var(--color-on-primary-container); }
+.major-save-toast-error:not(:empty),
+[role="alert"]:not(:empty),
+[data-feedback="error"]:not(:empty) {
+  color: var(--color-on-error-container); background: var(--color-error-container);
+  border-inline-start: 3px solid var(--color-error); padding: 10px 12px; border-radius: 6px;
+}
+[data-feedback="success"]:not(:empty) { color: var(--color-on-primary-container); }
+/* Native validation still supplies an explanation; color is an additional cue. */
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  border-color: var(--color-primary); outline: 3px solid var(--color-primary); outline-offset: 3px;
+}
+input:user-invalid, select:user-invalid, textarea:user-invalid,
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] {
+  border-color: var(--color-error); outline-color: var(--color-error);
+  box-shadow: inset 3px 0 var(--color-error);
+}
+.primary-link:focus-visible, .read-more:focus-visible,
+.save-major-button[aria-pressed="true"]:focus-visible {
+  outline: 3px solid var(--color-on-primary); outline-offset: -5px;
+}
+.saved-view-tabs button:focus-visible, .compare-modes button:focus-visible,
+.secondary-button:focus-visible { outline: 3px solid var(--color-secondary); outline-offset: 3px; }
+@media (prefers-contrast: more) {
+  .site-navigation nav a[aria-current],
+  .explore-workspace .explore-tabs a[aria-current="page"] { color: var(--color-on-surface); text-decoration: underline; text-underline-offset: 5px; }
+  .feature-card, .major-catalog-card, .program-card, .saved-option-card { box-shadow: inset 0 0 0 1px var(--color-outline-variant); }
+}

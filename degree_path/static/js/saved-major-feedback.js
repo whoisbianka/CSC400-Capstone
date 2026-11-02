@@ -39,31 +39,26 @@
   dismiss.setAttribute('aria-label', 'Dismiss save notification');
   toast.append(icon, content, dismiss);
   document.body.append(toast);
-  let timer;
-  let hovered = false;
+  let origin;
   let revision = 0;
   let action;
   let name;
   let collection;
-  function stopTimer() { clearTimeout(timer); }
-  function hide() { stopTimer(); toast.hidden = true; }
-  function schedule() {
-    stopTimer();
-    if (hovered || toast.contains(document.activeElement) || undo.disabled) return;
-    timer = setTimeout(hide, 6000);
+  function restoreFocus() {
+    if (toast.contains(document.activeElement) && origin?.isConnected) origin.focus();
   }
+  function measureToast() {
+    document.documentElement?.style.setProperty('--a11y-toast-height', toast.hidden ? '0px' : `${Math.ceil(toast.getBoundingClientRect().height)}px`);
+  }
+  function hide() { restoreFocus(); toast.hidden = true; measureToast(); }
   dismiss.addEventListener('click', hide);
-  toast.addEventListener('pointerenter', () => { hovered = true; stopTimer(); });
-  toast.addEventListener('pointerleave', () => { hovered = false; schedule(); });
-  toast.addEventListener('focusin', stopTimer);
-  toast.addEventListener('focusout', () => { setTimeout(schedule, 0); });
+  if ('ResizeObserver' in window) new ResizeObserver(measureToast).observe(toast);
   undo.addEventListener('click', async () => {
     if (!action || undo.disabled) return;
     const current = revision;
     const undoAction = action;
     const itemName = name;
     const currentCollection = collection;
-    stopTimer();
     undo.disabled = true;
     error.textContent = '';
     try {
@@ -72,17 +67,19 @@
       if (current !== revision) return;
       title.textContent = 'Save undone';
       detail.textContent = `${itemName} was removed from your ${currentCollection}.`;
+      if (document.activeElement === undo) dismiss.focus();
       undo.hidden = true;
       action = null;
     } catch (problem) {
       if (current === revision) error.textContent = problem.message || 'Could not undo. Please try again.';
     } finally {
-      if (current === revision) { undo.disabled = false; schedule(); }
+      if (current === revision) { undo.disabled = false; }
     }
   });
   window.MajorSaveFeedback = {
     show({ majorName, programName, onUndo, button }) {
       const isProgram = Boolean(programName);
+      origin = button;
       revision++;
       name = programName || majorName;
       collection = isProgram ? 'favorited programs' : 'saved majors';
@@ -107,7 +104,7 @@
         star.setAttribute('aria-hidden', 'true');
         button.replaceChildren(star, document.createTextNode(text.slice(1)));
       }
-      schedule();
+      measureToast();
     },
   };
 })();

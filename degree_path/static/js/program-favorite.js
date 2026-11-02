@@ -13,16 +13,16 @@
     retry.hidden = true; button.disabled = true;
     try {
       const result = await api.loadProgramFavorite(id);
-      favorite = result.favorite; render(); button.disabled = false; status.textContent = '';
-    } catch (error) { status.textContent = error.message; retry.hidden = false; }
+      favorite = result.favorite; render(); button.disabled = false; status.dataset.feedback = 'neutral'; status.textContent = '';
+    } catch (error) { status.dataset.feedback = 'error'; status.textContent = error.message; retry.hidden = false; }
   }
   button.addEventListener('click', async () => {
     button.disabled = true;
     try {
       const result = await api.setProgramFavorite(id, !favorite);
       favorite = result.favorite; render();
-      status.textContent = favorite ? 'Saved. You can now select this program on Compare.' : 'Favorite removed.';
-    } catch (error) { status.textContent = error.message; }
+      status.dataset.feedback = 'success'; status.textContent = favorite ? 'Saved. You can now select this program on Compare.' : 'Favorite removed.';
+    } catch (error) { status.dataset.feedback = 'error'; status.textContent = error.message; }
     finally { button.disabled = false; }
   });
   retry.addEventListener('click', load);

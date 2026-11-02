@@ -1,23 +1,53 @@
 /* Shared design tokens: the homepage and every application page use one palette. */
 :root {
   color-scheme: dark;
-  --background: #0e1728;
-  --surface: #1c2a40;
-  --surface-raised: #24354f;
-  --text: #efe5d6;
-  --muted: #c2c5ca;
-  --accent: #b7dba5;
+  /* Material color roles, using lavender periwinkle, navy surfaces, and warm neutrals. */
+  --color-primary: #d1c0ff;
+  --color-on-primary: #38265d;
+  --color-primary-container: #514078;
+  --color-on-primary-container: #ebdcff;
+  --color-secondary: #bdc9db;
+  --color-on-secondary: #243247;
+  --color-secondary-container: #35455d;
+  --color-on-secondary-container: #dce6f5;
+  --color-tertiary: #e6c29f;
+  --color-on-tertiary: #432c18;
+  --color-tertiary-container: #5b432e;
+  --color-on-tertiary-container: #ffdfc0;
+  --color-surface-container-lowest: #090f1c;
+  --color-surface: #0e1728;
+  --color-surface-container-low: #162238;
+  --color-surface-container: #1c2a40;
+  --color-surface-container-high: #24354f;
+  --color-surface-container-highest: #30425d;
+  --color-on-surface: #efe5d6;
+  --color-on-surface-variant: #c2c5ca;
+  --color-outline: #8995a7;
+  --color-outline-variant: #3d4a60;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-inverse-surface: #efe5d6;
+  --color-inverse-on-surface: #243247;
+  --color-inverse-primary: #69548e;
+  --background: var(--color-surface);
+  --surface: var(--color-surface-container);
+  --surface-raised: var(--color-surface-container-high);
+  --text: var(--color-on-surface);
+  --muted: var(--color-on-surface-variant);
+  --accent: var(--color-primary);
   --highlight: var(--accent);
   --primary: var(--accent);
-  --primary-hover: #c7e6b8;
-  --on-primary: #153a27;
-  --border: #efe5d624;
-  --accent-border: #89ab7b;
-  --accent-soft: #b7dba514;
-  --accent-faint: #b7dba509;
+  --primary-hover: #e4d4ff;
+  --on-primary: var(--color-on-primary);
+  --border: var(--color-outline-variant);
+  --accent-border: var(--color-outline);
+  --accent-soft: var(--color-primary-container);
+  --accent-faint: color-mix(in srgb, var(--color-primary) 4%, transparent);
   --panel: var(--surface);
   --hero: linear-gradient(120deg, #14223a 15%, #21365e 100%);
-  --navigation: #0e1728ed;
+  --navigation: var(--color-surface-container-low);
   --overlay: #0e172866;
   --shadow: #00000026;
 }
@@ -47,3 +77,13 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .site-navigation nav { align-items: center; flex-wrap: wrap; }
 .site-navigation .nav-auth-button { padding: 8px 13px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; white-space: nowrap; }
 @media (max-width: 600px) { .site-navigation nav { width: 100%; gap: 12px 16px; } }
+
+/* Respect the system contrast preference without adding another app setting. */
+@media (prefers-contrast: more) {
+  :root {
+    --color-on-surface: #fff9f0;
+    --color-on-surface-variant: #e2e7ed;
+    --color-outline: #b8c6d9;
+    --color-outline-variant: #7e90ab;
+  }
+}

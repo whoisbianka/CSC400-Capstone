@@ -210,3 +210,19 @@
 .explore-results-meta .results-count { margin: 0 0 16px; font-size: 13px; }
 
 .saved-filters-link { display:inline-block; margin-top:12px; font-size:13px; }
+
+/* Material filter sidebar, promoted from the visual preview. */
+.explore-sidebar { border-radius: 28px; padding: 22px; background: var(--color-surface-container-low); }
+.explore-sidebar .catalog-filter-group { border-bottom: 0; }
+.explore-sidebar .catalog-filter-group summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; list-style: none; }
+.explore-sidebar .catalog-filter-group summary::-webkit-details-marker { display: none; }
+/* Decorative CSS marks keep the disclosure's accessible name unchanged. */
+.explore-sidebar .catalog-filter-group summary::after {
+  content: ''; width: 14px; height: 14px; flex: 0 0 14px; color: var(--accent);
+  background: linear-gradient(currentColor,currentColor) center / 100% 2px no-repeat, linear-gradient(currentColor,currentColor) center / 2px 100% no-repeat;
+  transition: rotate 300ms cubic-bezier(.2,1.35,.3,1);
+}
+.explore-sidebar .catalog-filter-group[open] > summary::after { rotate: 45deg; }
+.explore-sidebar .primary-link, .explore-sidebar .secondary-button { border-radius: 999px; padding-inline: 22px; }
+.explore-sidebar .catalog-filter-group input[type="checkbox"] { width: 18px; height: 18px; flex-basis: 18px; }
+@media (max-width: 900px) { .explore-programs-workspace .explore-sidebar { padding: 18px; } }
