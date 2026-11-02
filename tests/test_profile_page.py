@@ -39,7 +39,7 @@ class ProfilePageTests(unittest.TestCase):
         nodes = [n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == 'profile']
         exec(compile(ast.Module(body=nodes, type_ignores=[]), 'routes.py', 'exec'),
              dict(web=web, render_template=render_template))
-        for endpoint in ('home', 'explore', 'saved_majors_page', 'settings', 'favorites', 'compare'):
+        for endpoint in ('home', 'explore', 'saved_majors_page', 'settings', 'favorites', 'compare', 'questionnaire'):
             web.add_url_rule('/' + endpoint, endpoint, lambda: '')
         self.app.register_blueprint(web)
         auth = ast.parse((ROOT / 'degree_path/auth.py').read_text())
@@ -65,6 +65,12 @@ class ProfilePageTests(unittest.TestCase):
         self.assertIn('id="profile-name-value"', html)
         self.assertIn('id="profile-email-value"', html)
         self.assertNotIn('bianka@example.com', html)
+        self.assertIn('Academic background', html)
+        self.assertIn('Interests &amp; goals', html)
+        self.assertIn('id="profile-editor" hidden', html)
+        self.assertIn('Not added yet', html)
+        self.assertIn('href="/saved_majors_page?view=programs"', html)
+        self.assertIn('href="/questionnaire"', html)
         controls = ProfileHTML(html)
         self.assertEqual(len(controls.nav_actions), 1)
         self.assertEqual(controls.outside_actions, [])
@@ -75,6 +81,8 @@ class ProfilePageTests(unittest.TestCase):
         self.assertIn('data-auth-action="login"', html)
         self.assertNotIn('id="profile-email-value"', html)
         self.assertNotIn('data-auth-action="logout"', html)
+        self.assertNotIn('id="profile-editor"', html)
+        self.assertNotIn('js/profile.js', html)
 
     def test_expired_session_returns_guest_profile(self):
         self.sign_in(time.time() - 1)

@@ -173,6 +173,7 @@
       document.getElementById("profile-name-value").textContent = name || "Not provided";
       document.getElementById("profile-email-value").textContent = email || "Not provided";
       document.getElementById("profile-avatar").textContent = name ? name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() : "?";
+      window.PathfinderProfile?.mount(clerk, name);
     }).catch(error => {
       document.getElementById("profile-email").textContent = "Account details unavailable";
       document.getElementById("profile-name-value").textContent = "Unavailable";
