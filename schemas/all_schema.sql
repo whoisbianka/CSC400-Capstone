@@ -144,15 +144,6 @@ CREATE TABLE public.major_rec(
     CONSTRAINT uq_uid_cip_mr UNIQUE (user_id, cipcode)
 );
 
-CREATE TABLE public.program_rec(
-    id SERIAL PRIMARY KEY,
-	user_id INT NOT NULL,
-	program_id INT NOT NULL,
-    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_program FOREIGN KEY(program_id) REFERENCES public.programs(program_id),
-    CONSTRAINT uq_uid_pid_pr UNIQUE (user_id, program_id)
-);
-
 CREATE TABLE public.chatlog(
     id SERIAL PRIMARY KEY,
 	user_id INT NOT NULL,
@@ -190,22 +181,43 @@ CREATE TABLE public.user_keywords(
     CONSTRAINT uq_uid_kwd UNIQUE (user_id, keyword_id)
 );
 
-CREATE TABLE public.user_info(
+CREATE TABLE public.program_search(
     id SERIAL PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL,
+    user_id INT NOT NULL,
+    majors TEXT[],
+    colleges TEXT[],
+    states TEXT[],
+    degree_lev TEXT,
+    max_net_cost INT,
+    max_tuit_in INT,
+    max_tuit_out INT,
+    min_acc DECIMAL(6,4),
+    max_acc DECIMAL(6,4),
     satmt INT,
     satvr INT,
     satwr INT,
     actmt INT,
     acten INT,
-    actwr INT,
-    max_cost INT,
-    search_city TEXT,
-    search_state TEXT,
-    search_longitude NUMERIC(9,6),
-    search_latitude NUMERIC(9,6),
-    max_distance INT,
+    actwr INT
     CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE public.major_search(
+    id SERIAL NOT NULL,
+    user_id INT NOT NULL,
+    majors TEXT[],
+    earnings INT,
+    only_saved BOOLEAN,
+    only_recs BOOLEAN,
+    CONSTRAINT fk_maj_search_uid FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE public.careers(
+    id SERIAL NOT NULL,
+    cipcode INT NOT NULL,
+    career TEXT NOT NULL,
+    source TEXT NOT NULL,
+    CONSTRAINT fk_car_cip FOREIGN KEY (cipcode) REFERENCES majors(cipcode)
 );
 
 
@@ -231,7 +243,8 @@ GRANT SELECT ON TABLE
     public.adm_crit,
     public.program_rank_crit,
     public.keywords,
-    public.major_keywords
+    public.major_keywords,
+    public.careers
 TO app_runtime;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
@@ -239,11 +252,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
     public.major_fav,
     public.program_fav,
     public.major_rec,
-    public.program_rec,
     public.chatlog,
     public.user_keywords,
     public.user_info,
-    public.guest_sessions
+    public.guest_sessions,
+    public.major_search,
+    public.program_search
 TO app_runtime;
 
 GRANT USAGE ON SEQUENCE
@@ -251,10 +265,12 @@ GRANT USAGE ON SEQUENCE
     public.major_fav_id_seq,
     public.program_fav_id_seq,
     public.major_rec_id_seq,
-    public.program_rec_id_seq,
     public.chatlog_id_seq,
     public.user_keywords_id_seq,
-    public.user_info_id_seq
+    public.user_info_id_seq,
+    public.guest_sessions_id_seq,
+    public.major_search_id_seq,
+    public.program_search_id_seq
 TO app_runtime;
 
 GRANT app_runtime TO python_connection;

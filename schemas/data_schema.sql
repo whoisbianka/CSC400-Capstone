@@ -102,3 +102,11 @@ CREATE TABLE public.program_rank_crit(
     earn_mdn_4yr_nat INT,
     CONSTRAINT fk_prog_id FOREIGN KEY(program_id) REFERENCES public.programs(program_id)
 );
+
+CREATE TABLE public.careers(
+    id SERIAL NOT NULL,
+    cipcode INT NOT NULL,
+    career TEXT NOT NULL,
+    source TEXT NOT NULL,
+    CONSTRAINT fk_car_cip FOREIGN KEY (cipcode) REFERENCES majors(cipcode)
+);

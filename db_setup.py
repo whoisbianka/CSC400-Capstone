@@ -93,6 +93,9 @@ def main():
     kwd_df=pd.read_csv("./tables/kwd_list.csv",low_memory=False)
     major_kwds_df=pd.read_csv("./tables/major_keywords.csv",low_memory=False)
 
+    #Add Careers Tables
+    careers_df=pd.read_csv("./tables/majors_careers.csv",low_memory=False)
+    careers_df=careers_df[["cipcode","career","source"]]
 
     schools_df.to_csv("./tables/schools.csv", index=False)
     program_rank_crit.to_csv("./tables/program_rank_crit.csv", index=False)
@@ -101,6 +104,7 @@ def main():
     cost_info_df.to_csv("./tables/cost_info.csv", index=False)
     adm_crit_df.to_csv("./tables/adm_crit.csv", index=False)
     major_info_df.to_csv("./tables/major_info.csv",index=False)
+    careers_df.to_csv("./tables/careers.csv")
 
     with engine.begin() as connection:
         with open("./schemas/all_schema.sql", "r") as f:
@@ -120,7 +124,8 @@ def main():
         ("program_rank_crit",program_rank_crit),
         ("major_info",major_info_df),
         ("keywords",kwd_df),
-        ("major_keywords",major_kwds_df)
+        ("major_keywords",major_kwds_df),
+        ("careers",careers_df)
     ]
 
     for table_name, df in upload:

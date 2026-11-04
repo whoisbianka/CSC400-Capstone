@@ -14,22 +14,35 @@ CREATE TABLE public.users(
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE public.user_info(
+CREATE TABLE public.program_search(
     id SERIAL PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL,
+    user_id INT NOT NULL,
+    majors TEXT[],
+    colleges TEXT[],
+    states TEXT[],
+    degree_lev TEXT,
+    max_net_cost INT,
+    max_tuit_in INT,
+    max_tuit_out INT,
+    min_acc DECIMAL(6,4),
+    max_acc DECIMAL(6,4),
     satmt INT,
     satvr INT,
     satwr INT,
     actmt INT,
     acten INT,
-    actwr INT,
-    max_cost INT,
-    search_city TEXT,
-    search_state TEXT,
-    search_longitude NUMERIC(9,6),
-    search_latitude NUMERIC(9,6),
-    max_distance INT,
+    actwr INT
     CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE public.major_search(
+    id SERIAL NOT NULL,
+    user_id INT NOT NULL,
+    majors TEXT[],
+    earnings INT,
+    only_saved BOOLEAN,
+    only_recs BOOLEAN,
+    CONSTRAINT fk_maj_search_uid FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE public.major_rec(

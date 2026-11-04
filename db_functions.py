@@ -1788,3 +1788,118 @@ def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
     with engine.connect() as connection:
         rows = connection.execute(statement, params).mappings().all()
     return {'rows': [dict(row) for row in rows[:page_count]], 'page': page, 'has_next': len(rows) > page_count}
+
+#Save/Delete earch filters
+def save_major_search(user_id,majors=[],earnings=None,only_saved=False,only_recs=False):
+    query=text("""
+                INSERT INTO public.major_search(user_id,majors,earnings,only_saved,only_recs)
+                VALUES (:user_id,:majors,:earnings,:only_saved,:only_recs)
+                ON CONFLICT(user_id,majors,earnings,only_saved,only_recs) DO NOTHING
+                """)
+    params={"user_id":user_id,"majors":majors,"earnings":earnings,"only_saved":only_saved,"only_recs":only_recs}
+
+    with engine.begin() as connection:
+        connection.execute(query,params)
+
+def save_program_search(user_id, majors=[], colleges=[], states=[],degree_lev=None,
+                        max_net_cost=None,max_tuit_in=None,max_tuit_out=None,
+                        min_acc=None,max_acc=None,
+                        satmt=None,satvr=None,satwr=None,
+                        actmt=None,acten=None,actwr=None):
+    query=text("""
+                INSERT INTO public.program_search(user_id,majors,colleges,states,degree_lev,
+                                                    max_net_cost,max_tuit_in,max_tuit_out,min_acc,max_acc,
+                                                    satmt,satvr,satwr,actmt,acten,actwr)
+                VALUES (:user_id,:majors,:colleges,:states,:degree_lev,
+                        :max_net_cost,:max_tuit_in,:max_tuit_out,:min_acc,:max_acc,
+                        :satmt,:satvr,:satwr,:actmt,:acten,:actwr)
+                ON CONFLICT(user_id,majors,colleges,states,degree_lev,max_net_cost,
+                            max_tuit_in,max_tuit_out,min_acc,max_acc,
+                            satmt,satvr,satwr,actmt,acten,actwr) DO NOTHING
+                """)
+    params={"user_id":user_id,"majors":majors,"colleges":colleges,"states":states,"max_net_cost":max_net_cost,
+            "max_tuit_in":max_tuit_in,"max_tuit_out":max_tuit_out,"min_acc":min_acc,"max_acc":max_acc,
+            "satmt":satmt,"satvr":satvr,"satwr":satwr,"actmt":actmt,"acten":acten,"actwr":actwr}
+
+    with engine.begin() as connection:
+        connection.execute(query,params)
+
+def remove_major_search(user_id,majors=[],earnings=None,only_saved=False,only_recs=False):
+    query=text("""
+                DELETE FROM public.major_search
+                WHERE user_id=:user_id,majors=:majors,earnings=:earnings,only_saved=:only_saved,only_recs=:only_recs
+                """)
+    params={"user_id":user_id,"majors":majors,"earnings":earnings,"only_saved":only_saved,"only_recs":only_recs}
+
+    with engine.begin() as connection:
+        connection.execute(query,params)
+
+def remove_program_search(user_id, majors=[], colleges=[], states=[],degree_lev=None,
+                        max_net_cost=None,max_tuit_in=None,max_tuit_out=None,
+                        min_acc=None,max_acc=None,
+                        satmt=None,satvr=None,satwr=None,
+                        actmt=None,acten=None,actwr=None):
+    query=text("""
+                DELETE FROM public.program_search
+                WHERE user_id=:user_id,majors=:majors,colleges=:colleges,states=:states,degree_lev=:degree_lev,
+                        max_net_cost=:max_net_cost,max_tuit_in=:max_tuit_in,max_tuit_out=:max_tuit_out,min_acc=:min_acc,max_acc=:max_acc,
+                        satmt=:satmt,satvr=:satvr,satwr=:satwr,actmt=:actmt,acten=:acten,actwr=:actwr
+                """)
+    params={"user_id":user_id,"majors":majors,"colleges":colleges,"states":states,"max_net_cost":max_net_cost,
+            "max_tuit_in":max_tuit_in,"max_tuit_out":max_tuit_out,"min_acc":min_acc,"max_acc":max_acc,
+            "satmt":satmt,"satvr":satvr,"satwr":satwr,"actmt":actmt,"acten":acten,"actwr":actwr}
+
+    with engine.begin() as connection:
+        connection.execute(query,params)
+
+def get_all_major_search_filters(user_id):
+        query=text("""
+                SELECT id,majors,earnings,only_saved,only_recs
+                FROM public.major_search
+                WHERE user_id=:user_id
+                """)
+        params={"user_id":user_id}
+        with engine.connect() as connection:
+            rows=connection.execute(query,params).mappings().all()
+
+        return [dict(row) for row in rows]
+
+def get_all_program_search_filters(user_id):
+        query=text("""
+                SELECT id,majors,colleges,states,degree_lev,
+                        max_net_cost,max_tuit_in,max_tuit_out,min_acc,max_acc,
+                        satmt,satvr,satwr,actmt,acten,actwr
+                FROM public.program_search
+                WHERE user_id=:user_id
+                """)
+        params={"user_id":user_id}
+        with engine.connect() as connection:
+            rows=connection.execute(query,params).mappings().all()
+
+        return [dict(row) for row in rows]
+
+def get_all_major_search_filters(id):
+        query=text("""
+                SELECT id,majors,earnings,only_saved,only_recs
+                FROM public.major_search
+                WHERE id=:id
+                """)
+        params={"id":id}
+        with engine.connect() as connection:
+            row=connection.execute(query,params).mappings().one_or_none()
+
+        return dict(row)
+
+def get_program_search_filters(id):
+        query=text("""
+                SELECT id,majors,colleges,states,degree_lev,
+                        max_net_cost,max_tuit_in,max_tuit_out,min_acc,max_acc,
+                        satmt,satvr,satwr,actmt,acten,actwr
+                FROM public.program_search
+                WHERE id=:id
+                """)
+        params={"id":id}
+        with engine.connect() as connection:
+            row=connection.execute(query,params).mappings().one_or_none()
+
+        return dict(row)
