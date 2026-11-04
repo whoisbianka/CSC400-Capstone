@@ -266,7 +266,6 @@ GRANT USAGE ON SEQUENCE
     public.major_rec_id_seq,
     public.chatlog_id_seq,
     public.user_keywords_id_seq,
-    public.guest_sessions_id_seq,
     public.major_search_id_seq,
     public.program_search_id_seq
 TO app_runtime;
