@@ -31,7 +31,7 @@ CREATE TABLE public.program_search(
     satwr INT,
     actmt INT,
     acten INT,
-    actwr INT
+    actwr INT,
     CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
