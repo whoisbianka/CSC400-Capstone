@@ -254,7 +254,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
     public.major_rec,
     public.chatlog,
     public.user_keywords,
-    public.user_info,
     public.guest_sessions,
     public.major_search,
     public.program_search
@@ -267,7 +266,6 @@ GRANT USAGE ON SEQUENCE
     public.major_rec_id_seq,
     public.chatlog_id_seq,
     public.user_keywords_id_seq,
-    public.user_info_id_seq,
     public.guest_sessions_id_seq,
     public.major_search_id_seq,
     public.program_search_id_seq
