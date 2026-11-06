@@ -372,6 +372,7 @@ def recommendations_api():
     return jsonify(recommendations(terms))
 
 
+
 @web.post('/api/gemini')
 def gemini_api():
     # Make sure the request contains JSON
@@ -389,9 +390,19 @@ def gemini_api():
     if not isinstance(question, str) or not 1 <= len(question.strip()) <= 500:
         return jsonify(error="Enter a question between 1 and 500 characters."), 400
 
+    # Retrieve previous conversation messages, if provided
+    history = data.get("history", [])
+
+    # Make sure history is a list
+    if not isinstance(history, list):
+        return jsonify(error="Conversation history must be a list."), 400
+
+    # Keep only the 12 most recent messages
+    history = history[-12:]
+
     try:
-        # Send the student's question to Google Gemini
-        answer = ask_gemini(question.strip())
+        # Send the student's question and conversation history to Google Gemini
+        answer = ask_gemini(question.strip(), history=history)
 
         # Return Gemini's response to the website
         return jsonify(response=answer)

@@ -17,6 +17,12 @@
   // Keeps track of whether we are asking a follow-up question
   let followUpMode = false;
 
+    // Stores the conversation between the student and Gemini
+  let geminiHistory = [];
+
+  // Tracks whether Gemini is currently processing a request
+  let geminiLoading = false;
+
   // Stores the user's answers
   const userProfile = {
     name: "",
@@ -268,15 +274,18 @@
 
 
     // If the chatbot could not find a match
-    if (recommendations.length === 0) {
+   if (recommendations.length === 0) {
 
-      addBotMessage(
-        "I don't have enough information yet to suggest specific areas, " +
-        "but we can keep exploring your interests."
-      );
+  addBotMessage(
+    "I don't have enough information yet to suggest specific areas, " +
+    "but Gemini can help us explore your interests and possible career paths."
+  );
 
-      return;
-    }
+  // Ask Gemini for guidance even without keyword matches
+  loadGeminiGuidance();
+
+  return;
+}
 
 
     // Build the recommendation message
@@ -308,9 +317,17 @@
     loadGeminiGuidance();
   }
 
+  
   // Get personalized college and career guidance from Gemini
   async function loadGeminiGuidance() {
     const root = document.getElementById("guided-chat");
+
+    // Prevent overlapping Gemini requests
+    if (geminiLoading) {
+      return;
+    }
+
+    geminiLoading = true;
 
     const box = document.createElement("div");
     box.className = "bot-message";
@@ -336,7 +353,10 @@
           "Content-Type": "application/json",
           "X-CSRF-Token": root.dataset.csrf
         },
-        body: JSON.stringify({ question: question })
+        body: JSON.stringify({
+          question: question,
+          history: geminiHistory
+        })
       });
 
       if (!response.ok) {
@@ -344,6 +364,15 @@
       }
 
       const result = await response.json();
+
+      // Save the student's question and Gemini's response
+      geminiHistory.push(
+        { role: "user", text: question },
+        { role: "model", text: result.response }
+      );
+
+      // Keep only the 12 most recent messages
+      geminiHistory = geminiHistory.slice(-12);
 
       // Display AI text safely without interpreting it as HTML
       box.textContent =
@@ -355,11 +384,19 @@
       box.textContent =
         "AI guidance is temporarily unavailable. " +
         "You can still explore the recommended majors and colleges.";
+
+    } finally {
+  geminiLoading = false;
+
+  // Allow students to ask follow-up questions
+  // once their initial Gemini guidance is finished
+  userInput.disabled = false;
+  sendButton.disabled = false;
+  userInput.focus();
+
+  chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-
-    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
-
 
 
   async function loadDatabaseExamples(majors) {
@@ -464,33 +501,37 @@
   }
 
 
+  
+  
   // Handles the user's message
   function sendMessage() {
 
     const message = userInput.value.trim();
 
-
-    // Don't allow empty messages
-    if (currentQuestion >= 7 || message === "" || message.length > 200) {
-
+    // Don't allow empty or overly long messages
+    if (message === "" || message.length > 200) {
       return;
-
     }
 
+    // Don't allow messages while Gemini is processing
+    if (geminiLoading) {
+      return;
+    }
+
+    // Handle Gemini follow-up questions after the questionnaire
+    if (currentQuestion >= 7) {
+      sendGeminiFollowUp(message);
+      return;
+    }
 
     // Create user's message bubble
     const userMessage = document.createElement("div");
-
     userMessage.classList.add("user-message");
-
     userMessage.textContent = message;
-
     chatMessages.appendChild(userMessage);
-
 
     // Clear textbox
     userInput.value = "";
-
 
     // --------------------------------
     // HANDLE A FOLLOW-UP ANSWER
@@ -499,29 +540,22 @@
     if (followUpMode === true) {
 
       userProfile.careerFollowUp = message;
-
       followUpMode = false;
-
 
       // Move to the major question
       currentQuestion = 4;
-
 
       addBotMessage(
         "Thanks! That gives me a better idea of what you might enjoy. " +
         questions[3]
       );
 
-
       chatMessages.scrollTop = chatMessages.scrollHeight;
-
       return;
     }
 
-
     // Save normal answer
     saveAnswer(message);
-
 
     // --------------------------------
     // CAREER QUESTION DYNAMIC FOLLOW-UP
@@ -530,7 +564,6 @@
     if (currentQuestion === 3 && isUnsure(message)) {
 
       followUpMode = true;
-
 
       addBotMessage(
         "No problem! Let's narrow it down a little.<br><br>" +
@@ -543,21 +576,80 @@
         "• I'm still not sure"
       );
 
-
       chatMessages.scrollTop = chatMessages.scrollHeight;
-
       return;
     }
 
-
     // Move to next core question
     currentQuestion++;
-
     nextQuestion();
 
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
+  
+  // Sends follow-up questions to Gemini
+  async function sendGeminiFollowUp(message) {
+    if (geminiLoading) return;
+
+    geminiLoading = true;
+    userInput.disabled = true;
+    sendButton.disabled = true;
+
+    const root = document.getElementById("guided-chat");
+
+    const userMessage = document.createElement("div");
+    userMessage.classList.add("user-message");
+    userMessage.textContent = message;
+    chatMessages.appendChild(userMessage);
+    userInput.value = "";
+
+    const box = document.createElement("div");
+    box.classList.add("bot-message");
+    box.textContent = "Gemini is thinking...";
+    chatMessages.appendChild(box);
+
+    try {
+      const response = await fetch(root.dataset.geminiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": root.dataset.csrf
+        },
+        body: JSON.stringify({
+          question: message,
+          history: geminiHistory
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Gemini follow-up request failed");
+      }
+
+      const result = await response.json();
+
+      geminiHistory.push(
+        { role: "user", text: message },
+        { role: "model", text: result.response }
+      );
+
+      geminiHistory = geminiHistory.slice(-12);
+
+      box.textContent = "Degree Path Explorer AI:\n\n" + result.response;
+      box.style.whiteSpace = "pre-wrap";
+
+    } catch (error) {
+      console.error("Gemini follow-up error:", error);
+      box.textContent = "Sorry, I couldn't answer that question. Please try again.";
+
+    } finally {
+      geminiLoading = false;
+      userInput.disabled = false;
+      sendButton.disabled = false;
+      userInput.focus();
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+  }
 
   // Send when the button is clicked
   sendButton.addEventListener("click", sendMessage);
