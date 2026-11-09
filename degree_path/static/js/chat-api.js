@@ -22,7 +22,6 @@ window.chatApiReady = Promise.resolve((function () {
     isSignedIn: () => Boolean(userId),
     loadComparisonFavorites: kind => apiRequest(`/api/compare?kind=${encodeURIComponent(kind)}`, "GET"),
     loadProgramFavorites: () => apiRequest("/api/program-favorites", "GET"),
-    loadProgramFavorite: id => apiRequest(`/api/program-favorites/${id}`, "GET"),
     setProgramFavorite: (id, favorite) => apiRequest(`/api/program-favorites/${id}`, "POST", {favorite}),
     loadFavorites: () => apiRequest("/api/favorites", "GET"),
     setFavorite: (cipcode, favorite) =>

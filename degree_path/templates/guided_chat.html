@@ -22,11 +22,6 @@
     href="{{ url_for('static', filename='css/guided-chat.css') }}"
   >
 
-  <!-- This is the PUBLIC Clerk key, never the secret key. -->
-  <script>
-    window.CLERK_PUBLISHABLE_KEY = {{ clerk_publishable_key | tojson }};
-  </script>
-
   <!-- Order matters: initialize the API helper before the chat interface. -->
   <script
     src="{{ url_for('static', filename='js/chat-api.js') }}"

@@ -10,7 +10,7 @@ body { min-height: 100svh; display: flex; flex-direction: column; }
 .path-heading p { font-size: 14px; color: var(--muted); margin: 0; }
 .path-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; min-height: calc(100svh - 200px); }
 .feature-card { position: relative; isolation: isolate; display: flex; flex-direction: column; height: 100%; overflow: hidden; padding: clamp(28px, 3vw, 44px); border-radius: 18px; background: var(--surface); color: var(--text); text-decoration: none; border: 1px solid var(--border); box-shadow: 0 8px 22px var(--shadow); }
-.feature-card::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(circle at var(--mx,50%) var(--my,0%), var(--accent-soft), transparent 60%); z-index: -1; pointer-events: none; }
+.feature-card::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(circle at 50% 0%, var(--accent-soft), transparent 60%); z-index: -1; pointer-events: none; }
 .feature-card:hover { color: var(--text); border-color: var(--accent); }
 .card-topline { margin-bottom: 12px; }
 .path-label { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; }
@@ -46,9 +46,4 @@ body { min-height: 100svh; display: flex; flex-direction: column; }
   .feature-card h2 { font-size: 25px; }
   .card-art { display: none; }
   .card-description { margin-top: 18px; }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .path-section.scroll-motion .feature-card { transform: translateY(calc(var(--reveal-shift, 0px) + var(--hover-lift, 0px))); transition: border-color .2s, box-shadow .2s; }
-  .path-section.scroll-motion .feature-card:hover { --hover-lift: -4px; }
-  .path-section.scroll-motion .feature-card:focus-within { transform: none; }
 }

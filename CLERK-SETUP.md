@@ -1,18 +1,16 @@
 # Connect Clerk
 
-Homepage cards lead to `/start/questionnaire` or `/start/explore`. Each page offers sign-in/create-account and a direct guest link. Clerk loads only after the sign-in button is selected, then opens a centered sign-up modal with a sign-in link for existing accounts. Successful authentication continues to the selected destination. An existing active session also continues there when the sign-in button is selected.
-
-The public development publishable key is configured in `degree_path/static/js/clerk-config.js`. Authentication is implemented in `degree_path/static/js/start-auth.js`. Profile contains no Clerk components or scripts.
+Set `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` in the server's private `.env` beside `app.py`. Set `CLERK_AUTHORIZED_PARTIES` to the comma-separated list of origins that serve the app. Flask passes the publishable key to the shared navigation, where `account-auth.js` reads it when loading Clerk.
 
 ## Verify locally
 
-Run Flask as described in README.md. Click each homepage card and check both choices. For sign-in, complete email verification and confirm that the selected questionnaire or explorer opens. Guest access must remain available if Clerk fails to load. Real sign-in and sign-up still need browser verification.
+Run Flask as described in the README. Check that the homepage links open the questionnaire and Explore for guests. Select Sign in in the navigation, complete authentication, and confirm that the current page reloads with the signed-in navigation. Check Profile and sign out.
 
 ## Account data
 
-Authentication does not save questionnaire answers or favorites. Flask routes do not yet verify Clerk sessions. Before adding private storage, verify session tokens on the server and enforce record ownership using the verified user identity.
+Flask verifies the Clerk token at `/api/auth/session` and uses the verified account ID to scope saved majors, favorite programs, and account chat.
 
-Before production, configure a Clerk production instance and domain, use its public production key, serve over HTTPS, and configure the application's actual privacy policy and terms. Never place Clerk secret keys in browser code.
+For production, configure a Clerk production instance and domain, use its production keys, and serve over HTTPS. Keep the secret key on the server.
 
 ## References
 
