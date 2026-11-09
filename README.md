@@ -1,4 +1,4 @@
-# CSC400 Capstone — Degree Path
+# CSC400 Capstone — Pathfinder
 
 The Flask site queries the PostgreSQL catalog on Google Cloud SQL through `db_functions.py` and `cloud_sql_connection.py`. Database failures display an error. Catalog results and ranked college examples come from the connected database.
 
@@ -25,3 +25,4 @@ Installations that already have the standalone `saved_majors` table continue to 
 Do not run `all_schema.sql`, `data_schema.sql`, or `user_schema.sql` to resolve a saving error; those scripts reset data. Repeating `gcloud auth application-default login` does not resolve a storage-schema mismatch. Restart Flask after updating the save-major backend.
 
 UPDATE October 3rd, 2026 — Changes from this date reflect feedback from the October 1 class meeting.
+Update November 9th, 2026 - merging-features-bianka is the latest branch/version of the website. Please refer to that branch.
