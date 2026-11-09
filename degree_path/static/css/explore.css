@@ -211,7 +211,7 @@
 
 .saved-filters-link { display:inline-block; margin-top:12px; font-size:13px; }
 
-/* Material filter sidebar, promoted from the visual preview. */
+/* Explore filter sidebar. */
 .explore-sidebar { border-radius: 28px; padding: 22px; background: var(--color-surface-container-low); }
 .explore-sidebar .catalog-filter-group { border-bottom: 0; }
 .explore-sidebar .catalog-filter-group summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; list-style: none; }
