@@ -1,0 +1,23 @@
+name: capstone
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: capstone_local
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_pw
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./database/docker/init/01-users.sql:/docker-entrypoint-initdb.d/01-users.sql:ro
+      - ./database/schemas/all_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d capstone_local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

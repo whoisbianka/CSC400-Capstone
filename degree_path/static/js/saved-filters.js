@@ -4,54 +4,54 @@
   const list = document.getElementById('saved-filter-cards');
   const status = document.getElementById('saved-filters-status');
   const count = document.getElementById('saved-filters-tab-count');
-  const labels = {q:'Search', major_filter:'Major selection', major_name:'Major', cipcode:'Major code', favorite_major:'Saved major code', degrees:'Degree', school_name:'College', state:'State', city:'City', net_price_max:'Maximum yearly cost after aid', tuition_in_max:'Maximum in-state tuition', tuition_out_max:'Maximum out-of-state tuition', acceptance_min:'Minimum acceptance rate', acceptance_max:'Maximum acceptance rate', sort:'Sort by'};
-  const sorts = {school_asc:'School name A–Z', school_desc:'School name Z–A', earnings_desc:'Highest program earnings', net_price_asc:'Lowest cost after aid', tuition_in_asc:'Lowest in-state tuition', tuition_out_asc:'Lowest out-of-state tuition'};
-  function node(tag, className, text) {
-    const el = document.createElement(tag); el.className = className;
-    if (text !== undefined) el.textContent = text;
-    return el;
-  }
-  function render() {
+  const labels = {search_text:'Search',majors:'Majors',colleges:'Colleges',states:'States',degrees:'Degrees',saved:'My saved majors',recs:'My recommended majors',earnings_min:'Minimum earnings',net_price_max:'Maximum yearly cost after aid',tuition_in_max:'Maximum in-state tuition',tuition_out_max:'Maximum out-of-state tuition',acceptance_min:'Minimum acceptance rate',acceptance_max:'Maximum acceptance rate',satmt:'SAT Math',satvr:'SAT Reading',satwr:'SAT Writing',actmt:'ACT Math',acten:'ACT English',actwr:'ACT Writing',sort_order:'Sort by'};
+  const sorts = {name_asc:'Major name A–Z',name_desc:'Major name Z–A',school_asc:'School name A–Z',school_desc:'School name Z–A',earnings_desc:'Highest reported earnings',earnings_asc:'Lowest reported earnings',programs_desc:'Most programs',net_price_asc:'Lowest cost after aid',tuition_in_asc:'Lowest in-state tuition',tuition_out_asc:'Lowest out-of-state tuition'};
+  let version = 0;
+  function node(tag, className, text) { const el = document.createElement(tag); el.className = className; if (text !== undefined) el.textContent = text; return el; }
+  async function render() {
+    const current = ++version;
+    status.textContent = 'Loading saved searches…';
     try {
-      const items = window.SavedFilterStore.read();
+      const items = await window.SavedFilterStore.read();
+      if (current !== version) return;
       count.textContent = String(items.length); list.replaceChildren();
-      status.textContent = items.length ? '' : 'No saved filters yet. Choose filters in Explore, then press Save preferences.';
+      status.textContent = items.length ? '' : 'No saved searches yet. Choose filters in Explore, then press Save search.';
       for (const item of items) {
-        const params = new URLSearchParams(item.params);
-        const card = node('article', 'saved-filter-card');
-        const title = params.get('q') || params.get('major_name') || params.get('school_name') || [params.get('city'), params.get('state')].filter(Boolean).join(', ') || 'College program filters';
-        card.append(node('h3', '', title));
-        const facts = node('dl', 'saved-filter-facts');
-        for (const [name, value] of params) {
-          if (!labels[name]) continue;
-          let display = value;
-          if (name === 'major_filter') display = {all:'All majors', name:'Specific major', favorites:'My saved majors'}[value] || value;
-          if (name === 'degrees') display = value.split(',').map(degree => degree === '2' ? 'Associate degree' : degree === '3' ? 'Bachelor’s degree' : degree).join(', ');
-          if (name === 'sort') display = sorts[value] || value;
-          if (name.endsWith('_max') && !name.startsWith('acceptance')) display = Number.isFinite(Number(value)) ? new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:0}).format(Number(value)) : value;
-          if (name.startsWith('acceptance')) display += '%';
-          const fact = node('div', ''); fact.append(node('dt', '', labels[name]), node('dd', '', display)); facts.append(fact);
+        const card = node('article','saved-filter-card');
+        const title = (item.kind === 'majors' ? 'Major search' : 'Program search') + (item.search_text ? ': ' + item.search_text : '');
+        card.append(node('h3','',title));
+        const facts = node('dl','saved-filter-facts');
+        for (const [key,label] of Object.entries(labels)) {
+          const value = item[key];
+          if (value == null || value === '' || value === false || (Array.isArray(value) && !value.length)) continue;
+          let display = Array.isArray(value) ? value.join(', ') : value === true ? 'Yes' : String(value);
+          if (key === 'majors') display = item.major_names?.join(', ') || `${value.length} selected majors`;
+          if (key === 'sort_order') display = sorts[value] || value;
+          if (key === 'degrees') display = value.split(',').map(v=>v === '2' ? 'Associate degree' : v === '3' ? 'Bachelor’s degree' : v).join(', ');
+          if (key.startsWith('acceptance')) display += '%';
+          if (['earnings_min','net_price_max','tuition_in_max','tuition_out_max'].includes(key)) display = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Number(value));
+          const fact=node('div',''); fact.append(node('dt','',label),node('dd','',display)); facts.append(fact);
         }
-        card.append(facts);
-        const actions = node('div', 'saved-filter-actions');
-        const apply = node('a', 'primary-link', 'Apply filters →');
-        apply.href = window.SavedFilterStore.url(item.params, panel.dataset.exploreUrl);
-        const remove = node('button', 'secondary-button', 'Remove'); remove.type = 'button';
-        remove.setAttribute('aria-label', `Remove saved filters: ${title}`);
-        remove.addEventListener('click', () => {
+        const actions=node('div','saved-filter-actions');
+        const apply=node('a','primary-link','Apply filters →'); apply.href=window.SavedFilterStore.url(item);
+        const remove=node('button','secondary-button','Remove'); remove.type='button'; remove.setAttribute('aria-label','Remove '+title);
+        remove.addEventListener('click',async()=>{
+          remove.disabled=true;
           try {
-            window.SavedFilterStore.remove(item.params); render(); status.textContent = 'Saved filters removed.';
-            (list.querySelector('button') || document.getElementById('saved-filters-tab')).focus();
-          } catch { status.textContent = 'This browser could not remove these filters. Try again.'; }
+            await window.SavedFilterStore.remove(item);
+            if (current !== version) return;
+            await render();
+            (list.querySelector('button') || document.getElementById('saved-filters-tab'))?.focus();
+          } catch(error) { if(current === version) { status.textContent=error.message; remove.disabled=false; } }
         });
-        actions.append(apply, remove); card.append(actions); list.append(card);
+        actions.append(apply,remove);card.append(facts,actions);list.append(card);
       }
-    } catch {
-      status.textContent = 'This browser could not load saved filters. Check that browser storage is available and try again.';
-      count.textContent = '—';
+    } catch(error) {
+      if(current !== version) return;
+      list.replaceChildren();status.textContent=error.message || 'Unable to load saved searches.';count.textContent='—';
     }
   }
-  window.SavedFilters = {render};
-  window.addEventListener('storage', event => { if (event.key === window.SavedFilterStore.key || event.key === null) render(); });
+  window.SavedFilters={render};
+  window.addEventListener('pageshow',event=>{if(event.persisted) render();});
   render();
 })();

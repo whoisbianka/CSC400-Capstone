@@ -2,36 +2,28 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const source = name => fs.readFileSync(`degree_path/static/js/${name}.js`, 'utf8');
-function boot(owner, storage, unavailable=false) {
-  const window = {location:{origin:'https://app.test'},localStorage:{
-    getItem:k=>{if(unavailable)throw Error('Blocked');return storage[k]||null;},
-    setItem:(k,v)=>{if(unavailable)throw Error('Blocked');storage[k]=v;},
-  }};
-  vm.runInNewContext(source('saved-filter-store'),{document:{getElementById:()=>({dataset:{userId:owner}})},window,URL,URLSearchParams});
-  return window.SavedFilterStore;
+async function testDatabaseStore() {
+ const calls=[];const window={};let response={created:true,id:4};let ok=true;
+ vm.runInNewContext(source('saved-filter-store'),{window,URLSearchParams,document:{getElementById:()=>({dataset:{userId:'42',csrf:'token'}})},fetch:async(path,options)=>{calls.push({path,options});return {ok,json:async()=>response};}});
+ const store=window.SavedFilterStore;
+ await store.save('view=programs&major_filter=favorites&favorite_major=7&favorite_major=7&favorite_major=8&school_name=College&state=ct&degree_form=1&degree=3&net_price_max=0&q=bio&sort=net_price_asc');
+ let body=JSON.parse(calls[0].options.body);
+ assert.deepEqual(body.majors,['7','8']);assert.deepEqual(body.states,['CT']);assert.equal(body.degrees,'3');assert.equal(body.net_price_max,0);
+ assert.equal(body.search_text,'bio');assert.equal(body.sort_order,'net_price_asc');assert.equal(body.user_id,undefined);
+ assert.equal(calls[0].options.headers['X-CSRF-Token'],'token');assert.equal(calls[0].options.headers['X-App-User-ID'],'42');
+ await store.save('view=majors&saved=1&recs=1&majors=7&earnings_min=0&q=biology&sort=name_desc');
+ body=JSON.parse(calls.at(-1).options.body);assert.equal(body.saved,true);assert.equal(body.recs,true);assert.equal(body.earnings_min,0);assert.equal(body.search_text,'biology');
+ assert.equal(store.url({kind:'majors',id:4}),'/saved-searches/majors/4/apply');
+ response={searches:[{id:4}]};assert.equal((await store.read()).length,2);
+ response={deleted:true};await store.remove({kind:'majors',id:4});assert.equal(calls.at(-1).options.method,'DELETE');
+ response={created:false,id:null};assert.equal((await store.save('')).duplicate,true);
+ ok=false;response={error:'Expired session'};await assert.rejects(store.read(),/Expired session/);
+ const guest={};vm.runInNewContext(source('saved-filter-store'),{window:guest,URLSearchParams,document:{getElementById:()=>null}});
+ await assert.rejects(guest.SavedFilterStore.save(''),/Sign in/);
+ assert.throws(()=>store.bodyFor('major_filter=favorites'),/Select at least one major/);
+ console.log('Database saved-search payloads, account/CSRF headers, guest errors, duplicate reporting, and restore URLs passed.');
 }
-const storage = {};
-const first = boot('42',storage);
-const saved = first.save('state=CT&degrees=3&q=Computer&sort=net_price_asc&net_price_max=20000&page=4&csrf_token=secret&degree=3');
-assert.equal(saved.duplicate,false);
-const secondTab = boot('42',storage);
-assert.equal(secondTab.read().length,1,'Filters survive navigation, a second tab, and browser reopening');
-assert.equal(secondTab.save('net_price_max=20000&q=Computer&degrees=3&sort=net_price_asc&state=CT').duplicate,true);
-assert.equal(secondTab.read().length,1,'Saving identical values does not create duplicates');
-const url = new URL(secondTab.url(secondTab.read()[0].params));
-assert.equal(url.pathname,'/explore'); assert.equal(url.searchParams.get('view'),'programs');
-assert.equal(url.searchParams.get('q'),'Computer'); assert.equal(url.searchParams.get('degrees'),'3');
-assert.equal(url.searchParams.get('sort'),'net_price_asc'); assert.equal(url.searchParams.get('net_price_max'),'20000');
-assert.equal(url.searchParams.has('page'),false); assert.equal(url.searchParams.has('csrf_token'),false);
-assert.equal(url.searchParams.has('degree'),false);
-assert.equal(boot('99',storage).read().length,0,'Accounts must not share filter sets');
-assert.equal(boot('',storage).read().length,0,'Guests must not see signed-in filter sets');
-first.save('city=New+Haven&favorite_major=1107&favorite_major=4201');
-assert.equal(first.read().length,2);
-assert.deepEqual([...new URLSearchParams(first.read()[0].params).getAll('favorite_major')],['1107','4201']);
-first.remove(saved.item.params);assert.equal(first.read().length,1);
-assert.throws(()=>boot('42',storage,true).save('state=NY'),/Blocked/);
-storage[first.key]='invalid json'; assert.throws(()=>first.read());
+testDatabaseStore().catch(error=>{console.error(error);process.exitCode=1;});
 // Tab switching works without waiting for account or database requests.
 class Element {
  constructor(){this.dataset={};this.hidden=false;this.handlers={};this.attributes={};}
@@ -53,4 +45,4 @@ assert.equal(tabs[2].attributes['aria-pressed'],'true');
 tabs[1].handlers.click();assert.equal(ids['saved-programs-panel'].hidden,false);
 assert.equal(ids['saved-filters-panel'].hidden,true);assert.equal(ids['saved-compare-tray'].hidden,false);
 assert.equal(selectedKind,'programs');assert.equal(ids['saved-workspace'].lastEvent.detail.view,'programs');
-console.log('Saved filters passed: persistence, deduplication, account isolation, safe URLs, removal, storage failures, and independent tabs.');
+console.log('Independent Saved tabs passed.');

@@ -226,3 +226,13 @@
 .explore-sidebar .primary-link, .explore-sidebar .secondary-button { border-radius: 999px; padding-inline: 22px; }
 .explore-sidebar .catalog-filter-group input[type="checkbox"] { width: 18px; height: 18px; flex-basis: 18px; }
 @media (max-width: 900px) { .explore-programs-workspace .explore-sidebar { padding: 18px; } }
+
+/* Searchable state selection; filtering never removes checked form fields. */
+.explore-sidebar .state-filter { min-width: 0; margin: 12px 0; padding: 0; border: 0; }
+.explore-sidebar .state-filter legend { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.explore-sidebar .state-filter .filter-checkbox { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 0; cursor: pointer; }
+.explore-sidebar .state-filter .state-any { border-bottom: 1px solid var(--color-outline-variant, #d6d6d6); }
+.explore-sidebar .state-options { max-height: 230px; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; }
+.explore-sidebar .state-option[hidden] { display: none; }
+.explore-sidebar .state-filter input[type="checkbox"] { margin: 0; flex-shrink: 0; }
+.explore-sidebar .state-filter .small-note { margin: 8px 0 0; }
