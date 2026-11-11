@@ -3,6 +3,7 @@
 The Flask site queries the PostgreSQL catalog on Google Cloud SQL through `db_functions.py` and `cloud_sql_connection.py`. Database failures display an error. Catalog results and ranked college examples come from the connected database.
 
 ## Run locally (Read local_database.md)
+Update your ENV first before you run anything!
 
 ```sh
 python3 -m venv .venv (do this if you dont have this environmental variable already)
