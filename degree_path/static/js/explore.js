@@ -36,7 +36,13 @@ window.addEventListener('pageshow', () => {
   const majorForm = document.getElementById('major-filter-form');
   if (majorForm) {
     majorForm.addEventListener('submit', showExploreLoading);
-    majorForm.querySelector('[name="favorites_only"]')?.addEventListener('change', () => majorForm.requestSubmit());
+    // A restored snapshot stays stable until its collection checkboxes change.
+    for (const key of ['saved', 'recs']) {
+      majorForm.querySelector(`[name="${key}"]`)?.addEventListener('change', () => {
+        if (!majorForm.querySelector('[name="collection_snapshot"]')) return;
+        majorForm.querySelectorAll('[name="majors"], [name="collection_snapshot"]').forEach(input => input.remove());
+      });
+    }
   }
   const mode = document.getElementById('major-filter');
   if (!mode) return;
@@ -44,7 +50,7 @@ window.addEventListener('pageshow', () => {
   const favoriteFields = document.querySelector('[data-major-favorite-fields]');
   const name = document.getElementById('major-name');
   function updateMajorFields() {
-    for (const [container, active] of [[nameFields, mode.value === 'name'], [favoriteFields, mode.value === 'favorites']]) {
+    for (const [container, active] of [[nameFields, mode.value === 'name'], [favoriteFields, mode.value === 'favorites'], [document.querySelector('[data-major-selected-fields]'), mode.value === 'selected']]) {
       if (!container) continue;
       container.hidden = !active;
       container.querySelectorAll('input').forEach(input => { input.disabled = !active; });

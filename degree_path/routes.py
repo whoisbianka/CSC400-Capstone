@@ -255,7 +255,7 @@ def explore():
         abort(400, description='Search must be at most 200 characters.')
     major_query = request.args.get('major_name', '').strip()
     major_filter = request.args.get('major_filter', 'name' if cipcode or major_query else 'all')
-    if major_filter not in ('all', 'name', 'favorites'):
+    if major_filter not in ('all', 'name', 'favorites', 'selected'):
         abort(400, description='Invalid major filter.')
     if len(major_query) > 200:
         abort(400, description='Major names must be at most 200 characters.')
@@ -268,7 +268,19 @@ def explore():
             abort(503, description='Unable to load favorite majors. Please retry.')
     selected_favorites = []
     major_filters = {}
-    if major_filter == 'favorites':
+    selected_major_rows = []
+    selected_major_labels = {}
+    if major_filter == 'selected':
+        try:
+            codes = db_functions.resolve_search_major_codes(request.args.getlist('majors'))
+            major_filters['cipcodes'] = [int(code) for code in codes]
+            selected_favorites = major_filters['cipcodes']
+            selected_major_rows = codes
+            selected_major_labels = db_functions.get_search_major_labels(codes)
+            cipcode = None
+        except ValueError as error:
+            abort(400, description=str(error))
+    elif major_filter == 'favorites':
         if not session.get('user_id'):
             return redirect(url_for('web.favorites'))
         try:
@@ -298,17 +310,16 @@ def explore():
     filters = {}
     if query:
         filters['q'] = query
-    school_query = request.args.get('school_name', '').strip()
-    if len(school_query) > 200:
-        abort(400, description='School names must be at most 200 characters.')
-    if school_query:
-        filters['school_name'] = school_query
-    for key in ('state', 'city'):
-        value = request.args.get(key, '').strip()
-        if value:
-            if len(value) > (3 if key == 'state' else 100):
-                abort(400, description='Invalid location filter.')
-            filters[key] = value
+    for key, max_length in (('school_name', 200), ('state', 3)):
+        values = sorted({value.strip() for value in request.args.getlist(key) if value.strip()})
+        if len(values) > 200 or any(len(value) > max_length for value in values):
+            abort(400, description='Invalid college or state filter.')
+        if key == 'state':
+            values = sorted({value.upper() for value in values})
+        if len(values) == 1:
+            filters[key] = values[0]
+        elif values:
+            filters['school_names' if key == 'school_name' else 'states'] = values
     for key in ('net_price_max', 'tuition_in_max', 'tuition_out_max',
                 'acceptance_min', 'acceptance_max'):
         value = request.args.get(key, '').strip()
@@ -320,6 +331,17 @@ def explore():
             if not 0 <= number <= (100 if key.startswith('acceptance_') else 2147483647):
                 abort(400, description='Filter value is out of range.')
             filters[key] = number
+    for key in ('satmt', 'satvr', 'satwr', 'actmt', 'acten', 'actwr'):
+        raw = request.args.get(key, '').strip()
+        if raw:
+            try:
+                filters[key] = int(raw)
+            except ValueError:
+                abort(400, description='Test scores must be whole numbers.')
+    try:
+        db_functions.validate_program_filters(filters)
+    except ValueError as error:
+        abort(400, description=str(error))
     for prefix in ('acceptance',):
         if filters.get(prefix + '_min', 0) > filters.get(prefix + '_max', 2147483647):
             abort(400, description='Minimum must not exceed maximum.')
@@ -334,6 +356,12 @@ def explore():
         major_query = major_name
     pagination = {**filters, 'view': 'programs', 'sort': sort, 'degrees': ','.join(map(str, degrees)),
                   'major_filter': major_filter}
+    if 'school_names' in pagination:
+        pagination['school_name'] = pagination.pop('school_names')
+    if 'states' in pagination:
+        pagination['state'] = pagination.pop('states')
+    if major_filter == 'selected':
+        pagination['majors'] = selected_major_rows
     if major_filter == 'name':
         pagination.update(major_name=major_query, cipcode=cipcode)
     elif major_filter == 'favorites':
@@ -354,9 +382,18 @@ def explore():
               'tuition_out_max': 'Out-of-state tuition up to',
               'acceptance_min': 'Acceptance at least', 'acceptance_max': 'Acceptance up to'}
     for key, value in filters.items():
+        if key in ('school_names', 'states'):
+            url_key = 'school_name' if key == 'school_names' else 'state'
+            for item in value:
+                add_chip(f'{labels[url_key]}: {item}', url_key, [v for v in value if v != item])
+            continue
         display = (f'${value:,}' if key.endswith('_max') and not key.startswith('acceptance_')
                    else f'{value}%' if key.startswith('acceptance_') else str(value))
-        add_chip(f'{labels[key]}: {display}', key)
+        add_chip(f'{labels.get(key, key.upper())}: {display}', key)
+    if major_filter == 'selected':
+        remaining = {key: value for key, value in active_params.items() if key not in ('majors', 'major_filter')}
+        remaining['major_filter'] = 'all'
+        filter_chips.insert(0, {'label': 'Selected majors', 'url': url_for('web.explore', **remaining)})
     if major_filter == 'name':
         remaining = {key: value for key, value in active_params.items()
                      if key not in ('major_name', 'cipcode', 'major_filter')}
@@ -374,7 +411,7 @@ def explore():
     return render_template('explore.html', title='Explore programs', data=data,
                            major_name=major_name, cipcode=cipcode, degrees=degrees,
                            degree_query=','.join(map(str, degrees)), filters=filters,
-                           major_filter=major_filter, major_query=major_query,
+                           major_filter=major_filter, major_query=major_query, selected_major_rows=selected_major_rows, selected_major_labels=selected_major_labels,
                            favorite_majors=favorite_majors, selected_favorites=selected_favorites,
                            pagination=pagination, explore_view='programs', program_sort=sort,
                            filter_chips=filter_chips)
@@ -787,23 +824,31 @@ def explore_major_catalog():
     page = positive_arg('page', 1, 100000)
     query = request.args.get('q', '').strip()
     sort = request.args.get('sort', 'name_asc')
-    favorite_flag = request.args.get('favorites_only', '0')
-    program_flag = request.args.get('has_programs', '0')
-    if favorite_flag not in ('0', '1') or program_flag not in ('0', '1'):
+    saved_flag = request.args.get('saved', request.args.get('favorites_only', '0'))
+    recs_flag = request.args.get('recs', '0')
+    if saved_flag not in ('0', '1') or recs_flag not in ('0', '1'):
         abort(400, description='Invalid major filter.')
-    favorites_only, has_programs = favorite_flag == '1', program_flag == '1'
-    if favorites_only and not session.get('user_id'):
+    saved, recs = saved_flag == '1', recs_flag == '1'
+    user_id = session.get('user_id')
+    if (saved or recs) and not user_id:
         return redirect(url_for('web.favorites'))
     raw_earnings = request.args.get('earnings_min', '').strip()
     try:
         earnings_min = int(raw_earnings) if raw_earnings else None
-    except ValueError:
-        abort(400, description='Minimum earnings must be a whole number.')
-    try:
+        explicit_majors = sorted({int(code) for code in request.args.getlist('majors')})
+        snapshot = request.args.get('collection_snapshot', '0')
+        if snapshot not in ('0', '1'):
+            raise ValueError('Invalid saved-search selection.')
+        if snapshot == '1':
+            codes = db_functions.resolve_search_major_codes([str(code) for code in explicit_majors])
+            selected_majors = [int(code) for code in codes] if codes or saved or recs else None
+        else:
+            selected_majors = db_functions.get_major_search_selection(
+                user_id, saved=saved, recs=recs, majors=explicit_majors,
+            )
         data = db_functions.get_major_catalog_page(
             page, query=query, sort=sort, earnings_min=earnings_min,
-            favorites_only=favorites_only, has_programs=has_programs,
-            user_id=session.get('user_id'),
+            user_id=user_id, majors=selected_majors,
         )
     except ValueError as error:
         abort(400, description=str(error))
@@ -811,12 +856,12 @@ def explore_major_catalog():
         current_app.logger.exception('Unable to load major catalog.')
         abort(503, description='The major catalog is unavailable. Please retry.')
     pagination = {'view': 'majors', 'q': query, 'sort': sort,
-                  'earnings_min': earnings_min, 'favorites_only': int(favorites_only),
-                  'has_programs': int(has_programs)}
+                  'earnings_min': earnings_min, 'saved': int(saved),
+                  'recs': int(recs), 'majors': explicit_majors, 'collection_snapshot': snapshot}
     return render_template('explore_majors.html', title='Explore majors', explore_view='majors',
                            data=data, query=query, sort=sort, earnings_min=earnings_min,
-                           favorites_only=favorites_only, has_programs=has_programs,
-                           pagination=pagination)
+                           saved=saved, recs=recs, explicit_majors=explicit_majors, collection_snapshot=snapshot,
+                           selected_major_ids=selected_majors or [], pagination=pagination)
 
 
 @web.get('/api/saved-majors/summary')
@@ -831,3 +876,131 @@ def saved_major_summaries_api():
 @web.get('/saved-majors')
 def saved_majors_page():
     return render_template('saved_majors.html', title='Saved majors')
+
+
+def _saved_search_handlers(kind):
+    if kind == "majors":
+        return {
+            "save": db_functions.save_major_search,
+            "list": db_functions.get_all_major_search_filters,
+            "get": db_functions.get_major_search_filters,
+            "delete": db_functions.remove_major_search,
+            "fields": {
+                "majors", "earnings_min", "saved", "recs",
+                "search_text", "sort_order",
+            },
+        }
+
+    if kind == "programs":
+        return {
+            "save": db_functions.save_program_search,
+            "list": db_functions.get_all_program_search_filters,
+            "get": db_functions.get_program_search_filters,
+            "delete": db_functions.remove_program_search,
+            "fields": {
+                "majors", "colleges", "states", "degrees",
+                "net_price_max", "tuition_in_max", "tuition_out_max",
+                "acceptance_min", "acceptance_max",
+                "satmt", "satvr", "satwr",
+                "actmt", "acten", "actwr",
+                "search_text", "sort_order",
+            },
+        }
+
+    abort(404, description="Unknown saved-search type.")
+
+
+@web.route("/api/saved-searches/<kind>", methods=["GET", "POST"])
+def saved_searches_api(kind):
+    user = get_current_user()
+
+    if user is None:
+        abort(401, description="Sign in to save searches.")
+
+    handlers = _saved_search_handlers(kind)
+
+    if request.method == "GET":
+        try:
+            searches = handlers["list"](user["id"])
+            labels = db_functions.get_search_major_labels(
+                code for row in searches for code in (row.get('majors') or [])
+            )
+            for row in searches:
+                row['major_names'] = [labels.get(str(code), 'Unavailable major') for code in (row.get('majors') or [])]
+        except Exception:
+            current_app.logger.exception("Unable to load saved searches.")
+            abort(503, description="Saved searches are unavailable.")
+
+        return jsonify(searches=searches)
+
+    body = request.get_json(silent=True)
+
+    if not isinstance(body, dict):
+        abort(400, description="Send a JSON object.")
+
+    if set(body) - handlers["fields"]:
+        abort(400, description="Unknown saved-search fields.")
+
+    try:
+        result = handlers["save"](
+            user_id=user["id"],
+            **body,
+        )
+    except ValueError as error:
+        abort(400, description=str(error))
+    except Exception:
+        current_app.logger.exception("Unable to save search.")
+        abort(503, description="Unable to save this search.")
+
+    return jsonify(result), 201 if result["created"] else 200
+
+
+@web.route(
+    "/api/saved-searches/<kind>/<int:search_id>",
+    methods=["GET", "DELETE"],
+)
+def saved_search_api(kind, search_id):
+    user = get_current_user()
+
+    if user is None:
+        abort(401, description="Sign in to access saved searches.")
+
+    if not 1 <= search_id <= 2147483647:
+        abort(404, description="Saved search not found.")
+
+    handlers = _saved_search_handlers(kind)
+
+    try:
+        if request.method == "DELETE":
+            result = handlers["delete"](search_id, user["id"])
+        else:
+            result = handlers["get"](search_id, user["id"])
+    except Exception:
+        current_app.logger.exception("Unable to access saved search.")
+        abort(503, description="Saved searches are unavailable.")
+
+    if result is None or result is False:
+        abort(404, description="Saved search not found.")
+
+    if request.method == "DELETE":
+        return jsonify(deleted=True)
+
+    return jsonify(search=result)
+
+@web.get('/saved-searches/<kind>/<int:search_id>/apply')
+def apply_saved_search(kind, search_id):
+    from .saved_searches import search_url_values
+    user = get_current_user()
+    if user is None:
+        return redirect(url_for('web.saved_majors_page', view='filters'))
+    if not 1 <= search_id <= 2147483647:
+        abort(404, description='Saved search not found.')
+    handlers = _saved_search_handlers(kind)
+    try:
+        row = handlers['get'](search_id, user['id'])
+    except Exception:
+        current_app.logger.exception('Unable to restore saved search.')
+        abort(503, description='Saved searches are unavailable.')
+    if row is None:
+        abort(404, description='Saved search not found.')
+    return redirect(url_for('web.explore', **search_url_values(kind, row)))

@@ -12,7 +12,7 @@ class SessionAuthTests(unittest.TestCase):
         cls.database = ModuleType('db_functions')
         cls.database.create_or_update_user = Mock()
         cls.database.get_major_favorites = Mock()
-        for name in ('get_major_catalog_page', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'):
+        for name in ('get_search_major_labels', 'get_major_search_selection', 'resolve_search_major_codes', 'validate_program_filters', 'save_major_search', 'save_program_search', 'get_all_major_search_filters', 'get_all_program_search_filters', 'get_major_search_filters', 'get_program_search_filters', 'remove_major_search', 'remove_program_search', 'get_major_catalog_page', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'):
             setattr(cls.database, name, Mock())
         # Import the app with no Cloud SQL initialization.
         cls.modules_patch = patch.dict(sys.modules, {'db_functions': cls.database})
@@ -32,10 +32,14 @@ class SessionAuthTests(unittest.TestCase):
         self.client = self.app.test_client()
         self.database.create_or_update_user.reset_mock()
         self.database.get_major_favorites.reset_mock()
-        for name in ('get_major_catalog_page', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'):
+        for name in ('get_search_major_labels', 'get_major_search_selection', 'resolve_search_major_codes', 'validate_program_filters', 'save_major_search', 'save_program_search', 'get_all_major_search_filters', 'get_all_program_search_filters', 'get_major_search_filters', 'get_program_search_filters', 'remove_major_search', 'remove_program_search', 'get_major_catalog_page', 'get_program_favorites', 'get_comparison_favorites', 'is_program_favorite', 'add_program_fav', 'remove_school_fav'):
             getattr(self.database, name).reset_mock()
         self.database.create_or_update_user.return_value = {'id': 42, 'clerk_user_id': 'user_test'}
         self.database.get_major_favorites.return_value = []
+        self.database.get_search_major_labels.side_effect = lambda codes: {str(code): 'Major '+str(code) for code in codes}
+        self.database.validate_program_filters.return_value = None
+        self.database.get_major_search_selection.return_value = None
+        self.database.resolve_search_major_codes.side_effect = lambda values: sorted(set(values))
         with self.client.session_transaction() as s:
             s['csrf'] = 'test-csrf'
 
@@ -263,7 +267,7 @@ class SessionAuthTests(unittest.TestCase):
             response = self.client.get('/explore?view=majors&q=bio&sort=earnings_desc&earnings_min=100&has_programs=1')
             self.assertEqual(response.status_code, 200)
             programs.assert_not_called()
-            self.database.get_major_catalog_page.assert_called_once_with(1, query='bio', sort='earnings_desc', earnings_min=100, favorites_only=False, has_programs=True, user_id=None)
+            self.database.get_major_catalog_page.assert_called_once_with(1, query='bio', sort='earnings_desc', earnings_min=100, user_id=None, majors=None)
             html = response.get_data(as_text=True)
             self.assertIn('Find your field of study</h1>', html)
             self.assertIn('q=bio', html)
@@ -278,6 +282,10 @@ class SessionAuthTests(unittest.TestCase):
         self.assertEqual(self.database.get_major_catalog_page.call_args.kwargs['user_id'], 42)
         self.assertIn('data-save-major="7"', response.get_data(as_text=True))
         self.database.get_major_favorites.return_value = []
+        self.database.get_search_major_labels.side_effect = lambda codes: {str(code): 'Major '+str(code) for code in codes}
+        self.database.validate_program_filters.return_value = None
+        self.database.get_major_search_selection.return_value = None
+        self.database.resolve_search_major_codes.side_effect = lambda values: sorted(set(values))
         with patch('degree_path.routes.program_page', return_value={'page':1,'rows':[],'has_next':True}) as programs:
             response = self.client.get('/explore?view=programs&school_name=College&sort=net_price_asc&cipcode=7')
             self.assertEqual(response.status_code, 200)
@@ -286,6 +294,53 @@ class SessionAuthTests(unittest.TestCase):
             self.assertEqual(programs.call_args.kwargs, {'sort_option':'npt4', 'sort_order':'ASC'})
             self.assertIn('sort=net_price_asc', response.get_data(as_text=True))
         self.assertEqual(self.client.get('/explore?sort=invalid').status_code, 400)
+
+    def test_database_saved_search_access_and_restore(self):
+        from urllib.parse import urlsplit, parse_qs
+        self.assertEqual(self.client.get('/api/saved-searches/majors').status_code, 401)
+        self.login()
+        with self.client.session_transaction() as session:
+            csrf = session['csrf']
+        headers = {'X-CSRF-Token':csrf, 'X-App-User-ID':'42'}
+        self.database.save_major_search.return_value = {'created':True,'id':5}
+        body = {'saved':True,'recs':True,'search_text':'bio','sort_order':'name_desc','majors':['7']}
+        self.assertEqual(self.client.post('/api/saved-searches/majors',json=body,headers=headers).status_code,201)
+        self.database.save_major_search.assert_called_with(user_id=42,**body)
+        self.assertEqual(self.client.post('/api/saved-searches/majors',json={**body,'user_id':99},headers=headers).status_code,400)
+        self.assertEqual(self.client.delete('/api/saved-searches/majors/5',json={}).status_code,400)
+        self.database.remove_major_search.return_value = True
+        self.assertEqual(self.client.delete('/api/saved-searches/majors/5',headers=headers).status_code,200)
+        self.database.remove_major_search.assert_called_with(5,42)
+        self.database.get_major_search_filters.return_value = {'id':5,**body}
+        response = self.client.get('/saved-searches/majors/5/apply')
+        values = parse_qs(urlsplit(response.location).query)
+        self.assertEqual(values['majors'],['7'])
+        self.assertEqual(values['saved'],['1'])
+        self.assertEqual(values['sort'],['name_desc'])
+        self.database.get_major_search_filters.assert_called_with(5,42)
+        self.database.get_major_catalog_page.return_value={'page':1,'rows':[],'has_next':False}
+        response = self.client.get(response.location)
+        self.assertEqual(response.status_code,200)
+        self.database.get_major_catalog_page.assert_called_with(1,query='bio',sort='name_desc',earnings_min=None,user_id=42,majors=[7])
+        self.assertIn('name="collection_snapshot"',response.get_data(as_text=True))
+        self.database.get_major_search_filters.return_value=None
+        self.assertEqual(self.client.get('/saved-searches/majors/5/apply').status_code,404)
+        self.assertEqual(self.client.get('/api/saved-searches/majors',headers={'X-App-User-ID':'99'}).status_code,401)
+
+    def test_restored_program_selection_survives_removed_favorite(self):
+        self.login()
+        self.database.get_major_favorites.return_value=[]
+        with patch('degree_path.routes.program_page',return_value={'page':1,'rows':[],'has_next':True}) as query:
+            response=self.client.get('/explore?major_filter=selected&majors=7&majors=8&school_name=A&school_name=B&state=CT&state=NY&satmt=600')
+            self.assertEqual(response.status_code,200)
+            filters=query.call_args.args[3]
+            self.assertEqual(filters['cipcodes'],[7,8])
+            self.assertEqual(filters['school_names'],['A','B'])
+            self.assertEqual(filters['states'],['CT','NY'])
+            self.assertEqual(filters['satmt'],600)
+            html=response.get_data(as_text=True)
+            self.assertIn('name="majors" value="7" checked',html)
+            self.assertIn('name="school_name" type="search" value="A"',html)
 
 
 if __name__ == '__main__':

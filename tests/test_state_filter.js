@@ -1,0 +1,21 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+function element(extra={}) { return {handlers:{},addEventListener(event,fn){this.handlers[event]=fn;},...extra}; }
+const choices = [element({checked:true,value:'CT'}),element({checked:false,value:'NY'}),element({checked:false,value:'NJ'})];
+const rows = ['Connecticut CT','New York NY','New Jersey NJ'].map((name,index)=>({dataset:{stateLabel:name},hidden:false,querySelector:()=>choices[index]}));
+const group={querySelectorAll:()=>rows};
+const search=element({value:''});const any=element({checked:false,indeterminate:false});const status={};const empty={};
+const ids={'state-filter':group,'state-search':search,'state-any':any,'state-selection-status':status,'state-no-results':empty};
+let pageshow;
+vm.runInNewContext(fs.readFileSync('degree_path/static/js/state-filter.js','utf8'), {document:{getElementById:id=>ids[id]},window:{addEventListener:(_,fn)=>{pageshow=fn;}}});
+assert.equal(any.indeterminate,true);assert.equal(status.textContent,'1 selected');
+search.value='new';search.handlers.input();assert.deepEqual(rows.map(r=>r.hidden),[true,false,false]);assert.equal(choices[0].checked,true,'Hidden selection must remain checked');
+any.checked=true;any.handlers.change();assert.ok(choices.every(c=>c.checked),'Any selects hidden states too');assert.equal(any.indeterminate,false);
+any.checked=false;any.handlers.change();assert.ok(choices.every(c=>!c.checked));assert.equal(status.textContent,'No state restriction');
+search.value='CT';search.handlers.input();assert.deepEqual(rows.map(r=>r.hidden),[false,true,true]);
+choices[0].checked=true;choices[0].handlers.change();assert.equal(any.indeterminate,true);
+search.value='no such state';search.handlers.input();assert.equal(empty.hidden,false);assert.equal(choices[0].checked,true);
+let prevented=false;search.handlers.keydown({key:'Enter',preventDefault:()=>{prevented=true;}});assert.ok(prevented);
+search.value='';pageshow();assert.equal(empty.hidden,true);assert.ok(rows.every(r=>!r.hidden));assert.equal(status.textContent,'1 selected');
+console.log('State checklist: restored selections, name/code search, hidden selections, Any toggles, empty results, Enter and Back passed.');

@@ -64,9 +64,9 @@ def create_app(test_config=None):
 
     @app.before_request
     def protect_forms(): #helping to protect site from CRSF attacks
-        if request.method == 'POST':
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
             expected = session.get('csrf', '')
-            actual = request.headers.get('X-CSRF-Token', '') if request.is_json else request.form.get('csrf_token', '')
+            actual = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token', '')
             if not expected or not secrets.compare_digest(expected.encode(), actual.encode()):
                 abort(400, description='Reload the page and try again.')
 

@@ -5,7 +5,8 @@ __pycache__/
 instance/
 
 # Generated database import files
-/data/
-/tables/
+/database/data/
+/database/tables/
+/database/db_setup.py
 /testoutput
 cloud_admin_connection.py

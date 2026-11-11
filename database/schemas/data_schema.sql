@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS public.program_rank_crit CASCADE;
 DROP TABLE IF EXISTS public.major_info CASCADE;
 DROP TABLE IF EXISTS public.keywords CASCADE;
 DROP TABLE IF EXISTS public.major_keywords CASCADE;
+DROP TABLE IF EXISTS public.careers CASCADE;
 
 --Create Tables--
 CREATE TABLE public.schools(
@@ -104,7 +105,7 @@ CREATE TABLE public.program_rank_crit(
 );
 
 CREATE TABLE public.careers(
-    id SERIAL NOT NULL,
+    id SERIAL PRIMARY KEY,
     cipcode INT NOT NULL,
     career TEXT NOT NULL,
     source TEXT NOT NULL,

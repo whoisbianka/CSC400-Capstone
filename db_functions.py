@@ -6,7 +6,7 @@ import os
 import re
 from dotenv import load_dotenv
 from google.cloud.sql.connector import Connector
-from cloud_sql_connection import connect_with_connector, close_connector
+from database_connection import connect_with_connector, close_connector
 from time import perf_counter
 from contextlib import ExitStack
 import json
@@ -719,6 +719,17 @@ def get_page_programs(
     if filters.get("state"):
         conditions.append("LOWER(s.stabbr)=LOWER(:state)")
         params["state"]=filters["state"]
+    if filters.get("school_names"):
+        matches = []
+        for index, value in enumerate(filters['school_names']):
+            key = f'college_{index}'
+            escaped = value.replace('!', '!!').replace('%', '!%').replace('_', '!_')
+            params[key] = '%' + escaped + '%'
+            matches.append(f"LOWER(s.instnm) LIKE LOWER(:{key}) ESCAPE '!'")
+        conditions.append('(' + ' OR '.join(matches) + ')')
+    if filters.get('states'):
+        conditions.append('UPPER(s.stabbr) IN :states')
+        params['states'] = filters['states']
     if filters.get("city"):
         conditions.append("LOWER(s.city)=LOWER(:city)")
         params["city"]=filters["city"]
@@ -832,7 +843,7 @@ def get_page_programs(
                 ORDER BY {sql_order}
                 LIMIT :limit OFFSET :offset""")
 
-    for key in ("degrees", "cipcodes"):
+    for key in ("degrees", "cipcodes", "states"):
         if key in params:
             query = query.bindparams(bindparam(key, expanding=True))
 
@@ -852,6 +863,10 @@ def get_page_programs(
 
 #helper function to validate program filters
 def validate_program_filters(filters):
+    for key, max_length in (('school_names', 200), ('states', 3)):
+        values = filters.get(key, [])
+        if not isinstance(values, (list, tuple)) or len(values) > 200 or any(not isinstance(value, str) or not 1 <= len(value) <= max_length for value in values):
+            raise ValueError('Invalid college or state filters.')
     if "q" in filters and (not isinstance(filters["q"], str) or len(filters["q"]) > 200):
         raise ValueError("Search must be text of at most 200 characters.")
     school_name = filters.get("school_name")
@@ -1727,9 +1742,33 @@ def get_major_name_suggestions(query):
     return [dict(row) for row in rows]
 
 
+def get_major_search_selection(user_id, *, saved=False, recs=False, majors=None):
+    """Combine explicit CIP codes with the requested account collections."""
+    if type(saved) is not bool or type(recs) is not bool:
+        raise ValueError('Invalid major filters.')
+    if majors is not None and (not isinstance(majors, (list, tuple)) or
+            len(majors) > 200 or any(type(code) is not int or not 1 <= code <= 2147483647 for code in majors)):
+        raise ValueError('Invalid selected major codes.')
+    codes = set(majors or [])
+    if saved or recs:
+        if type(user_id) is not int or user_id <= 0:
+            raise ValueError('Sign in to use your saved or recommended majors.')
+        with engine.connect() as connection:
+            rows = connection.execute(text("""
+                SELECT cipcode FROM public.major_fav
+                WHERE user_id = :user_id AND :saved
+                UNION
+                SELECT cipcode FROM public.major_rec
+                WHERE user_id = :user_id AND :recs
+            """), {'user_id': user_id, 'saved': saved, 'recs': recs}).scalars().all()
+        codes.update(rows)
+    # None means unrestricted; [] means a selected collection is empty.
+    return sorted(codes) if codes or saved or recs else None
+
+
 def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
                            earnings_min=None, favorites_only=False,
-                           has_programs=False, user_id=None):
+                           has_programs=False, user_id=None, majors=None):
     """Page through majors, independently of the program catalog."""
     if type(page) is not int or not 1 <= page <= 100000:
         raise ValueError('Invalid page.')
@@ -1745,6 +1784,8 @@ def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
         raise ValueError('Invalid user.')
     if favorites_only and user_id is None:
         raise ValueError('Sign in to filter your favorites.')
+    if majors is not None and (not isinstance(majors, (list, tuple)) or any(type(code) is not int or not 1 <= code <= 2147483647 for code in majors)):
+        raise ValueError('Invalid selected major codes.')
     sorts = {
         'name_asc': 'm.cipdesc ASC, m.cipcode ASC',
         'name_desc': 'm.cipdesc DESC, m.cipcode ASC',
@@ -1756,6 +1797,12 @@ def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
         raise ValueError('Invalid major sort.')
     params = {'user_id': user_id, 'limit': page_count + 1, 'offset': (page - 1) * page_count}
     conditions = []
+    if majors is not None:
+        if majors:
+            conditions.append('m.cipcode IN :selected_majors')
+            params['selected_majors'] = sorted(set(majors))
+        else:
+            conditions.append('FALSE')
     if query.strip():
         escaped = query.strip().replace('!', '!!').replace('%', '!%').replace('_', '!_')
         conditions.append("LOWER(m.cipdesc) LIKE LOWER(:query) ESCAPE '!'")
@@ -1785,78 +1832,267 @@ def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
         ORDER BY {sorts[sort]}
         LIMIT :limit OFFSET :offset
     """)
+    if majors:
+        statement = statement.bindparams(bindparam('selected_majors', expanding=True))
     with engine.connect() as connection:
         rows = connection.execute(statement, params).mappings().all()
     return {'rows': [dict(row) for row in rows[:page_count]], 'page': page, 'has_next': len(rows) > page_count}
 
-#Save/Delete earch filters
-def save_major_search(user_id,majors=[],earnings=None,only_saved=False,only_recs=False):
-    query=text("""
-                INSERT INTO public.major_search(user_id,majors,earnings,only_saved,only_recs)
-                VALUES (:user_id,:majors,:earnings,:only_saved,:only_recs)
-                ON CONFLICT(user_id,majors,earnings,only_saved,only_recs) DO NOTHING
-                """)
-    params={"user_id":user_id,"majors":majors,"earnings":earnings,"only_saved":only_saved,"only_recs":only_recs}
+#Normalize Search Lists
+def _normalize_search_list(values, *, uppercase=False):
+    if values is None:
+        return []
+
+    if not isinstance(values, (list, tuple)):
+        raise ValueError("Search selections must be a list.")
+
+    cleaned = []
+
+    for value in values:
+        if not isinstance(value, str):
+            raise ValueError("Search selections must contain strings.")
+
+        value = value.strip()
+
+        if not value:
+            continue
+
+        if uppercase:
+            value = value.upper()
+
+        cleaned.append(value)
+
+    return sorted(set(cleaned))
+
+def get_search_major_labels(codes):
+    """Resolve stored CIP strings in one query for display."""
+    ids = sorted({int(code) for code in codes})
+    if not ids:
+        return {}
+    if any(not 1 <= code <= 2147483647 for code in ids):
+        raise ValueError('Invalid major code.')
+    statement = text('SELECT cipcode, cipdesc FROM public.majors WHERE cipcode IN :codes').bindparams(bindparam('codes', expanding=True))
+    with engine.connect() as connection:
+        rows = connection.execute(statement, {'codes': ids}).mappings().all()
+    return {str(row['cipcode']): row['cipdesc'] for row in rows}
+
+
+def resolve_search_major_codes(values):
+    """Store CIP codes as strings in the schema's TEXT[] major selection."""
+    values = _normalize_search_list(values)
+    if len(values) > 200 or any(len(value) > 200 for value in values):
+        raise ValueError('Select at most 200 majors; names must be at most 200 characters.')
+    if not values:
+        return []
+    codes, names = [], []
+    for value in values:
+        if value.isascii() and value.isdecimal():
+            code = int(value)
+            if not 1 <= code <= 2147483647:
+                raise ValueError('Invalid major code.')
+            codes.append(code)
+        else:
+            names.append(value.lower())
+    statement = text("""
+        SELECT cipcode, LOWER(cipdesc) AS name FROM public.majors
+        WHERE cipcode IN :codes OR LOWER(cipdesc) IN :names
+    """).bindparams(bindparam('codes', expanding=True), bindparam('names', expanding=True))
+    with engine.connect() as connection:
+        rows = connection.execute(statement, {'codes': codes, 'names': names}).mappings().all()
+    if not set(codes) <= {row['cipcode'] for row in rows} or not set(names) <= {row['name'] for row in rows}:
+        raise ValueError('A selected major was not found. Choose a major from the suggestions.')
+    return [str(code) for code in sorted({row['cipcode'] for row in rows})]
+
+
+# Save and retrieve account-owned searches
+def save_major_search(
+    user_id,
+    majors=None,
+    earnings_min=None,
+    saved=False,
+    recs=False,
+    search_text="",
+    sort_order="name_asc",
+):
+    if search_text is None:
+        search_text = ""
+    if not isinstance(search_text, str) or len(search_text) > 200:
+        raise ValueError("Search text must contain at most 200 characters.")
+    search_text = search_text.strip()
+    if not isinstance(sort_order, str) or sort_order not in ('name_asc', 'name_desc', 'earnings_desc', 'earnings_asc', 'programs_desc'):
+        raise ValueError("Invalid saved-search sort order.")
+
+    majors = resolve_search_major_codes(majors)
+
+    if type(user_id) is not int or user_id <= 0:
+        raise ValueError("Invalid user ID.")
+
+    if earnings_min is not None and (
+        type(earnings_min) is not int
+        or not 0 <= earnings_min <= 2147483647
+    ):
+        raise ValueError("Minimum earnings_min must be a nonnegative integer.")
+
+    if type(saved) is not bool or type(recs) is not bool:
+        raise ValueError("Saved and recommended filters must be booleans.")
+
+    selected = get_major_search_selection(user_id, saved=saved, recs=recs,
+                                          majors=[int(code) for code in majors])
+    majors = [str(code) for code in (selected or [])]
+
+    query = text("""
+        INSERT INTO public.major_search (
+            user_id, majors, earnings_min, saved, recs, search_text, sort_order, created_at
+        )
+        VALUES (
+            :user_id, :majors, :earnings_min, :saved, :recs, :search_text, :sort_order, CURRENT_TIMESTAMP
+        )
+        ON CONFLICT ON CONSTRAINT uq_maj_search DO NOTHING
+        RETURNING id
+    """)
+
+    params = {
+        "user_id": user_id,
+        "majors": majors,
+        "earnings_min": earnings_min,
+        "saved": saved,
+        "recs": recs,
+        "search_text": search_text,
+        "sort_order": sort_order,
+    }
 
     with engine.begin() as connection:
-        connection.execute(query,params)
+        search_id = connection.execute(query, params).scalar_one_or_none()
 
-def save_program_search(user_id, majors=[], colleges=[], states=[],degree_lev=None,
-                        max_net_cost=None,max_tuit_in=None,max_tuit_out=None,
-                        min_acc=None,max_acc=None,
+    return {
+        "created": search_id is not None,
+        "id": search_id,
+    }
+
+def save_program_search(user_id, majors=None, colleges=None, states=None,degrees=None,
+                        net_price_max=None,tuition_in_max=None,tuition_out_max=None,
+                        acceptance_min=None,acceptance_max=None,
                         satmt=None,satvr=None,satwr=None,
-                        actmt=None,acten=None,actwr=None):
+                        actmt=None,acten=None,actwr=None,
+                        search_text="", sort_order="school_asc"):
+
+    if search_text is None:
+        search_text = ""
+    if not isinstance(search_text, str) or len(search_text) > 200:
+        raise ValueError("Search text must contain at most 200 characters.")
+    search_text = search_text.strip()
+    if not isinstance(sort_order, str) or sort_order not in ('school_asc', 'school_desc', 'earnings_desc', 'net_price_asc', 'tuition_in_asc', 'tuition_out_asc'):
+        raise ValueError("Invalid saved-search sort order.")
+
+    majors = resolve_search_major_codes(majors)
+    colleges = _normalize_search_list(colleges)
+    states = _normalize_search_list(states, uppercase=True)
+    if len(colleges) > 200 or any(len(value) > 200 for value in colleges):
+        raise ValueError('Invalid college selections.')
+    if len(states) > 100 or any(not re.fullmatch(r'[A-Z]{2,3}', value) for value in states):
+        raise ValueError('Use state abbreviations.')
+
+    if type(user_id) is not int or user_id <= 0:
+        raise ValueError("Invalid user ID.")
+
+    if degrees is not None:
+        if not isinstance(degrees, str):
+            raise ValueError("Degree level must be text.")
+
+        selected_degrees = {
+            value.strip()
+            for value in degrees.split(",")
+            if value.strip()
+        }
+
+        if not selected_degrees <= {"2", "3"}:
+            raise ValueError("Invalid degree level.")
+
+        degrees = ",".join(sorted(selected_degrees)) or None
+
+    limits = {
+        "net_price_max": (net_price_max, 0, 2147483647),
+        "tuition_in_max": (tuition_in_max, 0, 2147483647),
+        "tuition_out_max": (tuition_out_max, 0, 2147483647),
+        "acceptance_min": (acceptance_min, 0, 100),
+        "acceptance_max": (acceptance_max, 0, 100),
+        "satmt": (satmt, 200, 800),
+        "satvr": (satvr, 200, 800),
+        "satwr": (satwr, 200, 800),
+        "actmt": (actmt, 1, 36),
+        "acten": (acten, 1, 36),
+        "actwr": (actwr, 2, 12),
+    }
+
+    for name, (value, minimum, maximum) in limits.items():
+        if value is not None and (
+            type(value) is not int
+            or not minimum <= value <= maximum
+        ):
+            raise ValueError(
+                f"{name} must be a whole number between "
+                f"{minimum} and {maximum}."
+            )
+
+    if (
+        acceptance_min is not None
+        and acceptance_max is not None
+        and acceptance_min > acceptance_max
+    ):
+        raise ValueError(
+            "Minimum acceptance rate cannot exceed maximum."
+        )
+
+
     query=text("""
-                INSERT INTO public.program_search(user_id,majors,colleges,states,degree_lev,
-                                                    max_net_cost,max_tuit_in,max_tuit_out,min_acc,max_acc,
-                                                    satmt,satvr,satwr,actmt,acten,actwr)
-                VALUES (:user_id,:majors,:colleges,:states,:degree_lev,
-                        :max_net_cost,:max_tuit_in,:max_tuit_out,:min_acc,:max_acc,
-                        :satmt,:satvr,:satwr,:actmt,:acten,:actwr)
-                ON CONFLICT(user_id,majors,colleges,states,degree_lev,max_net_cost,
-                            max_tuit_in,max_tuit_out,min_acc,max_acc,
-                            satmt,satvr,satwr,actmt,acten,actwr) DO NOTHING
+                INSERT INTO public.program_search(user_id,majors,colleges,states,degrees,
+                                                    net_price_max,tuition_in_max,tuition_out_max,acceptance_min,acceptance_max,
+                                                    satmt,satvr,satwr,actmt,acten,actwr,search_text,sort_order,created_at)
+                VALUES (:user_id,:majors,:colleges,:states,:degrees,
+                        :net_price_max,:tuition_in_max,:tuition_out_max,:acceptance_min,:acceptance_max,
+                        :satmt,:satvr,:satwr,:actmt,:acten,:actwr,:search_text,:sort_order,CURRENT_TIMESTAMP)
+                ON CONFLICT ON CONSTRAINT uq_prog_search DO NOTHING
+                RETURNING id
                 """)
-    params={"user_id":user_id,"majors":majors,"colleges":colleges,"states":states,"max_net_cost":max_net_cost,
-            "max_tuit_in":max_tuit_in,"max_tuit_out":max_tuit_out,"min_acc":min_acc,"max_acc":max_acc,
-            "satmt":satmt,"satvr":satvr,"satwr":satwr,"actmt":actmt,"acten":acten,"actwr":actwr}
+    params={"user_id":user_id,"majors":majors,"colleges":colleges,"states":states,"degrees":degrees,
+            "net_price_max":net_price_max,"tuition_in_max":tuition_in_max,"tuition_out_max":tuition_out_max,"acceptance_min":acceptance_min,"acceptance_max":acceptance_max,
+            "satmt":satmt,"satvr":satvr,"satwr":satwr,"actmt":actmt,"acten":acten,"actwr":actwr,"search_text":search_text,"sort_order":sort_order}
 
     with engine.begin() as connection:
-        connection.execute(query,params)
+        search_id = connection.execute(query, params).scalar_one_or_none()
 
-def remove_major_search(user_id,majors=[],earnings=None,only_saved=False,only_recs=False):
+    return {
+        "created": search_id is not None,
+        "id": search_id,
+    }
+
+def remove_major_search(search_id, user_id):
     query=text("""
                 DELETE FROM public.major_search
-                WHERE user_id=:user_id,majors=:majors,earnings=:earnings,only_saved=:only_saved,only_recs=:only_recs
+                WHERE id=:search_id AND user_id=:user_id
                 """)
-    params={"user_id":user_id,"majors":majors,"earnings":earnings,"only_saved":only_saved,"only_recs":only_recs}
+    params={"search_id":search_id,"user_id":user_id}
 
     with engine.begin() as connection:
-        connection.execute(query,params)
-
-def remove_program_search(user_id, majors=[], colleges=[], states=[],degree_lev=None,
-                        max_net_cost=None,max_tuit_in=None,max_tuit_out=None,
-                        min_acc=None,max_acc=None,
-                        satmt=None,satvr=None,satwr=None,
-                        actmt=None,acten=None,actwr=None):
+        result=connection.execute(query,params)
+    return result.rowcount>0
+def remove_program_search(search_id, user_id):
     query=text("""
                 DELETE FROM public.program_search
-                WHERE user_id=:user_id,majors=:majors,colleges=:colleges,states=:states,degree_lev=:degree_lev,
-                        max_net_cost=:max_net_cost,max_tuit_in=:max_tuit_in,max_tuit_out=:max_tuit_out,min_acc=:min_acc,max_acc=:max_acc,
-                        satmt=:satmt,satvr=:satvr,satwr=:satwr,actmt=:actmt,acten=:acten,actwr=:actwr
+                WHERE id=:search_id AND user_id=:user_id
                 """)
-    params={"user_id":user_id,"majors":majors,"colleges":colleges,"states":states,"max_net_cost":max_net_cost,
-            "max_tuit_in":max_tuit_in,"max_tuit_out":max_tuit_out,"min_acc":min_acc,"max_acc":max_acc,
-            "satmt":satmt,"satvr":satvr,"satwr":satwr,"actmt":actmt,"acten":acten,"actwr":actwr}
+    params={"search_id":search_id,"user_id":user_id}
 
     with engine.begin() as connection:
-        connection.execute(query,params)
+        result=connection.execute(query,params)
+    return result.rowcount>0
 
 def get_all_major_search_filters(user_id):
         query=text("""
-                SELECT id,majors,earnings,only_saved,only_recs
+                SELECT id,majors,earnings_min,saved,recs,search_text,sort_order,created_at
                 FROM public.major_search
                 WHERE user_id=:user_id
+                ORDER BY created_at DESC NULLS LAST, id DESC
                 """)
         params={"user_id":user_id}
         with engine.connect() as connection:
@@ -1866,11 +2102,12 @@ def get_all_major_search_filters(user_id):
 
 def get_all_program_search_filters(user_id):
         query=text("""
-                SELECT id,majors,colleges,states,degree_lev,
-                        max_net_cost,max_tuit_in,max_tuit_out,min_acc,max_acc,
-                        satmt,satvr,satwr,actmt,acten,actwr
+                SELECT id,majors,colleges,states,degrees,
+                        net_price_max,tuition_in_max,tuition_out_max,acceptance_min,acceptance_max,
+                        satmt,satvr,satwr,actmt,acten,actwr,search_text,sort_order,created_at
                 FROM public.program_search
                 WHERE user_id=:user_id
+                ORDER BY created_at DESC NULLS LAST, id DESC
                 """)
         params={"user_id":user_id}
         with engine.connect() as connection:
@@ -1878,28 +2115,28 @@ def get_all_program_search_filters(user_id):
 
         return [dict(row) for row in rows]
 
-def get_all_major_search_filters(id):
+def get_major_search_filters(id,user_id):
         query=text("""
-                SELECT id,majors,earnings,only_saved,only_recs
+                SELECT id,majors,earnings_min,saved,recs,search_text,sort_order,created_at
                 FROM public.major_search
-                WHERE id=:id
+                WHERE id=:id AND user_id=:user_id
                 """)
-        params={"id":id}
+        params={"id":id,"user_id":user_id}
         with engine.connect() as connection:
             row=connection.execute(query,params).mappings().one_or_none()
 
-        return dict(row)
+        return dict(row) if row is not None else None
 
-def get_program_search_filters(id):
+def get_program_search_filters(id,user_id):
         query=text("""
-                SELECT id,majors,colleges,states,degree_lev,
-                        max_net_cost,max_tuit_in,max_tuit_out,min_acc,max_acc,
-                        satmt,satvr,satwr,actmt,acten,actwr
+                SELECT id,majors,colleges,states,degrees,
+                        net_price_max,tuition_in_max,tuition_out_max,acceptance_min,acceptance_max,
+                        satmt,satvr,satwr,actmt,acten,actwr,search_text,sort_order,created_at
                 FROM public.program_search
-                WHERE id=:id
+                WHERE id=:id AND user_id=:user_id
                 """)
-        params={"id":id}
+        params={"id":id,"user_id":user_id}
         with engine.connect() as connection:
             row=connection.execute(query,params).mappings().one_or_none()
 
-        return dict(row)
+        return dict(row) if row is not None else None
