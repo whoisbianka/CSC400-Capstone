@@ -36,7 +36,7 @@
     </div>
     <aside class="profile-stack">
       <section class="profile-panel" aria-labelledby="profile-saved-title"><h2 id="profile-saved-title">Your saved picks</h2><a class="profile-shortcut" href="{{ url_for('web.saved_majors_page') }}"><span>Saved majors</span><span aria-hidden="true">→</span></a><a class="profile-shortcut" href="{{ url_for('web.saved_majors_page', view='programs') }}"><span>Favorited programs</span><span aria-hidden="true">→</span></a></section>
-      <section class="profile-panel profile-resume" aria-labelledby="profile-chat-title"><h2 id="profile-chat-title">Keep exploring</h2><p>Pick up where you left off in your guided chat.</p><a class="secondary-button" href="{{ url_for('web.questionnaire') }}">Resume conversation <span aria-hidden="true">→</span></a></section>
+      <section class="profile-panel profile-resume" aria-labelledby="profile-chat-title"><h2 id="profile-chat-title">Keep exploring</h2><p>Pick up where you left off in your guided chat.</p><a class="secondary-button" href="{{ url_for('web.chat') }}">Resume conversation <span aria-hidden="true">→</span></a></section>
     </aside>
   </div>
   {% endif %}

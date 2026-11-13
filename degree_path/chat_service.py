@@ -213,13 +213,14 @@ def interpret_message(
                 "Keyword evidence was not in the latest message."
             )
 
-    # Convert the Gemini response to the application's existing format.
+    # Gemini's excerpt validates the interest. Store the full user message
+    # as evidence for both account and guest persistence, never a model summary.
     return AdvisorTurn(
         reply=gemini_turn.reply,
         keyword_additions=[
             KeywordAddition(
                 keyword_id=keyword_ids[item.keyword],
-                evidence=item.evidence,
+                evidence=message,
             )
             for item in gemini_turn.keyword_additions
         ],

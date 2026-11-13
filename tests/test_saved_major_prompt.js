@@ -55,6 +55,7 @@ function fixture(userId = '') {
   });
   const dialog = body.children.find(child => child.tag === 'dialog');
   return {major, program, dialog, requests, notifications,
+    render: () => listeners['major-controls:render'](),
     failSave() { failSave = true; },
     get signIns() { return signIns; },
     expire() { expire = true; },
@@ -101,6 +102,19 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
   await failed.click(failed.major);
   assert.equal(failed.notifications.length, 0, 'Failed saves must never show a success notification');
   assert.equal(failed.major.attributes['aria-pressed'], 'false');
+
+  const heart = fixture('42');
+  await flush();
+  heart.major.dataset.favoriteIcon = 'heart';
+  heart.major.dataset.majorName = 'Computer Science';
+  heart.render();
+  assert.equal(heart.major.textContent, '♡');
+  await heart.click(heart.major);
+  assert.equal(heart.major.textContent, '♥');
+  assert.equal(heart.major.attributes['aria-pressed'], 'true');
+  await heart.notifications[0].onUndo();
+  assert.equal(heart.major.textContent, '♡');
+  assert.match(heart.major.attributes['aria-label'], /Save Computer Science/);
 
   account.expire();
   await account.click(account.major);

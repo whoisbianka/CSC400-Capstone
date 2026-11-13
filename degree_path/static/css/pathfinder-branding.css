@@ -25,14 +25,14 @@ body { font-family: "Trebuchet MS", system-ui, sans-serif; }
 .secondary-button { background: var(--color-secondary-container); color: var(--color-on-secondary-container); }
 .explore-workspace .explore-tabs a[aria-current="page"] { color: var(--color-secondary); box-shadow: 0 2px var(--color-secondary); }
 .explore-sidebar { background: var(--color-surface-container-low); }
-.explore-programs-workspace .program-card-heading { background: var(--color-surface-container-high); }
+:is(.explore-programs-workspace, .explore-majors-workspace) .program-card-heading { background: var(--color-surface-container-high); }
 .major-catalog-footer,
-.explore-programs-workspace .program-card-footer { background: var(--color-primary-container); color: var(--color-on-primary-container); }
+:is(.explore-programs-workspace, .explore-majors-workspace) .program-card-footer { background: var(--color-primary-container); color: var(--color-on-primary-container); }
 .major-catalog-footer a,
-.explore-programs-workspace .program-card-footer > a,
-.explore-programs-workspace .program-card-footer .program-favorite-button { color: var(--color-on-primary-container); }
+:is(.explore-programs-workspace, .explore-majors-workspace) .program-card-footer > a,
+:is(.explore-programs-workspace, .explore-majors-workspace) .program-card-footer .program-favorite-button { color: var(--color-on-primary-container); }
 .major-catalog-footer a:hover,
-.explore-programs-workspace .program-card-footer > a:hover { background: var(--color-surface-container-highest); color: var(--color-on-surface); }
+:is(.explore-programs-workspace, .explore-majors-workspace) .program-card-footer > a:hover { background: var(--color-surface-container-highest); color: var(--color-on-surface); }
 .major-catalog-footer a:focus-visible,
 .program-card-footer .program-favorite-button:focus-visible { outline-color: var(--color-on-primary-container); }
 .page-badge { background: var(--color-tertiary-container); color: var(--color-on-tertiary-container); }

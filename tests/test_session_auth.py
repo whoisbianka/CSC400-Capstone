@@ -144,9 +144,10 @@ class SessionAuthTests(unittest.TestCase):
         self.assertEqual(self.client.get('/start/evil').status_code, 404)
         html = self.client.get('/').get_data(as_text=True)
         self.assertNotIn('/start/', html)
-        self.assertIn('href="/questionnaire"', html)
+        self.assertIn('href="/chat"', html)
         self.assertIn('href="/explore"', html)
-        html = self.client.get('/questionnaire').get_data(as_text=True)
+        self.assertEqual(self.client.get('/questionnaire').headers['Location'], '/chat')
+        html = self.client.get('/chat').get_data(as_text=True)
         self.assertIn('id="guided-chat"', html)
         self.assertNotIn('How would you like to continue', html)
 
@@ -269,7 +270,8 @@ class SessionAuthTests(unittest.TestCase):
             programs.assert_not_called()
             self.database.get_major_catalog_page.assert_called_once_with(1, query='bio', sort='earnings_desc', earnings_min=100, user_id=None, majors=None)
             html = response.get_data(as_text=True)
-            self.assertIn('Find your field of study</h1>', html)
+            self.assertIn('Explore majors</h1>', html)
+            self.assertNotIn('Find your field of study', html)
             self.assertIn('q=bio', html)
             self.assertIn('sort=earnings_desc', html)
             self.assertIn('cipcode=7', html)
@@ -343,5 +345,51 @@ class SessionAuthTests(unittest.TestCase):
             self.assertIn('name="school_name" type="search" value="A"',html)
 
 
+    def test_major_details_account_evidence_and_not_found(self):
+        self.login()
+        major = {'cipcode': 26, 'major': 'Biology', 'description': 'Study living things.',
+                 'earnings': 50000, 'school_count': 20, 'is_favorite': True}
+        self.database.get_major_catalog_page.return_value = {'rows': [major]}
+        with patch.object(self.database, 'get_recommendations', create=True, return_value=[
+            {'cipcode': 26, 'evidence': [{'keyword': 'Biology', 'evidence': '<script>interest</script>'}]}]):
+            response = self.client.get('/majors/26')
+            self.assertEqual(response.status_code, 200)
+            html = response.get_data(as_text=True)
+            self.assertIn('Study living things.', html)
+            self.assertIn('1 matching interest', html)
+            self.assertIn('&lt;script&gt;interest&lt;/script&gt;', html)
+            self.assertIn('data-save-major="26"', html)
+            self.database.get_major_catalog_page.assert_called_with(page_count=1, majors=[26], user_id=42)
+        self.database.get_major_catalog_page.return_value = {'rows': []}
+        self.assertEqual(self.client.get('/majors/999').status_code, 404)
+
+    def test_major_details_guest_evidence_and_expiration(self):
+        self.database.get_major_catalog_page.return_value = {'rows': [
+            {'cipcode': 26, 'major': 'Biology', 'description': None, 'earnings': None,
+             'school_count': 0, 'is_favorite': False}]}
+        with self.client.session_transaction() as s:
+            s['guest_id'] = 'guest-test'
+        with patch.object(self.database, 'get_guest_session', create=True) as guest:
+            guest.return_value = {'state': {'recommendations': [{'cipcode': 26,
+                'evidence': [{'keyword': 'Research', 'evidence': 'I enjoy experiments.'}]}]}}
+            html = self.client.get('/majors/26').get_data(as_text=True)
+            self.assertIn('I enjoy experiments.', html)
+            guest.assert_called_with('guest-test')
+            guest.return_value = None
+            html = self.client.get('/majors/26').get_data(as_text=True)
+            self.assertNotIn('id="matching-interests"', html)
+
+    def test_chat_uses_api_sidebar_and_shared_favorite_controls(self):
+        response = self.client.get('/chat')
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('id="recommendationsPanel"', html)
+        self.assertIn('data-major-url="/majors/0"', html)
+        self.assertIn('js/chat-api.js', html)
+        self.assertIn('js/saved-major-controls.js', html)
+        self.assertNotIn('name="question"', html)
+        self.assertEqual(self.client.get('/questionnaire').headers['Location'], '/chat')
+
 if __name__ == '__main__':
     unittest.main()
+

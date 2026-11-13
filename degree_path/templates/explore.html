@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block extra_head %}
 <script src="{{ url_for('static', filename='js/state-filter.js', v='1') }}" defer></script>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='state-checklist-1') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css', v='compact-controls-1') }}">
 <script src="{{ url_for('static', filename='js/explore.js', v='database-search-1') }}" defer></script>
 <script src="{{ url_for('static', filename='js/saved-filter-store.js', v='database-search-1') }}" defer></script>
 <script src="{{ url_for('static', filename='js/explore-preferences.js', v='database-search-1') }}" defer></script>
@@ -14,7 +14,7 @@
 <div class="page-workspace explore-workspace explore-programs-workspace">
   <div id="explore-loading" class="explore-loading" role="status" aria-live="polite" hidden><span class="explore-spinner" aria-hidden="true"></span><span>Loading programs…</span></div>
   {% include '_explore_tabs.html' %}
-  <header class="explore-intro"><h1 id="page-title">Find a college program</h1><p>Compare schools offering the major and degree you want.</p></header>
+  <h1 id="page-title" class="sr-only">Explore programs</h1>
 
   <div class="explore-layout">
     <aside class="explore-sidebar" aria-labelledby="browse-title">
@@ -58,12 +58,12 @@
         <button type="submit" class="primary-link apply-filters">Apply filters</button>
         <button type="button" class="secondary-button preference-button" data-save-explore-preferences>Save search</button><button type="button" class="secondary-button preference-button" data-restore-explore-preferences>Restore latest search</button>
         <a class="saved-filters-link" href="{{ url_for('web.saved_majors_page', view='filters') }}">View saved filters →</a>
-        <p class="small-note" data-explore-preferences-status role="status" aria-live="polite">Saved searches are stored in your account. Sign in to save or restore them.</p>
+        <p class="small-note" data-explore-preferences-status role="status" aria-live="polite"></p>
       </form>
     </aside>
     <section class="explore-results" aria-labelledby="results-title">
       <div class="explore-results-toolbar"><div class="explore-search" role="search" aria-label="College program search">
-    <label for="program-search">College or major</label>
+    <label for="program-search" class="sr-only">College or major</label>
     <div class="explore-search-controls"><input id="program-search" form="degree-filter-form" type="search" name="q" maxlength="200" value="{{ filters.get('q', '') }}" placeholder="College name or major"><button class="primary-link" form="degree-filter-form" type="submit">Search <span aria-hidden="true">→</span></button></div>
   </div><div class="explore-sort"><label for="program-sort">Sort by</label><select id="program-sort" form="degree-filter-form" name="sort">{% for value, label in [('school_asc', 'School name A–Z'), ('school_desc', 'School name Z–A'), ('earnings_desc', 'Highest program earnings'), ('net_price_asc', 'Lowest cost after aid'), ('tuition_in_asc', 'Lowest in-state tuition'), ('tuition_out_asc', 'Lowest out-of-state tuition')] %}<option value="{{ value }}" {% if program_sort == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div></div>
     <div class="explore-results-meta"><h2 id="results-title" class="sr-only">College programs</h2><p class="results-count" role="status">{% if data.rows %}Showing {{ (data.page - 1) * 25 + 1 }}–{{ (data.page - 1) * 25 + data.rows|length }} college programs{% else %}No college programs found{% endif %}</p></div>

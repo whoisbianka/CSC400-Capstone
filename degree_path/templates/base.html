@@ -16,7 +16,7 @@
 <body class="chat-app">
 <a class="skip-link" href="#main-content">Skip to content</a>
 {% include '_navigation.html' %}
-{% if request.endpoint in ['web.explore', 'web.program_details', 'web.saved_majors_page'] %}
+{% if request.endpoint in ['web.explore', 'web.program_details', 'web.saved_majors_page', 'web.chat', 'web.major_details'] %}
 <script src="{{ url_for('static', filename='js/saved-major-feedback.js', v='3') }}" defer></script>
 <script src="{{ url_for('static', filename='js/saved-major-controls.js', v='general-majors-1') }}" defer></script>
 {% endif %}

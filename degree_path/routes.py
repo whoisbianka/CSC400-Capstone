@@ -219,21 +219,41 @@ def home():
 @web.post('/')
 @web.route('/chat', methods=['GET', 'POST'])
 def chat():
-    question = ''
-    result = None
-    if request.method == 'POST':
-        question = text_value(request.form.get('question'))
-        result = recommendations([question])
-    return render_template('chat.html', title='Pathfinder Assistant', question=question, result=result)
+    return render_template('chat.html', title='Chat')
 
 
 @web.post('/chat/reset')
 def reset_chat():
     return redirect(url_for('web.chat'), code=303)
 
+@web.get('/majors/<int:cipcode>')
+@database_errors
+def major_details(cipcode):
+    if not 1 <= cipcode <= 2147483647:
+        abort(404)
+    user = get_current_user()
+    data = db_functions.get_major_catalog_page(
+        page_count=1, majors=[cipcode], user_id=user['id'] if user else None,
+    )
+    if not data['rows']:
+        abort(404, description='Major not found.')
+    recommendations = []
+    if user:
+        recommendations = db_functions.get_recommendations(user['id'])
+    elif session.get('guest_id'):
+        guest = db_functions.get_guest_session(session['guest_id'])
+        if guest:
+            recommendations = guest['state'].get('recommendations', [])
+    evidence = next((item.get('evidence', []) for item in recommendations
+                     if int(item['cipcode']) == cipcode), [])
+    major = data['rows'][0]
+    return render_template('major_details.html', title=major['major'],
+                           major=major, evidence=evidence)
+
+
 @web.get('/questionnaire')
 def questionnaire():
-    return render_template('guided_chat.html', title='Find my major')
+    return redirect(url_for('web.chat'), code=302)
 
 @web.get('/explore')
 def explore():

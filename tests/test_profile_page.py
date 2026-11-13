@@ -39,7 +39,7 @@ class ProfilePageTests(unittest.TestCase):
         nodes = [n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == 'profile']
         exec(compile(ast.Module(body=nodes, type_ignores=[]), 'routes.py', 'exec'),
              dict(web=web, render_template=render_template))
-        for endpoint in ('home', 'explore', 'saved_majors_page', 'settings', 'favorites', 'compare', 'questionnaire'):
+        for endpoint in ('chat', 'home', 'explore', 'saved_majors_page', 'settings', 'favorites', 'compare', 'questionnaire'):
             web.add_url_rule('/' + endpoint, endpoint, lambda: '')
         self.app.register_blueprint(web)
         auth = ast.parse((ROOT / 'degree_path/auth.py').read_text())
@@ -70,7 +70,7 @@ class ProfilePageTests(unittest.TestCase):
         self.assertIn('id="profile-editor" hidden', html)
         self.assertIn('Not added yet', html)
         self.assertIn('href="/saved_majors_page?view=programs"', html)
-        self.assertIn('href="/questionnaire"', html)
+        self.assertIn('href="/chat"', html)
         controls = ProfileHTML(html)
         self.assertEqual(len(controls.nav_actions), 1)
         self.assertEqual(controls.outside_actions, [])
