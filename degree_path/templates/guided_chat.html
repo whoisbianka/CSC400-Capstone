@@ -1,21 +1,11 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8">
-
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% include '_head_metadata.html' %}
 
   <title>Find my path | Pathfinder</title>
 
-  <link
-    rel="icon"
-    href="{{ url_for('static', filename='img/pathfinder.svg') }}"
-  >
-
-  <link
-    rel="stylesheet"
-    href="{{ url_for('static', filename='css/theme.css') }}"
-  >
+{% include '_theme_assets.html' %}
 
   <link
     rel="stylesheet"
@@ -38,7 +28,6 @@
     defer
   ></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/prototype-views.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pathfinder-branding.css', v='1') }}">
 {% include '_site_enhancements.html' %}
 </head>
 
