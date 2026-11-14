@@ -4,7 +4,8 @@ import secrets
 import certifi
 from pathlib import Path
 from flask import Flask, render_template, request, session, abort, jsonify
-from flask.cli import load_dotenv
+from dotenv import load_dotenv
+from secret_loader import load_application_secrets
 from werkzeug.exceptions import HTTPException
 from datetime import timedelta
 
@@ -14,7 +15,10 @@ from datetime import timedelta
 def create_app(test_config=None):    
     load_dotenv(Path(__file__).resolve().parents[1] / '.env')
     os.environ.setdefault('SSL_CERT_FILE', certifi.where())
-    os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
+    os.environ.setdefault('REQUESTS_CA_BUNDLE', os.environ['SSL_CERT_FILE'])
+    # Tests supply their own keys; production and local app startup resolve secrets.
+    if not (test_config and test_config.get('TESTING')):
+        load_application_secrets()
     private = os.environ.get('PRIVATE_IP', 'false').strip().lower()
     if private not in ('false', 'true'):
         raise ValueError('PRIVATE_IP must be true or false.')

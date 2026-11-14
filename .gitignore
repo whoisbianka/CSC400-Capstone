@@ -10,3 +10,8 @@ instance/
 /database/db_setup.py
 /testoutput
 cloud_admin_connection.py
+
+#Deployment Files
+deploy.sh
+cloudrun.env.yaml
+Procfile
