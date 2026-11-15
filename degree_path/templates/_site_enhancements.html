@@ -1,4 +1,5 @@
-{# Shared production interactions and accessibility; no preview dependencies. #}
+{# Load after page styles so the shared branding and accessibility rules can override them. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pathfinder-branding.css', v='1') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/interaction-motion.css', v='1') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
 <script src="{{ url_for('static', filename='js/interaction-motion.js', v='1') }}" defer></script>

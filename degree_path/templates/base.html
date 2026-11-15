@@ -1,16 +1,13 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+{% include '_head_metadata.html' %}
 
 <title>{{ title }} | Pathfinder</title>
 <meta name="csrf-token" content="{{ csrf_token }}">
-<link rel="icon" href="{{ url_for('static', filename='img/pathfinder.svg') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+{% include '_theme_assets.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='major-save-feedback-1') }}">
-<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>
 {% block extra_head %}{% endblock %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pathfinder-branding.css', v='1') }}">
 {% include '_site_enhancements.html' %}
 </head>
 <body class="chat-app">
