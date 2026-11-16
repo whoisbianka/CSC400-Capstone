@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
@@ -102,6 +103,18 @@
         <button id="reloadChat" type="button" hidden>
           Reload chat
         </button>
+
+        <!-- Link to Browse Programs -->
+        <div class="chat-explore-link">
+          <p>
+            Ready to explore colleges, or still deciding on a major?
+          </p>
+
+          <a href="{{ url_for('web.explore', view='programs') }}">
+            Browse college programs →
+          </a>
+        </div>
+
         <section
           id="recommendationsPanel"
           aria-labelledby="recommendationsTitle"
@@ -117,6 +130,7 @@
 
           <div id="recommendationCards"></div>
         </section>
+
         <noscript>
           <p>Enable JavaScript to use the chatbot.</p>
         </noscript>

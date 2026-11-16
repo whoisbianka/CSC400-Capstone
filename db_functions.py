@@ -733,6 +733,12 @@ def get_page_programs(
     if filters.get("city"):
         conditions.append("LOWER(s.city)=LOWER(:city)")
         params["city"]=filters["city"]
+    if filters.get("school_size") == "small":
+        conditions.append("s.ug12mn < 3000")
+    elif filters.get("school_size") == "medium":
+        conditions.append("s.ug12mn >= 3000 AND s.ug12mn < 15000")
+    elif filters.get("school_size") == "large":
+        conditions.append("s.ug12mn >= 15000")
     if filters.get("net_price_max") is not None:
         conditions.append("c.npt4<=:net_price_max")
         params["net_price_max"]=filters["net_price_max"]
@@ -863,6 +869,11 @@ def get_page_programs(
 
 #helper function to validate program filters
 def validate_program_filters(filters):
+    school_size = filters.get("school_size")
+
+    if school_size is not None and school_size not in ("small", "medium", "large"):
+        raise ValueError("Invalid school size.")
+
     for key, max_length in (('school_names', 200), ('states', 3)):
         values = filters.get(key, [])
         if not isinstance(values, (list, tuple)) or len(values) > 200 or any(not isinstance(value, str) or not 1 <= len(value) <= max_length for value in values):

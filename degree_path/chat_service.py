@@ -225,4 +225,5 @@ def interpret_message(
         ],
         keyword_removals=removal_ids,
         major_mentions=gemini_turn.major_mentions,
+        college_search=gemini_turn.college_search,
     )

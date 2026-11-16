@@ -12,6 +12,7 @@ import db_functions
 from .auth import get_current_user, establish_login
 from .guest_state import get_or_create_guest_session
 from .chat_service import interpret_message, InvalidAdvisorResponse
+from .college_search import find_matching_colleges, find_major_cipcode
 
 
 def database_errors(function):
@@ -307,11 +308,23 @@ def explore():
     if any(value not in ('', '2', '3') for value in degree_values):
         abort(400, description='Invalid degree level.')
     degrees = tuple(sorted({int(value) for value in degree_values if value}))
+
     filters = {}
     if query:
         filters['q'] = query
+
+    school_size = request.args.get('school_size', '').strip().lower()
+    if school_size:
+        if school_size not in ('small', 'medium', 'large'):
+            abort(400, description='Invalid school size.')
+        filters['school_size'] = school_size
+
     for key, max_length in (('school_name', 200), ('state', 3)):
-        values = sorted({value.strip() for value in request.args.getlist(key) if value.strip()})
+        values = sorted({
+            value.strip()
+            for value in request.args.getlist(key)
+            if value.strip()
+        })
         if len(values) > 200 or any(len(value) > max_length for value in values):
             abort(400, description='Invalid college or state filter.')
         if key == 'state':
@@ -319,7 +332,7 @@ def explore():
         if len(values) == 1:
             filters[key] = values[0]
         elif values:
-            filters['school_names' if key == 'school_name' else 'states'] = values
+            filters['school_names' if key == 'school_name' else 'states'] = valu
     for key in ('net_price_max', 'tuition_in_max', 'tuition_out_max',
                 'acceptance_min', 'acceptance_max'):
         value = request.args.get(key, '').strip()
@@ -547,7 +560,7 @@ def api_chat():
             message=message,
             keyword_catalog=catalog,
             saved_keywords=keywords,
-            recent_messages=messages[-20:],
+            recent_messages=messages[-8:],
         )
 
         if user is not None:
@@ -588,11 +601,68 @@ def api_chat():
                     ),
                 )
 
+        college_recommendations = []
+        college_search_error = None
+
+        if turn.college_search is not None:
+            search = turn.college_search
+
+            try:
+                major_name = search.major
+                state = search.state
+                school_size = search.school_size
+
+                if state is not None:
+                    state = state.strip().upper()
+                    if not re.fullmatch(r"[A-Z]{2}", state):
+                        raise ValueError("Invalid state abbreviation.")
+
+                if school_size is not None:
+                    school_size = school_size.strip().lower()
+                    if school_size not in ("small", "medium", "large"):
+                        raise ValueError("Invalid school size.")
+
+                if major_name:
+                    cipcode = find_major_cipcode(major_name)
+
+                    if cipcode is not None:
+                        college_recommendations = find_matching_colleges(
+                            major_cipcode=cipcode,
+                            state=state,
+                            school_size=school_size,
+                        )
+                    else:
+                        college_search_error = (
+                            "The requested major was not found in "
+                            "Pathfinder's college database."
+                        )
+                else:
+                    college_search_error = (
+                        "Please specify a major to search for colleges."
+                    )
+
+            except Exception:
+                current_app.logger.exception("College search failed.")
+                college_search_error = (
+                    "College recommendations are temporarily unavailable."
+                )
+
+        print(
+        "College search results:",
+        len(college_recommendations),
+        "Error:",
+        college_search_error,
+        flush=True,
+        )
+
         return jsonify(
             mode=mode,
             reply=turn.reply,
             recommendations=major_recommendations,
+            college_recommendations=college_recommendations,
+            college_search_error=college_search_error,
         )
+
 
     except HTTPException:
         raise
