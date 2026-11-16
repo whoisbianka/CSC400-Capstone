@@ -13,7 +13,7 @@ function fixture({userId = '', active = false, pending = {}, failLogout = false,
   const button = element({authAction: userId ? 'logout' : 'login'});
   const status = element();
   const retry = element();
-  const profileElements = Object.fromEntries(['profile-name','profile-email','profile-name-value','profile-email-value','profile-avatar','profile-identity-status'].map(id => [id, element()]));
+  const profileElements = Object.fromEntries(['profile-name','profile-identity-status'].map(id => [id, element()]));
   if (profile) profileElements['profile-account'] = element({clerkUserId:'user_expected'});
   const clerk = {
     user: profileUser,
@@ -79,8 +79,6 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
   f = fixture({userId:'42', active:true, profile:true, profileUser:{id:'user_expected', fullName:'Test Student', primaryEmailAddress:{emailAddress:'student@example.com'}}});
   await flush();
   assert.equal(f.profileElements['profile-name'].textContent, 'Test Student');
-  assert.equal(f.profileElements['profile-email-value'].textContent, 'student@example.com');
-  assert.equal(f.profileElements['profile-avatar'].textContent, 'TS');
   assert.deepEqual(f.calls, ['load'], 'Profile loads details without opening a sign-in prompt');
   await f.button.click();
   assert.equal(f.calls.includes('/logout'), true);
@@ -88,13 +86,11 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
   f = fixture({userId:'42', active:true, profile:true, profileUser:{id:'user_other', fullName:'Wrong Account', primaryEmailAddress:{emailAddress:'wrong@example.com'}}});
   await flush();
   assert.equal(f.profileElements['profile-name'].textContent, undefined, 'Never display another Clerk account');
-  assert.equal(f.profileElements['profile-email-value'].textContent, 'Unavailable');
   assert.match(f.profileElements['profile-identity-status'].textContent, /sign-in changed/);
 
   f = fixture({userId:'42', active:true, profile:true, profileUser:{id:'user_expected'}});
   await flush();
-  assert.equal(f.profileElements['profile-name-value'].textContent, 'Not provided');
-  assert.equal(f.profileElements['profile-email-value'].textContent, 'Not provided');
+  assert.equal(f.profileElements['profile-name'].textContent, 'Your account');
 
   f = fixture({profile:true});
   await flush();

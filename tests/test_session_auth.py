@@ -51,6 +51,52 @@ class SessionAuthTests(unittest.TestCase):
                 'Authorization': 'Bearer offline-token', 'X-CSRF-Token': 'test-csrf',
             })
 
+    def test_account_deletion_requires_a_matching_session_and_csrf(self):
+        with patch('degree_path.routes.delete_clerk_user') as delete_identity:
+            self.assertEqual(self.client.delete('/api/account', headers={
+                'X-CSRF-Token': 'test-csrf', 'X-App-User-ID': '42',
+            }).status_code, 401)
+            self.login()
+            with self.client.session_transaction() as state:
+                csrf = state['csrf']
+            self.assertEqual(self.client.delete('/api/account', headers={
+                'X-App-User-ID': '42',
+            }).status_code, 400)
+            self.assertEqual(self.client.delete('/api/account', headers={
+                'X-CSRF-Token': csrf, 'X-App-User-ID': '99',
+            }).status_code, 401)
+            self.assertEqual(self.client.delete('/api/account', headers={
+                'X-CSRF-Token': csrf,
+            }).status_code, 401)
+            delete_identity.assert_not_called()
+
+    def test_account_deletion_targets_session_owner_and_retries_partial_failure(self):
+        import httpx
+
+        self.login()
+        with self.client.session_transaction() as state:
+            headers = {'X-CSRF-Token': state['csrf'], 'X-App-User-ID': '42'}
+        request = httpx.Request('DELETE', 'https://api.clerk.com/v1/users/user_test')
+        # First Clerk has an outage, then only the database fails, then cleanup succeeds.
+        clerk_responses = [httpx.Response(code, request=request) for code in (503, 200, 404)]
+        with patch('degree_path.auth.httpx.delete', side_effect=clerk_responses) as delete_identity, \
+                patch.object(self.database, 'remove_user', create=True, side_effect=[RuntimeError('Database offline'), None]) as delete_records:
+            with self.assertLogs(self.app.logger, level='ERROR'):
+                self.assertEqual(self.client.delete('/api/account', headers=headers).status_code, 503)
+                delete_records.assert_not_called()
+                self.assertEqual(self.client.delete('/api/account', headers=headers).status_code, 503)
+            result = self.client.delete('/api/account?user_id=99', headers=headers)
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual(delete_records.call_count, 2)
+            for call in delete_records.call_args_list:
+                self.assertEqual(call.args, (42,))
+            for call in delete_identity.call_args_list:
+                self.assertEqual(call.args, (str(request.url),))
+        with self.client.session_transaction() as state:
+            self.assertNotIn('user_id', state)
+            self.assertNotIn('clerk_user_id', state)
+        self.assertIn('Your Pathfinder account was deleted.', self.client.get('/profile').get_data(as_text=True))
+
     def test_verified_login_and_cookie_only_favorites(self):
         self.assertEqual(self.login().status_code, 200)
         with self.client.session_transaction() as s:

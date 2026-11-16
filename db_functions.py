@@ -1229,7 +1229,7 @@ def save_chat_turn(user_id, user_message, turn):
 def remove_user(user_id):
     with engine.begin() as connection:
         query=text("""
-                DELETE from users
+                DELETE from public.users
                 WHERE id=:user_id""")
         connection.execute(query,{"user_id":user_id})
 

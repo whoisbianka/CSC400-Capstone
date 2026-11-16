@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 import re
 import secrets
 from urllib.parse import urlsplit
@@ -9,7 +9,7 @@ from copy import deepcopy
 
 import db_functions
 
-from .auth import get_current_user, establish_login
+from .auth import delete_clerk_user, get_current_user, establish_login
 from .guest_state import get_or_create_guest_session
 from .chat_service import interpret_message, InvalidAdvisorResponse
 
@@ -754,6 +754,25 @@ def auth_session_api():
 def logout():
     # Clear Flask even if Clerk is unavailable in the browser.
     session.clear()
+    return jsonify(ok=True)
+
+
+@web.delete("/api/account")
+def delete_account_api():
+    user = get_current_user()
+    if user is None or not request.headers.get("X-App-User-ID"):
+        abort(401, description="Reload your profile and sign in before deleting your account.")
+
+    # Revoke the sign-in identity before removing app records so it cannot sign in again.
+    try:
+        delete_clerk_user(user["clerk_user_id"])
+        db_functions.remove_user(user["id"])
+    except Exception:
+        current_app.logger.exception("Account deletion failed.")
+        abort(503, description="Couldn’t finish deleting your account. Please try again.")
+
+    session.clear()
+    flash("Your Pathfinder account was deleted.", "account-deleted")
     return jsonify(ok=True)
 
 

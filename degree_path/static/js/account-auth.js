@@ -167,17 +167,9 @@
         throw new Error("Your sign-in changed. Sign out and sign in again to refresh your account details.");
       }
       const name = clean(user.fullName) || [clean(user.firstName), clean(user.lastName)].filter(Boolean).join(" ") || clean(user.username);
-      const email = clean(user.primaryEmailAddress?.emailAddress);
       document.getElementById("profile-name").textContent = name || "Your account";
-      document.getElementById("profile-email").textContent = email || "Email address not provided";
-      document.getElementById("profile-name-value").textContent = name || "Not provided";
-      document.getElementById("profile-email-value").textContent = email || "Not provided";
-      document.getElementById("profile-avatar").textContent = name ? name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() : "?";
       window.PathfinderProfile?.mount(clerk, name);
     }).catch(error => {
-      document.getElementById("profile-email").textContent = "Account details unavailable";
-      document.getElementById("profile-name-value").textContent = "Unavailable";
-      document.getElementById("profile-email-value").textContent = "Unavailable";
       document.getElementById("profile-identity-status").textContent = error.message;
     });
   }
