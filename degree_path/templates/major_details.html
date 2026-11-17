@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/program-details.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/major-details.css') }}">
+{% endblock %}
+{% block content %}
+<article class="page-workspace program-details major-details">
+  <a class="details-back" href="{{ url_for('web.chat') }}">← Back to chat</a>
+  <header class="details-hero major-details-hero">
+    <div class="major-title-row"><div><p class="details-kicker">FIELD OF STUDY</p><h1 id="page-title">{{ major.major }}</h1></div>
+      <button type="button" class="save-major-button major-detail-heart" data-save-major="{{ major.cipcode }}" data-major-name="{{ major.major }}" data-favorite-icon="heart"
+              aria-pressed="{{ 'true' if major.is_favorite else 'false' }}"
+              aria-label="{{ 'Remove ' ~ major.major ~ ' from favorites' if major.is_favorite else 'Save ' ~ major.major ~ ' to favorites' }}"
+              title="{{ 'Remove from favorites' if major.is_favorite else 'Save to favorites' }}">{{ '♥' if major.is_favorite else '♡' }}</button>
+    </div>
+    <a class="primary-link" href="{{ url_for('web.explore', view='programs', cipcode=major.cipcode) }}">Explore colleges that offer this major <span aria-hidden="true">→</span></a>
+  </header>
+  <div class="details-overview" aria-label="Major at a glance">
+    <div><span>Median of reported program earnings</span><strong>{{ major.earnings|money }}</strong><p>Four years after program completion</p></div>
+    <div><span>Number of schools offering this major</span><strong>{{ major.school_count }}</strong><p>Explore colleges and compare their programs</p></div>
+  </div>
+  <section class="details-panel details-about" aria-labelledby="major-about">
+    <div class="details-section-heading"><div><p class="details-kicker">EXPLORE YOUR INTERESTS</p><h2 id="major-about">About this major</h2></div></div>
+    <p class="major-description">{{ major.description or 'A description for this major is not available yet.' }}</p>
+  </section>
+  {% if evidence %}
+  <section class="details-panel major-interests" aria-labelledby="matching-interests">
+    <div class="details-section-heading"><div><p class="details-kicker">WHY IT MATCHES YOU</p><h2 id="matching-interests">{{ evidence|length }} matching {{ 'interest' if evidence|length == 1 else 'interests' }}</h2></div></div>
+    <ul class="major-interest-grid">{% for match in evidence %}<li><strong>{{ match.keyword }}</strong><p>{{ match.evidence }}</p></li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+  <footer class="details-source"><p>Earnings summarize program-level four-year earnings medians; this is not a graduate-weighted median.</p></footer>
+</article>
+{% endblock %}

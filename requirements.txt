@@ -13,3 +13,4 @@ google-genai
 pydantic
 clerk-backend-api
 httpx
+gunicorn>=23,<24

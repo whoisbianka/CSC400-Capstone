@@ -72,6 +72,26 @@ class ChatServiceTests(unittest.TestCase):
             "I enjoy biology",
         )
 
+    def test_full_message_is_evidence_for_every_added_keyword(self):
+        message = "I enjoy biology.\nI also love experiments. " + "Learning matters to me. " * 150
+        catalog = self.catalog + [{"keyword_id": 8, "keyword": "Research"}]
+        client = Mock()
+        client.models.generate_content.return_value = SimpleNamespace(text=json.dumps({
+            **self.reply,
+            "keyword_additions": [
+                {"keyword": "Biology", "evidence": "I enjoy biology."},
+                {"keyword": "Research", "evidence": "I also love experiments."},
+            ],
+        }))
+        # Account and guest storage both consume this same AdvisorTurn.
+        for saved in ([], self.catalog):
+            with self.subTest(saved=saved):
+                turn = interpret_message(message, catalog, saved, [], client=client, model="test")
+                self.assertEqual([item.keyword_id for item in turn.keyword_additions], [7, 8])
+                for addition in turn.keyword_additions:
+                    self.assertEqual(addition.evidence, message.strip())
+                    self.assertIn("\n", addition.evidence)
+
     def test_only_saved_keywords_can_be_removed(self):
         payload = json.dumps({**self.reply, "keyword_additions": [], "keyword_removals": ["Biology"]})
         with self.assertRaises(InvalidAdvisorResponse):

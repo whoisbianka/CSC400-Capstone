@@ -133,6 +133,13 @@
       const cardStar = button.closest('.program-card') !== null;
       const majorCard = button.closest('.major-catalog-card') !== null;
       button.textContent = list ? (majorCard ? '★ Saved' : 'Remove') : cardStar ? (saved ? '★' : '☆') : saved ? '★ Major saved' : '☆ Save major';
+      if (button.dataset.favoriteIcon === 'heart') {
+        button.textContent = saved ? '♥' : '♡';
+        const name = button.dataset.majorName || 'major';
+        const label = saved ? `Remove ${name} from favorites` : `Save ${name} to favorites`;
+        button.setAttribute('aria-label', label);
+        button.title = label;
+      }
       if (cardStar || majorCard) {
         const label = saved ? 'Remove major from saved majors' : 'Save major';
         button.setAttribute('aria-label', label);
@@ -223,6 +230,8 @@
     }
     finally { button.disabled = false; }
   });
+
+  document.addEventListener('major-controls:render', render);
 
   // Guests can browse immediately; their first save opens the account prompt.
   if (list || document.getElementById('account-navigation').dataset.userId) refresh();

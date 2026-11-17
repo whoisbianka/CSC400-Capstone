@@ -7,76 +7,11 @@
   const status = document.getElementById("chatStatus");
   const storageNote = document.getElementById("chatStorageNote");
   const reloadButton = document.getElementById("reloadChat");
-  const recommendationsPanel =document.getElementById("recommendationsPanel");
-  const recommendationCards =document.getElementById("recommendationCards");
-  const exploreUrl =document.getElementById("guided-chat").dataset.exploreUrl;
-
+  const recommendationCards = document.getElementById("recommendationCards");
+  const majorUrl = document.getElementById("guided-chat").dataset.majorUrl;
+  const exploreUrl = document.getElementById("guided-chat").dataset.exploreUrl;
   let api = null;
   let busy = false;
-
-  const favoriteIds = new Set();
-  let favoritesLoaded = false;
-
-  function createFavoriteButton(cipcode) {
-    const button = document.createElement("button");
-    button.type = "button";
-
-    function updateLabel() {
-      const saved = favoriteIds.has(cipcode);
-
-      button.setAttribute("aria-pressed", String(saved));
-
-      if (!api.isSignedIn()) {
-        button.textContent = "Sign in to favorite";
-      } else if (!favoritesLoaded) {
-        button.textContent = "Favorites unavailable";
-        button.disabled = true;
-      } else {
-        button.textContent = saved
-          ? "Remove favorite"
-          : "♡ Favorite";
-      }
-    }
-
-    updateLabel();
-
-    button.addEventListener("click", async () => {
-      if (!api.isSignedIn()) {
-        setStatus("Sign in using your account, then reload this page.");
-        return;
-      }
-
-      const shouldFavorite = !favoriteIds.has(cipcode);
-      button.disabled = true;
-
-      try {
-        const result = await api.setFavorite(
-          cipcode,
-          shouldFavorite
-        );
-
-        if (result.favorite) {
-          favoriteIds.add(cipcode);
-        } else {
-          favoriteIds.delete(cipcode);
-        }
-
-        updateLabel();
-
-        setStatus(
-          result.favorite
-            ? "Major added to your favorites."
-            : "Major removed from your favorites."
-        );
-      } catch (error) {
-        setStatus(error.message || "Unable to update favorites.");
-      } finally {
-        button.disabled = false;
-      }
-    });
-
-    return button;
-  }
 
   function setStatus(message) {
     status.textContent = message;
@@ -149,70 +84,46 @@
 
   function renderRecommendations(recommendations) {
     recommendationCards.replaceChildren();
-
-    recommendationsPanel.hidden = recommendations.length === 0;
-
+    if (!recommendations.length) {
+      const empty = document.createElement("p");
+      empty.className = "recommendations-empty";
+      empty.textContent = "Your recommendations will appear as we learn about your interests.";
+      recommendationCards.append(empty);
+    }
     for (const recommendation of recommendations) {
       const card = document.createElement("article");
       card.className = "major-recommendation";
-
+      const details = document.createElement("div");
       const title = document.createElement("h3");
-      title.textContent = recommendation.major;
-
-      const count = document.createElement("p");
-
-      const number = recommendation.matching_keywords;
-      count.textContent =
-        `${number} matching ${number === 1 ? "interest" : "interests"}`;
-
-      const evidenceHeading = document.createElement("h4");
-      evidenceHeading.textContent = "Why this appeared";
-
-      const evidenceList = document.createElement("ul");
-
-      for (const match of recommendation.evidence) {
-        const item = document.createElement("li");
-
-        const keyword = document.createElement("strong");
-        keyword.textContent = `${match.keyword}: `;
-
-        const quote = document.createElement("span");
-        quote.textContent = `“${match.evidence}”`;
-
-        item.append(keyword, quote);
-        evidenceList.appendChild(item);
-      }
-
       const link = document.createElement("a");
-
-      const destination = new URL(
-        exploreUrl,
-        window.location.origin
-      );
-
-      destination.searchParams.set(
-        "cipcode",
-        String(recommendation.cipcode)
-      );
-
-      link.href = destination.href;
-      link.textContent = "Explore programs in this major →";
-      const favoriteButton = createFavoriteButton(
-        Number(recommendation.cipcode)
-      );
-
-      card.append(
-        title,
-        count,
-        evidenceHeading,
-        evidenceList,
-        link,
-        document.createElement("br"),
-        favoriteButton
-      );
-
-      recommendationCards.appendChild(card);
+      link.href = majorUrl.replace(/0$/, String(recommendation.cipcode));
+      link.textContent = recommendation.major;
+      title.append(link);
+      const count = document.createElement("p");
+      const number = recommendation.matching_keywords;
+      count.textContent = `${number} matching ${number === 1 ? "interest" : "interests"}`;
+      const colleges = document.createElement("a");
+      const destination = new URL(exploreUrl, window.location.origin);
+      destination.searchParams.set("view", "programs");
+      destination.searchParams.set("cipcode", String(recommendation.cipcode));
+      colleges.href = destination.href;
+      colleges.className = "recommendation-colleges";
+      colleges.textContent = "Explore colleges that offer this major →";
+      details.append(title, count, colleges);
+      const heart = document.createElement("button");
+      heart.type = "button";
+      heart.className = "save-major-button recommendation-heart";
+      heart.dataset.saveMajor = String(recommendation.cipcode);
+      heart.dataset.majorName = recommendation.major;
+      heart.dataset.favoriteIcon = "heart";
+      heart.textContent = "♡";
+      heart.setAttribute("aria-pressed", "false");
+      heart.setAttribute("aria-label", `Save ${recommendation.major} to favorites`);
+      card.append(details, heart);
+      recommendationCards.append(card);
     }
+    // Use the same favorite state, sign-in prompt and save/undo flow as Explore.
+    document.dispatchEvent(new Event("major-controls:render"));
   }
   async function sendMessage() {
     if (busy || api === null) {
@@ -294,28 +205,11 @@
     api = await window.chatApiReady;
 
     const saved = await api.load();
-    let favoritesWarning = "";
-
-    if (api.isSignedIn()) {
-      try {
-        const result = await api.loadFavorites();
-
-        for (const favorite of result.favorites) {
-          favoriteIds.add(Number(favorite.cipcode));
-        }
-
-        favoritesLoaded = true;
-      } catch (error) {
-        favoritesWarning =
-          "Chat loaded, but favorites could not load. Reload to retry.";
-      }
-    }
-
     renderHistory(saved.messages);
     showStorageNote(saved.mode);
     renderRecommendations(saved.recommendations ?? []);
 
-    setStatus(favoritesWarning);
+    setStatus("");
     setBusy(false);
 
     input.focus();

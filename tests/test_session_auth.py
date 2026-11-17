@@ -51,6 +51,52 @@ class SessionAuthTests(unittest.TestCase):
                 'Authorization': 'Bearer offline-token', 'X-CSRF-Token': 'test-csrf',
             })
 
+    def test_account_deletion_requires_a_matching_session_and_csrf(self):
+        with patch('degree_path.routes.delete_clerk_user') as delete_identity:
+            self.assertEqual(self.client.delete('/api/account', headers={
+                'X-CSRF-Token': 'test-csrf', 'X-App-User-ID': '42',
+            }).status_code, 401)
+            self.login()
+            with self.client.session_transaction() as state:
+                csrf = state['csrf']
+            self.assertEqual(self.client.delete('/api/account', headers={
+                'X-App-User-ID': '42',
+            }).status_code, 400)
+            self.assertEqual(self.client.delete('/api/account', headers={
+                'X-CSRF-Token': csrf, 'X-App-User-ID': '99',
+            }).status_code, 401)
+            self.assertEqual(self.client.delete('/api/account', headers={
+                'X-CSRF-Token': csrf,
+            }).status_code, 401)
+            delete_identity.assert_not_called()
+
+    def test_account_deletion_targets_session_owner_and_retries_partial_failure(self):
+        import httpx
+
+        self.login()
+        with self.client.session_transaction() as state:
+            headers = {'X-CSRF-Token': state['csrf'], 'X-App-User-ID': '42'}
+        request = httpx.Request('DELETE', 'https://api.clerk.com/v1/users/user_test')
+        # First Clerk has an outage, then only the database fails, then cleanup succeeds.
+        clerk_responses = [httpx.Response(code, request=request) for code in (503, 200, 404)]
+        with patch('degree_path.auth.httpx.delete', side_effect=clerk_responses) as delete_identity, \
+                patch.object(self.database, 'remove_user', create=True, side_effect=[RuntimeError('Database offline'), None]) as delete_records:
+            with self.assertLogs(self.app.logger, level='ERROR'):
+                self.assertEqual(self.client.delete('/api/account', headers=headers).status_code, 503)
+                delete_records.assert_not_called()
+                self.assertEqual(self.client.delete('/api/account', headers=headers).status_code, 503)
+            result = self.client.delete('/api/account?user_id=99', headers=headers)
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual(delete_records.call_count, 2)
+            for call in delete_records.call_args_list:
+                self.assertEqual(call.args, (42,))
+            for call in delete_identity.call_args_list:
+                self.assertEqual(call.args, (str(request.url),))
+        with self.client.session_transaction() as state:
+            self.assertNotIn('user_id', state)
+            self.assertNotIn('clerk_user_id', state)
+        self.assertIn('Your Pathfinder account was deleted.', self.client.get('/profile').get_data(as_text=True))
+
     def test_verified_login_and_cookie_only_favorites(self):
         self.assertEqual(self.login().status_code, 200)
         with self.client.session_transaction() as s:
@@ -144,9 +190,10 @@ class SessionAuthTests(unittest.TestCase):
         self.assertEqual(self.client.get('/start/evil').status_code, 404)
         html = self.client.get('/').get_data(as_text=True)
         self.assertNotIn('/start/', html)
-        self.assertIn('href="/questionnaire"', html)
+        self.assertIn('href="/chat"', html)
         self.assertIn('href="/explore"', html)
-        html = self.client.get('/questionnaire').get_data(as_text=True)
+        self.assertEqual(self.client.get('/questionnaire').headers['Location'], '/chat')
+        html = self.client.get('/chat').get_data(as_text=True)
         self.assertIn('id="guided-chat"', html)
         self.assertNotIn('How would you like to continue', html)
 
@@ -269,7 +316,8 @@ class SessionAuthTests(unittest.TestCase):
             programs.assert_not_called()
             self.database.get_major_catalog_page.assert_called_once_with(1, query='bio', sort='earnings_desc', earnings_min=100, user_id=None, majors=None)
             html = response.get_data(as_text=True)
-            self.assertIn('Find your field of study</h1>', html)
+            self.assertIn('Explore majors</h1>', html)
+            self.assertNotIn('Find your field of study', html)
             self.assertIn('q=bio', html)
             self.assertIn('sort=earnings_desc', html)
             self.assertIn('cipcode=7', html)
@@ -343,5 +391,51 @@ class SessionAuthTests(unittest.TestCase):
             self.assertIn('name="school_name" type="search" value="A"',html)
 
 
+    def test_major_details_account_evidence_and_not_found(self):
+        self.login()
+        major = {'cipcode': 26, 'major': 'Biology', 'description': 'Study living things.',
+                 'earnings': 50000, 'school_count': 20, 'is_favorite': True}
+        self.database.get_major_catalog_page.return_value = {'rows': [major]}
+        with patch.object(self.database, 'get_recommendations', create=True, return_value=[
+            {'cipcode': 26, 'evidence': [{'keyword': 'Biology', 'evidence': '<script>interest</script>'}]}]):
+            response = self.client.get('/majors/26')
+            self.assertEqual(response.status_code, 200)
+            html = response.get_data(as_text=True)
+            self.assertIn('Study living things.', html)
+            self.assertIn('1 matching interest', html)
+            self.assertIn('&lt;script&gt;interest&lt;/script&gt;', html)
+            self.assertIn('data-save-major="26"', html)
+            self.database.get_major_catalog_page.assert_called_with(page_count=1, majors=[26], user_id=42)
+        self.database.get_major_catalog_page.return_value = {'rows': []}
+        self.assertEqual(self.client.get('/majors/999').status_code, 404)
+
+    def test_major_details_guest_evidence_and_expiration(self):
+        self.database.get_major_catalog_page.return_value = {'rows': [
+            {'cipcode': 26, 'major': 'Biology', 'description': None, 'earnings': None,
+             'school_count': 0, 'is_favorite': False}]}
+        with self.client.session_transaction() as s:
+            s['guest_id'] = 'guest-test'
+        with patch.object(self.database, 'get_guest_session', create=True) as guest:
+            guest.return_value = {'state': {'recommendations': [{'cipcode': 26,
+                'evidence': [{'keyword': 'Research', 'evidence': 'I enjoy experiments.'}]}]}}
+            html = self.client.get('/majors/26').get_data(as_text=True)
+            self.assertIn('I enjoy experiments.', html)
+            guest.assert_called_with('guest-test')
+            guest.return_value = None
+            html = self.client.get('/majors/26').get_data(as_text=True)
+            self.assertNotIn('id="matching-interests"', html)
+
+    def test_chat_uses_api_sidebar_and_shared_favorite_controls(self):
+        response = self.client.get('/chat')
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('id="recommendationsPanel"', html)
+        self.assertIn('data-major-url="/majors/0"', html)
+        self.assertIn('js/chat-api.js', html)
+        self.assertIn('js/saved-major-controls.js', html)
+        self.assertNotIn('name="question"', html)
+        self.assertEqual(self.client.get('/questionnaire').headers['Location'], '/chat')
+
 if __name__ == '__main__':
     unittest.main()
+

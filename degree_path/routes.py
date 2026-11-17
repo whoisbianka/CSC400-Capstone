@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 import re
 import secrets
 from urllib.parse import urlsplit
@@ -9,7 +9,7 @@ from copy import deepcopy
 
 import db_functions
 
-from .auth import get_current_user, establish_login
+from .auth import delete_clerk_user, get_current_user, establish_login
 from .guest_state import get_or_create_guest_session
 from .chat_service import interpret_message, InvalidAdvisorResponse
 from .college_search import find_matching_colleges, find_major_cipcode
@@ -220,21 +220,41 @@ def home():
 @web.post('/')
 @web.route('/chat', methods=['GET', 'POST'])
 def chat():
-    question = ''
-    result = None
-    if request.method == 'POST':
-        question = text_value(request.form.get('question'))
-        result = recommendations([question])
-    return render_template('chat.html', title='Pathfinder Assistant', question=question, result=result)
+    return render_template('chat.html', title='Chat')
 
 
 @web.post('/chat/reset')
 def reset_chat():
     return redirect(url_for('web.chat'), code=303)
 
+@web.get('/majors/<int:cipcode>')
+@database_errors
+def major_details(cipcode):
+    if not 1 <= cipcode <= 2147483647:
+        abort(404)
+    user = get_current_user()
+    data = db_functions.get_major_catalog_page(
+        page_count=1, majors=[cipcode], user_id=user['id'] if user else None,
+    )
+    if not data['rows']:
+        abort(404, description='Major not found.')
+    recommendations = []
+    if user:
+        recommendations = db_functions.get_recommendations(user['id'])
+    elif session.get('guest_id'):
+        guest = db_functions.get_guest_session(session['guest_id'])
+        if guest:
+            recommendations = guest['state'].get('recommendations', [])
+    evidence = next((item.get('evidence', []) for item in recommendations
+                     if int(item['cipcode']) == cipcode), [])
+    major = data['rows'][0]
+    return render_template('major_details.html', title=major['major'],
+                           major=major, evidence=evidence)
+
+
 @web.get('/questionnaire')
 def questionnaire():
-    return render_template('guided_chat.html', title='Find my major')
+    return redirect(url_for('web.chat'), code=302)
 
 @web.get('/explore')
 def explore():
@@ -804,6 +824,25 @@ def auth_session_api():
 def logout():
     # Clear Flask even if Clerk is unavailable in the browser.
     session.clear()
+    return jsonify(ok=True)
+
+
+@web.delete("/api/account")
+def delete_account_api():
+    user = get_current_user()
+    if user is None or not request.headers.get("X-App-User-ID"):
+        abort(401, description="Reload your profile and sign in before deleting your account.")
+
+    # Revoke the sign-in identity before removing app records so it cannot sign in again.
+    try:
+        delete_clerk_user(user["clerk_user_id"])
+        db_functions.remove_user(user["id"])
+    except Exception:
+        current_app.logger.exception("Account deletion failed.")
+        abort(503, description="Couldn’t finish deleting your account. Please try again.")
+
+    session.clear()
+    flash("Your Pathfinder account was deleted.", "account-deleted")
     return jsonify(ok=True)
 
 

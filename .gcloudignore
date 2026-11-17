@@ -1,0 +1,15 @@
+.gcloudignore
+.git
+.gitignore
+.venv/
+venv/
+.env
+.env.*
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+data/
+tables/
+database/seed_data/
+cloudrun.env.yaml

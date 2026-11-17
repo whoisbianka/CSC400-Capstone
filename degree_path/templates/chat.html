@@ -1,37 +1,28 @@
 {% extends 'base.html' %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/guided-chat.css', v='sidebar-2') }}">
+<script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/guided-chat.js', v='sidebar-2') }}" defer></script>
+{% endblock %}
 {% block content %}
-<div class="chat-workspace">
-<div class="conversation-body">
-<section class="chat-welcome">
-<div class="assistant-mark" aria-hidden="true">✦</div>
-<p class="eyebrow">Explore the database</p>
-<h1 id="page-title">Big future.<br><span>Start with a major.</span></h1>
-<p>Enter a major name, such as computer science or nursing, to see database programs ranked by reported median earnings.</p>
+<section id="guided-chat" class="advisor-workspace" aria-labelledby="page-title"
+         data-csrf="{{ csrf_token }}" data-explore-url="{{ url_for('web.explore') }}" data-major-url="{{ url_for('web.major_details', cipcode=0) }}">
+  <aside id="recommendationsPanel" class="recommendations-sidebar" aria-labelledby="recommendationsTitle">
+    <h2 id="recommendationsTitle">Recommended majors</h2>
+    <div id="recommendationCards" aria-live="polite"><p class="recommendations-empty">Your recommendations will appear as we learn about your interests.</p></div>
+  </aside>
+  <div class="chat-container">
+    <h1 id="page-title">Chat</h1>
+    <div id="chatMessages" class="chat-messages" tabindex="0" role="log" aria-label="Conversation" aria-live="polite" aria-busy="true"></div>
+    <div class="chat-input">
+      <label for="userInput" class="sr-only">Your message</label>
+      <input type="text" id="userInput" placeholder="Tell me about your interests…" autocomplete="off" maxlength="4000" disabled>
+      <button id="sendButton" type="button" disabled>Send</button>
+    </div>
+    <p id="chatStatus" class="chat-note" role="status" aria-live="polite">Loading your chat…</p>
+    <p id="chatStorageNote" class="chat-note"></p>
+    <button id="reloadChat" type="button" hidden>Reload chat</button>
+    <noscript><p>Enable JavaScript to use the chatbot.</p></noscript>
+  </div>
 </section>
-{% if result %}
-<article class="message user"><p>{{ question }}</p></article>
-<article class="message assistant">
-<p>{{ result.note }}</p>
-{% for major in result.majors %}
-<article class="college-result-card">
-<h3>{{ major.name }}</h3>
-{% for program in major.programs %}
-<div class="program-entry"><h4>{{ program.college }}</h4><p>{{ program.major }}</p><p>Reported median earnings: {{ program.earnings|money }}</p></div>
-{% else %}<p>No ranked programs were returned for this major.</p>{% endfor %}
-<a href="{{ url_for('web.explore', cipcode=major.cipcode) }}">Browse this major’s programs →</a>
-</article>
-{% else %}<p>No matching major names were found. Try a more specific major or browse the catalog.</p>{% endfor %}
-{% if result.has_more %}<p>Showing six matching majors. Refine the name to narrow your results.</p>{% endif %}
-</article>
-{% endif %}
-</div>
-<div class="composer-dock">
-<form method="post" class="composer">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-<label for="chat-message" class="sr-only">Major name</label>
-<textarea id="chat-message" name="question" maxlength="200" required rows="2" data-enter-submit placeholder="Enter a major name…">{{ question }}</textarea>
-<div class="composer-footer"><span>Searches actual catalog major names.</span><button class="primary-link" type="submit">Search ↑</button></div>
-</form>
-<p class="guided-alternative">Not sure where to start? <a href="{{ url_for('web.questionnaire') }}">Find my major →</a></p>
-</div></div>
 {% endblock %}

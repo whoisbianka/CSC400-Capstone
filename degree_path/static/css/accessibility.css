@@ -26,7 +26,7 @@ summary { cursor: pointer; padding-block: 12px; }
 .saved-view-tabs button[aria-pressed="true"]:focus-visible, .compare-modes button[aria-pressed="true"]:focus-visible { outline-color: var(--color-on-secondary-container); }
 main:focus-visible { outline: none; }
 /* Text links keep a cue in addition to color; navigation and filled actions retain their shapes. */
-p a, li a, .small-note a, .details-source a, .material-preview-help p a { text-decoration: underline; text-underline-offset: .18em; }
+p a, li a, .small-note a, .details-source a { text-decoration: underline; text-underline-offset: .18em; }
 input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--color-error); }
 @media(max-width: 560px) {
   .major-catalog-heading { flex-wrap: wrap; }
