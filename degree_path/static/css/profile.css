@@ -43,7 +43,6 @@
 .profile-editor-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
 .profile-save-status { font-size: 13px; margin: 0 0 18px; }
 .profile-save-status:empty { display: none; }
-.profile-account-settings { margin-top: 22px; }
 .profile-delete-trigger { color: var(--color-error); }
 .profile-delete-dialog { width: min(460px, calc(100% - 32px)); color: var(--text); }
 .profile-delete-dialog::backdrop { background: rgb(0 0 0 / 45%); }
@@ -53,6 +52,10 @@
   --primary: var(--color-error);
   --on-primary: var(--color-on-error);
   --primary-hover: color-mix(in srgb, var(--color-error) 85%, black);
+}
+@media (min-width: 761px) {
+  .profile-columns { grid-template-rows: auto 1fr; }
+  .profile-sidebar { grid-column: 2; grid-row: 1 / span 2; }
 }
 @media (max-width: 760px) { .profile-columns { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .profile-identity { flex-wrap: wrap; } .profile-panel { padding: 20px; } }
