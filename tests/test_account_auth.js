@@ -13,7 +13,7 @@ function fixture({userId = '', active = false, pending = {}, failLogout = false,
   const button = element({authAction: userId ? 'logout' : 'login'});
   const status = element();
   const retry = element();
-  const profileElements = Object.fromEntries(['profile-name','profile-email','profile-name-value','profile-email-value','profile-avatar','profile-identity-status'].map(id => [id, element()]));
+  const profileElements = Object.fromEntries(['profile-name','profile-identity-status'].map(id => [id, element()]));
   if (profile) profileElements['profile-account'] = element({clerkUserId:'user_expected'});
   const clerk = {
     user: profileUser,
@@ -41,10 +41,15 @@ function fixture({userId = '', active = false, pending = {}, failLogout = false,
     },
   };
   vm.runInNewContext(source, context);
-  return {calls, storage, button, retry, clerk, status, profileElements};
+  return {calls, storage, button, retry, clerk, status, profileElements, window:context.window};
 }
 const flush = () => new Promise(resolve=>setImmediate(resolve));
 (async () => {
+  const waiting = fixture();
+  waiting.window.pathfinderChatBusy = true;
+  await waiting.button.click();
+  assert.deepEqual(waiting.calls, []);
+  assert.match(waiting.status.textContent, /Wait for the current chat reply/);
   let f = fixture();
   assert.deepEqual(f.calls, [], 'Guest visits must not load Clerk or open sign-in');
   await f.button.click();
@@ -79,8 +84,6 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
   f = fixture({userId:'42', active:true, profile:true, profileUser:{id:'user_expected', fullName:'Test Student', primaryEmailAddress:{emailAddress:'student@example.com'}}});
   await flush();
   assert.equal(f.profileElements['profile-name'].textContent, 'Test Student');
-  assert.equal(f.profileElements['profile-email-value'].textContent, 'student@example.com');
-  assert.equal(f.profileElements['profile-avatar'].textContent, 'TS');
   assert.deepEqual(f.calls, ['load'], 'Profile loads details without opening a sign-in prompt');
   await f.button.click();
   assert.equal(f.calls.includes('/logout'), true);
@@ -88,13 +91,11 @@ const flush = () => new Promise(resolve=>setImmediate(resolve));
   f = fixture({userId:'42', active:true, profile:true, profileUser:{id:'user_other', fullName:'Wrong Account', primaryEmailAddress:{emailAddress:'wrong@example.com'}}});
   await flush();
   assert.equal(f.profileElements['profile-name'].textContent, undefined, 'Never display another Clerk account');
-  assert.equal(f.profileElements['profile-email-value'].textContent, 'Unavailable');
   assert.match(f.profileElements['profile-identity-status'].textContent, /sign-in changed/);
 
   f = fixture({userId:'42', active:true, profile:true, profileUser:{id:'user_expected'}});
   await flush();
-  assert.equal(f.profileElements['profile-name-value'].textContent, 'Not provided');
-  assert.equal(f.profileElements['profile-email-value'].textContent, 'Not provided');
+  assert.equal(f.profileElements['profile-name'].textContent, 'Your account');
 
   f = fixture({profile:true});
   await flush();

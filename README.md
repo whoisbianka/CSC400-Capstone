@@ -1,25 +1,40 @@
 # CSC400 Capstone — Degree Path
 
-The Flask site queries the PostgreSQL catalog on Google Cloud SQL through `db_functions.py` and `cloud_sql_connection.py`. Database failures display an error. Catalog results and ranked college examples come from the connected database.
+Flask website for exploring majors and college programs. Gemini extracts user
+interests; database keyword matches rank majors. Chat can create links to
+filtered program searches. Guests can chat, and their retained conversation and
+interests merge into their account on sign-in. Favorites, saved filters,
+comparisons and account chat data are stored in PostgreSQL.
 
 ## Run locally
 
 ```sh
-python3 -m venv .venv (do this if you dont have this environmental variable already)
+python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt (important to run the program)
-gcloud auth application-default login (important for the database)
+python -m pip install -r requirements.txt
+# Needed for Cloud SQL IAM / Secret Manager access:
+gcloud auth application-default login
 python app.py
 ```
 
-Keep connection settings in the private `.env` beside `app.py`; use `.env.example` for the required names. Do not commit credentials. The instance connection name has the form `project:region:instance`.
+Keep connection settings and Secret Manager version references in the private
+.env beside app.py. Never commit credentials. Local PostgreSQL is provided by
+Docker; Clerk, Gemini and configured Secret Manager references remain external
+services. See [LOCAL_DATABASE.md](LOCAL_DATABASE.md).
 
-Homepage cards offer sign-in or guest access before continuing to the selected destination. Clerk authentication is separate from catalog access; favorites and chat persistence are not integrated.
+## Database setup
 
-UPDATE October 3rd, 2026 — Changes from this date reflect feedback from the October 1 class meeting.
+The original scripts are in `database/`. Run them as modules from the project
+root so imports resolve correctly:
 
-## Saved library
+```sh
+python -m database.db_setup
+python -m database.db_init
+```
 
-Saved majors shows one general field-of-study card per saved major, matching Explore majors: description, aggregate catalog counts, source information, and reported earnings. It does not automatically display college programs or comparison controls. Find colleges for this major opens Explore only when requested.
-
-Favorited programs is a separate tab on the same Saved majors page and contains only the specific programs saved with a heart. Old Favorites links redirect to this shared page. The separate Compare page remains available.
+`db_setup` generates seed CSVs from `database/data/` into `database/seed_data/`.
+The restored script initializes an admin connection. `db_init` uses the configured
+DATABASE_MODE: in cloud mode it resets the schema before importing; in local
+mode it appends to the schema created by Docker. Do not rerun a local import on
+populated tables. See [LOCAL_DATABASE.md](LOCAL_DATABASE.md) for a fresh local setup.
+These scripts do not implement --check or --reset options.

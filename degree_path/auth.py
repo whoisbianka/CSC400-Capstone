@@ -1,5 +1,6 @@
 import time
 import secrets
+from urllib.parse import quote
 
 import httpx
 
@@ -53,6 +54,11 @@ def establish_login():
         abort(401, description="Invalid user identity.")
 
     user = db_functions.create_or_update_user(clerk_user_id)
+    guest_id = session.get("guest_id")
+    if isinstance(guest_id, str) and guest_id:
+        # Do not switch the browser to account state until the import commits.
+        db_functions.merge_guest_into_user(user["id"], guest_id)
+        session.pop("guest_id", None)
     session["user_id"] = user["id"]
     session["clerk_user_id"] = clerk_user_id
     session.permanent = True
@@ -60,6 +66,17 @@ def establish_login():
     session["login_expires_at"] = int(time.time()) + lifetime
     session["csrf"] = secrets.token_urlsafe(24)
     return user
+
+
+def delete_clerk_user(clerk_user_id):
+    response = httpx.delete(
+        f"https://api.clerk.com/v1/users/{quote(clerk_user_id, safe='')}",
+        headers={"Authorization": f"Bearer {current_app.config['CLERK_SECRET_KEY']}"},
+        timeout=10.0,
+    )
+    # If database cleanup failed after the identity was deleted, allow a retry.
+    if response.status_code != 404:
+        response.raise_for_status()
 
 
 def expire_login():

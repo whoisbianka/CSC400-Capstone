@@ -7,83 +7,30 @@
   const status = document.getElementById("chatStatus");
   const storageNote = document.getElementById("chatStorageNote");
   const reloadButton = document.getElementById("reloadChat");
-  const recommendationsPanel =document.getElementById("recommendationsPanel");
-  const recommendationCards =document.getElementById("recommendationCards");
-  const exploreUrl =document.getElementById("guided-chat").dataset.exploreUrl;
-
+  const recommendationCards = document.getElementById("recommendationCards");
+  const majorUrl = document.getElementById("guided-chat").dataset.majorUrl;
+  const exploreUrl = document.getElementById("guided-chat").dataset.exploreUrl;
   let api = null;
   let busy = false;
-
-  const favoriteIds = new Set();
-  let favoritesLoaded = false;
-
-  function createFavoriteButton(cipcode) {
-    const button = document.createElement("button");
-    button.type = "button";
-
-    function updateLabel() {
-      const saved = favoriteIds.has(cipcode);
-
-      button.setAttribute("aria-pressed", String(saved));
-
-      if (!api.isSignedIn()) {
-        button.textContent = "Sign in to favorite";
-      } else if (!favoritesLoaded) {
-        button.textContent = "Favorites unavailable";
-        button.disabled = true;
-      } else {
-        button.textContent = saved
-          ? "Remove favorite"
-          : "♡ Favorite";
-      }
-    }
-
-    updateLabel();
-
-    button.addEventListener("click", async () => {
-      if (!api.isSignedIn()) {
-        setStatus("Sign in using your account, then reload this page.");
-        return;
-      }
-
-      const shouldFavorite = !favoriteIds.has(cipcode);
-      button.disabled = true;
-
-      try {
-        const result = await api.setFavorite(
-          cipcode,
-          shouldFavorite
-        );
-
-        if (result.favorite) {
-          favoriteIds.add(cipcode);
-        } else {
-          favoriteIds.delete(cipcode);
-        }
-
-        updateLabel();
-
-        setStatus(
-          result.favorite
-            ? "Major added to your favorites."
-            : "Major removed from your favorites."
-        );
-      } catch (error) {
-        setStatus(error.message || "Unable to update favorites.");
-      } finally {
-        button.disabled = false;
-      }
-    });
-
-    return button;
-  }
 
   function setStatus(message) {
     status.textContent = message;
   }
 
+  function resizeInput() {
+    input.style.height = "auto";
+    // scrollHeight includes padding; add the two one-pixel borders.
+    const desiredHeight = input.value ? input.scrollHeight + 2 : 48;
+    input.style.height = `${Math.max(48, Math.min(desiredHeight, 140))}px`;
+    input.style.overflowY = desiredHeight > 140 ? "auto" : "hidden";
+  }
+
+  input.addEventListener("input", resizeInput);
+  window.addEventListener("resize", resizeInput);
+
   function setBusy(value) {
     busy = value;
+    window.pathfinderChatBusy = value;
 
     input.disabled = value;
     sendButton.disabled = value;
@@ -115,8 +62,23 @@
 
     const text = document.createElement("span");
 
-    // Treat user and Gemini output as text, never executable HTML.
-    text.textContent = content;
+    // Only assistant **bold** is formatted. All content remains text, never HTML.
+    const parts = role === "assistant"
+      ? String(content).split(/(\*\*[^*\n]+\*\*)/g)
+      : [content];
+    if (parts.length === 1) {
+      text.textContent = content;
+    } else {
+      parts.forEach((part, index) => {
+        if (index % 2 === 1) {
+          const bold = document.createElement("strong");
+          bold.textContent = part.slice(2, -2);
+          text.appendChild(bold);
+        } else {
+          text.appendChild(document.createTextNode(part));
+        }
+      });
+    }
     text.style.whiteSpace = "pre-wrap";
 
     bubble.append(
@@ -126,6 +88,23 @@
     );
 
     messages.appendChild(bubble);
+    messages.scrollTop = messages.scrollHeight;
+    return bubble;
+  }
+
+  function renderSearchCard(card) {
+    if (!card) return;
+    const destination = new URL(card.url, window.location.origin);
+    if (destination.origin !== window.location.origin || destination.pathname !== new URL(exploreUrl, window.location.origin).pathname) return;
+    const container = document.createElement("a");
+    container.className = "chat-search-card";
+    container.href = destination.href;
+    const title = document.createElement("strong");
+    title.textContent = card.label;
+    const summary = document.createElement("p");
+    summary.textContent = card.summary;
+    container.append(title, summary);
+    messages.appendChild(container);
     messages.scrollTop = messages.scrollHeight;
   }
 
@@ -144,78 +123,55 @@
 
     for (const message of history) {
       addMessage(message.role, message.content);
+      if (message.role === "assistant") renderSearchCard(message.search_card);
     }
   }
 
   function renderRecommendations(recommendations) {
     recommendationCards.replaceChildren();
-
-    recommendationsPanel.hidden = recommendations.length === 0;
-
+    if (!recommendations.length) {
+      const empty = document.createElement("p");
+      empty.className = "recommendations-empty";
+      empty.textContent = "Your recommendations will appear as we learn about your interests.";
+      recommendationCards.append(empty);
+    }
     for (const recommendation of recommendations) {
       const card = document.createElement("article");
       card.className = "major-recommendation";
-
+      const details = document.createElement("div");
       const title = document.createElement("h3");
-      title.textContent = recommendation.major;
-
-      const count = document.createElement("p");
-
-      const number = recommendation.matching_keywords;
-      count.textContent =
-        `${number} matching ${number === 1 ? "interest" : "interests"}`;
-
-      const evidenceHeading = document.createElement("h4");
-      evidenceHeading.textContent = "Why this appeared";
-
-      const evidenceList = document.createElement("ul");
-
-      for (const match of recommendation.evidence) {
-        const item = document.createElement("li");
-
-        const keyword = document.createElement("strong");
-        keyword.textContent = `${match.keyword}: `;
-
-        const quote = document.createElement("span");
-        quote.textContent = `“${match.evidence}”`;
-
-        item.append(keyword, quote);
-        evidenceList.appendChild(item);
-      }
-
       const link = document.createElement("a");
-
-      const destination = new URL(
-        exploreUrl,
-        window.location.origin
-      );
-
-      destination.searchParams.set(
-        "cipcode",
-        String(recommendation.cipcode)
-      );
-
-      link.href = destination.href;
-      link.textContent = "Explore programs in this major →";
-      const favoriteButton = createFavoriteButton(
-        Number(recommendation.cipcode)
-      );
-
-      card.append(
-        title,
-        count,
-        evidenceHeading,
-        evidenceList,
-        link,
-        document.createElement("br"),
-        favoriteButton
-      );
-
-      recommendationCards.appendChild(card);
+      link.href = majorUrl.replace(/0$/, String(recommendation.cipcode));
+      link.textContent = recommendation.major;
+      title.append(link);
+      const count = document.createElement("p");
+      const number = recommendation.matching_keywords;
+      count.textContent = `${number} matching ${number === 1 ? "interest" : "interests"}`;
+      const colleges = document.createElement("a");
+      const destination = new URL(exploreUrl, window.location.origin);
+      destination.searchParams.set("view", "programs");
+      destination.searchParams.set("cipcode", String(recommendation.cipcode));
+      colleges.href = destination.href;
+      colleges.className = "recommendation-colleges";
+      colleges.textContent = "Explore colleges that offer this major →";
+      details.append(title, count, colleges);
+      const heart = document.createElement("button");
+      heart.type = "button";
+      heart.className = "save-major-button recommendation-heart";
+      heart.dataset.saveMajor = String(recommendation.cipcode);
+      heart.dataset.majorName = recommendation.major;
+      heart.dataset.favoriteIcon = "heart";
+      heart.textContent = "♡";
+      heart.setAttribute("aria-pressed", "false");
+      heart.setAttribute("aria-label", `Save ${recommendation.major} to favorites`);
+      card.append(details, heart);
+      recommendationCards.append(card);
     }
+    // Use the same favorite state, sign-in prompt and save/undo flow as Explore.
+    document.dispatchEvent(new Event("major-controls:render"));
   }
   async function sendMessage() {
-    if (busy || api === null) {
+    if (busy || api === null || window.pathfinderLoginBusy) {
       return;
     }
 
@@ -235,22 +191,32 @@
 
     reloadButton.hidden = true;
     setBusy(true);
-    setStatus("The advisor is thinking…");
+    setStatus("");
+    const pendingMessage = addMessage("user", message);
+    const typingIndicator = addMessage("assistant", "Typing…");
+    typingIndicator.setAttribute("aria-hidden", "true");
+    input.value = "";
+    resizeInput();
+    let confirmed = false;
 
     try {
       const result = await api.send(message);
 
-      // Display the exchange after the server confirms it was saved.
-      addMessage("user", message);
+      confirmed = true;
+      typingIndicator.remove();
       addMessage("assistant", result.reply);
-
-      input.value = "";
+      renderSearchCard(result.search_card);
 
       showStorageNote(result.mode);
       renderRecommendations(result.recommendations ?? []);
       setStatus("");
     } catch (error) {
-      // Keep the typed message so the user does not lose it.
+      // A failed request must not leave an apparently saved user message.
+      if (!confirmed) {
+        pendingMessage.remove();
+        input.value = message;
+        resizeInput();
+      }
       setStatus(
         error instanceof Error
           ? error.message
@@ -259,6 +225,7 @@
 
       reloadButton.hidden = false;
     } finally {
+      typingIndicator.remove();
       setBusy(false);
       input.focus();
     }
@@ -273,7 +240,7 @@
       !event.isComposing
     ) {
       event.preventDefault();
-      sendMessage();
+      return sendMessage();
     }
   });
 
@@ -294,29 +261,13 @@
     api = await window.chatApiReady;
 
     const saved = await api.load();
-    let favoritesWarning = "";
-
-    if (api.isSignedIn()) {
-      try {
-        const result = await api.loadFavorites();
-
-        for (const favorite of result.favorites) {
-          favoriteIds.add(Number(favorite.cipcode));
-        }
-
-        favoritesLoaded = true;
-      } catch (error) {
-        favoritesWarning =
-          "Chat loaded, but favorites could not load. Reload to retry.";
-      }
-    }
-
     renderHistory(saved.messages);
     showStorageNote(saved.mode);
     renderRecommendations(saved.recommendations ?? []);
 
-    setStatus(favoritesWarning);
+    setStatus("");
     setBusy(false);
+    resizeInput();
 
     input.focus();
   } catch (error) {
@@ -328,7 +279,8 @@
 
     messages.setAttribute("aria-busy", "false");
 
-    // Keep sending disabled if initialization failed.
+    // Keep sending disabled, but permit sign-in recovery after a failed load.
+    window.pathfinderChatBusy = false;
     reloadButton.hidden = false;
   }
 })();

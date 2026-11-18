@@ -1,0 +1,36 @@
+{% set state_options = [
+  ('AL', 'Alabama'), ('AK', 'Alaska'), ('AZ', 'Arizona'), ('AR', 'Arkansas'),
+  ('CA', 'California'), ('CO', 'Colorado'), ('CT', 'Connecticut'), ('DE', 'Delaware'),
+  ('DC', 'District of Columbia'), ('FL', 'Florida'), ('GA', 'Georgia'), ('HI', 'Hawaii'),
+  ('ID', 'Idaho'), ('IL', 'Illinois'), ('IN', 'Indiana'), ('IA', 'Iowa'), ('KS', 'Kansas'),
+  ('KY', 'Kentucky'), ('LA', 'Louisiana'), ('ME', 'Maine'), ('MD', 'Maryland'),
+  ('MA', 'Massachusetts'), ('MI', 'Michigan'), ('MN', 'Minnesota'), ('MS', 'Mississippi'),
+  ('MO', 'Missouri'), ('MT', 'Montana'), ('NE', 'Nebraska'), ('NV', 'Nevada'),
+  ('NH', 'New Hampshire'), ('NJ', 'New Jersey'), ('NM', 'New Mexico'), ('NY', 'New York'),
+  ('NC', 'North Carolina'), ('ND', 'North Dakota'), ('OH', 'Ohio'), ('OK', 'Oklahoma'),
+  ('OR', 'Oregon'), ('PA', 'Pennsylvania'), ('RI', 'Rhode Island'), ('SC', 'South Carolina'),
+  ('SD', 'South Dakota'), ('TN', 'Tennessee'), ('TX', 'Texas'), ('UT', 'Utah'),
+  ('VT', 'Vermont'), ('VA', 'Virginia'), ('WA', 'Washington'), ('WV', 'West Virginia'),
+  ('WI', 'Wisconsin'), ('WY', 'Wyoming'), ('AS', 'American Samoa'), ('GU', 'Guam'),
+  ('MP', 'Northern Mariana Islands'), ('PR', 'Puerto Rico'), ('VI', 'U.S. Virgin Islands'),
+  ('FM', 'Federated States of Micronesia'), ('MH', 'Marshall Islands'), ('PW', 'Palau')
+] %}
+{% set selected_states = filters.get('states', [filters.state] if filters.get('state') else []) %}
+<fieldset id="state-filter" class="state-filter">
+  <legend>States and territories</legend>
+  <label for="state-search" class="sr-only">Search states by name or abbreviation</label>
+  <input id="state-search" type="search" placeholder="Search states…" autocomplete="off" aria-controls="state-options" aria-describedby="state-selection-status">
+  <label class="filter-checkbox state-any"><input id="state-any" type="checkbox"> <span>Any</span></label>
+  <div id="state-options" class="state-options">
+    {% for code, state_name in state_options %}
+      <label class="filter-checkbox state-option" data-state-label="{{ state_name }} {{ code }}"><input type="checkbox" name="state" value="{{ code }}" {% if code in selected_states %}checked{% endif %}> <span>{{ state_name }} ({{ code }})</span></label>
+    {% endfor %}
+    {# Preserve a previously saved location code even if it is not in the standard list. #}
+    {% set standard_codes = state_options|map(attribute=0)|list %}
+    {% for code in selected_states if code not in standard_codes %}
+      <label class="filter-checkbox state-option" data-state-label="{{ code }}"><input type="checkbox" name="state" value="{{ code }}" checked> <span>{{ code }}</span></label>
+    {% endfor %}
+  </div>
+  <p id="state-no-results" class="small-note" role="status" hidden>No matching states.</p>
+  <p id="state-selection-status" class="small-note" role="status" aria-live="polite">{% if selected_states %}{{ selected_states|length }} selected{% else %}No state restriction{% endif %}</p>
+</fieldset>

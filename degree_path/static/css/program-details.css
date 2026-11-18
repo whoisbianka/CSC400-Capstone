@@ -45,3 +45,15 @@
 .major-description { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.75; margin: 0; }
 
 .details-college .college-website-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; text-decoration: none; }
+
+/* Program identity uses the same hero and heart layout as major details. */
+.program-detail-page .major-title-row { flex-wrap: nowrap; }
+.program-detail-page .major-title-row > div { min-width: 0; }
+.program-detail-page .details-college { margin: 20px 0 0; }
+.program-detail-page .details-college > div { min-width: 0; overflow-wrap: anywhere; }
+.program-detail-page #program-favorites-status:empty { display: none; }
+.program-detail-page #program-favorites-status { margin: 16px 0 0; font-size: 13px; }
+@media (max-width: 600px) {
+  .program-detail-page .details-college { align-items: flex-start; gap: 12px; }
+  .program-detail-page .details-monogram { width: 40px; height: 40px; font-size: 22px; }
+}

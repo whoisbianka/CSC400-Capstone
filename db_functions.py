@@ -1,3 +1,4 @@
+from degree_path.evidence import evidence_list, merge_evidence
 import pandas as pd
 from sqlalchemy import create_engine, text, bindparam
 import sqlalchemy
@@ -6,9 +7,9 @@ import os
 import re
 from dotenv import load_dotenv
 from google.cloud.sql.connector import Connector
-from cloud_sql_connection import connect_with_connector, close_connector
+from database_connection import connect_with_connector, close_connector
 from time import perf_counter
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 import json
 
 load_dotenv()
@@ -99,14 +100,17 @@ def add_to_chat_to_log(user_id,content,sender):
 
 #Add a keyword for user
 def add_user_keyword(user_id,keyword_id,evidence):
-    query=text("""
-            INSERT INTO user_keywords(user_id, keyword_id, evidence)
-            VALUES(:user_id, :keyword_id,:evidence)
-            ON CONFLICT (user_id, keyword_id) DO NOTHING
-            """)
-    params={"user_id":user_id,"keyword_id":keyword_id,"evidence":evidence}
     with engine.begin() as connection:
-        connection.execute(query,params)
+        if connection.execute(text("SELECT id FROM public.users WHERE id=:user_id FOR UPDATE"),
+                              {"user_id":user_id}).scalar_one_or_none() is None:
+            raise ValueError("User does not exist.")
+        existing = connection.execute(text("SELECT evidence FROM public.user_keywords WHERE user_id=:user_id AND keyword_id=:keyword_id"),
+                                      {"user_id":user_id,"keyword_id":keyword_id}).scalar_one_or_none()
+        connection.execute(text("""
+            INSERT INTO public.user_keywords (user_id, keyword_id, evidence)
+            VALUES (:user_id, :keyword_id, :evidence)
+            ON CONFLICT (user_id, keyword_id) DO UPDATE SET evidence=EXCLUDED.evidence
+        """), {"user_id":user_id,"keyword_id":keyword_id,"evidence":merge_evidence(existing,evidence)})
 
 #Helper Function: Get keyword_id from keyword
 def get_a_keyword_id_from_keyword(keyword):
@@ -495,17 +499,18 @@ def get_unitid_from_school_id(school_id):
     return results[0]
 
 #Get user's chatlog
-def get_recent_chatlog(user_id,limit=20):
-    with engine.connect() as connection:
+def get_recent_chatlog(user_id, limit=20, *, connection=None):
+    with (nullcontext(connection) if connection is not None
+          else engine.connect()) as connection:
         query=text("""
-            SELECT cl.content, cl.sender
+            SELECT cl.content, cl.sender, cl.metadata
             FROM chatlog cl
             WHERE cl.user_id=:user_id
             ORDER BY cl.createdAt DESC, id DESC
             LIMIT :limit""")
         rows=connection.execute(query,{"user_id":user_id,"limit":limit}).mappings().all()
 
-    return [{"role":row["sender"],"content":row["content"]}for row in reversed(rows)]
+    return [{"role":row["sender"],"content":row["content"],"metadata":row.get("metadata") or {}}for row in reversed(rows)]
 
 #Page(Integer), Page_count(Integer), Table_Name(String), column_to_sort(String), order(String) "ASC" or "DESC"
 def get_a_page(page,page_count,table_name,column_to_sort,order):
@@ -719,6 +724,23 @@ def get_page_programs(
     if filters.get("state"):
         conditions.append("LOWER(s.stabbr)=LOWER(:state)")
         params["state"]=filters["state"]
+    if filters.get("school_names"):
+        matches = []
+        for index, value in enumerate(filters['school_names']):
+            key = f'college_{index}'
+            escaped = value.replace('!', '!!').replace('%', '!%').replace('_', '!_')
+            params[key] = '%' + escaped + '%'
+            matches.append(f"LOWER(s.instnm) LIKE LOWER(:{key}) ESCAPE '!'")
+        conditions.append('(' + ' OR '.join(matches) + ')')
+    if filters.get('states'):
+        conditions.append('UPPER(s.stabbr) IN :states')
+        params['states'] = filters['states']
+    if filters.get("school_size") == "small":
+        conditions.append("s.ug12mn >= 0 AND s.ug12mn < 3000")
+    elif filters.get("school_size") == "medium":
+        conditions.append("s.ug12mn >= 3000 AND s.ug12mn < 15000")
+    elif filters.get("school_size") == "large":
+        conditions.append("s.ug12mn >= 15000")
     if filters.get("city"):
         conditions.append("LOWER(s.city)=LOWER(:city)")
         params["city"]=filters["city"]
@@ -832,7 +854,7 @@ def get_page_programs(
                 ORDER BY {sql_order}
                 LIMIT :limit OFFSET :offset""")
 
-    for key in ("degrees", "cipcodes"):
+    for key in ("degrees", "cipcodes", "states"):
         if key in params:
             query = query.bindparams(bindparam(key, expanding=True))
 
@@ -852,6 +874,12 @@ def get_page_programs(
 
 #helper function to validate program filters
 def validate_program_filters(filters):
+    if filters.get("school_size") is not None and filters["school_size"] not in ("small", "medium", "large"):
+        raise ValueError("Choose small, medium, or large college size.")
+    for key, max_length in (('school_names', 200), ('states', 3)):
+        values = filters.get(key, [])
+        if not isinstance(values, (list, tuple)) or len(values) > 200 or any(not isinstance(value, str) or not 1 <= len(value) <= max_length for value in values):
+            raise ValueError('Invalid college or state filters.')
     if "q" in filters and (not isinstance(filters["q"], str) or len(filters["q"]) > 200):
         raise ValueError("Search must be text of at most 200 characters.")
     school_name = filters.get("school_name")
@@ -1080,16 +1108,17 @@ def get_page_major_favs(user_id,page=1,page_count=10,column_to_sort="mf.id",orde
     return result.mappings().all()
 
 #get a user's keywords
-def get_user_keywords(user_id):
+def get_user_keywords(user_id, *, connection=None):
     query=text("""
             SELECT k.id AS keyword_id, k.keyword, uk.evidence
             FROM public.user_keywords uk
             JOIN public.keywords k ON uk.keyword_id = k.id
             WHERE uk.user_id=:user_id""")
     params={"user_id":user_id}
-    with engine.connect() as connection:
+    with (nullcontext(connection) if connection is not None
+          else engine.connect()) as connection:
         rows=connection.execute(query,params).mappings().all()
-    return [dict(row) for row in rows]
+    return [{**dict(row), "evidence": evidence_list(row["evidence"])} for row in rows]
 
 #get all keywords
 def get_keywords():
@@ -1114,98 +1143,104 @@ def get_user(clerk_user_id):
 ##UPDATE Functions
 
 #save chat_turn
-def save_chat_turn(user_id, user_message, turn):
-    chat_query = text("""
-        INSERT INTO public.chatlog (
-            user_id,
-            content,
-            sender
-        )
-        VALUES (
-            :user_id,
-            :message,
-            :sender
-        )
-    """)
+def get_chat_state(user_id, *, include_recommendations=False):
+    """Load account chat data using one connection and one read transaction."""
+    with engine.connect() as connection:
+        messages = get_recent_chatlog(user_id, connection=connection)
+        keywords = get_user_keywords(user_id, connection=connection)
+        state = {"messages": messages, "keywords": keywords}
+        if include_recommendations:
+            state["recommendations"] = get_recommendations(
+                user_id, connection=connection
+            )
+    return state
 
-    add_query = text("""
-        INSERT INTO public.user_keywords (
-            user_id,
-            keyword_id,
-            evidence
-        )
-        VALUES (
-            :user_id,
-            :keyword_id,
-            :evidence
-        )
-        ON CONFLICT (user_id, keyword_id)
-        DO UPDATE SET evidence = EXCLUDED.evidence
-    """)
 
-    remove_query = text("""
-        DELETE FROM public.user_keywords
-        WHERE user_id = :user_id
-          AND keyword_id = :keyword_id
-    """)
+def _insert_chat_rows(connection, table, columns, rows, *, suffix=""):
+    """Use one parameterized multi-row INSERT, not driver executemany."""
+    allowed = {
+        "chatlog": ("user_id", "content", "sender", "metadata"),
+        "user_keywords": ("user_id", "keyword_id", "evidence"),
+        "major_rec": ("user_id", "cipcode", "matching_keywords"),
+    }
+    if allowed.get(table) != columns:
+        raise ValueError("Unsupported chat insert target.")
+    if not rows:
+        return
+    params = {}
+    values = []
+    for index, row in enumerate(rows):
+        names = [f"p_{index}_{column}" for column in columns]
+        params.update(zip(names, (row[column] for column in columns)))
+        values.append("(" + ", ".join(f"CAST(:{name} AS JSONB)" if column == "metadata" else ":" + name for name, column in zip(names, columns)) + ")")
+    # Table/columns are allowlisted; suffix is an internal SQL constant.
+    query = text(
+        f"INSERT INTO public.{table} ({', '.join(columns)}) VALUES "
+        + ", ".join(values) + suffix
+    )
+    connection.execute(query, params)
 
-    chat_params = [
-        {
-            "user_id": user_id,
-            "message": user_message,
-            "sender": "user",
-        },
-        {
-            "user_id": user_id,
-            "message": turn.reply,
-            "sender": "assistant",
-        },
-    ]
 
-    add_params = [
-        {
-            "user_id": user_id,
-            "keyword_id": addition.keyword_id,
-            "evidence": addition.evidence,
-        }
-        for addition in turn.keyword_additions
-    ]
-
-    remove_params = [
-        {
-            "user_id": user_id,
-            "keyword_id": keyword_id,
-        }
-        for keyword_id in turn.keyword_removals
-    ]
-
+def save_chat_turn(user_id, user_message, turn, *, metadata=None):
     with engine.begin() as connection:
         existing_user = connection.execute(
-            text("""
-                SELECT id
-                FROM public.users
-                WHERE id = :user_id
-                FOR UPDATE
-            """),
+            text("SELECT id FROM public.users WHERE id = :user_id FOR UPDATE"),
             {"user_id": user_id},
         ).scalar_one_or_none()
-
         if existing_user is None:
             raise ValueError("User does not exist.")
 
-        connection.execute(chat_query, chat_params)
+        # Read after acquiring the lock, not from the pre-Gemini snapshot.
+        rows = connection.execute(
+            text("SELECT keyword_id, evidence FROM public.user_keywords "
+                 "WHERE user_id = :user_id"),
+            {"user_id": user_id},
+        ).mappings().all()
+        keywords = {row["keyword_id"]: {**dict(row), "evidence": evidence_list(row["evidence"])} for row in rows}
+        previous_ids = set(keywords)
 
-        if remove_params:
-            connection.execute(remove_query, remove_params)
+        _insert_chat_rows(connection, "chatlog", ("user_id", "content", "sender", "metadata"), [
+            {"user_id": user_id, "content": user_message, "sender": "user", "metadata": "{}"},
+            {"user_id": user_id, "content": turn.reply, "sender": "assistant", "metadata": json.dumps(metadata or {})},
+        ])
 
-        if add_params:
-            connection.execute(add_query, add_params)
+        removals = set(turn.keyword_removals) & previous_ids
+        if removals:
+            connection.execute(
+                text("DELETE FROM public.user_keywords WHERE user_id = :user_id "
+                     "AND keyword_id IN :keyword_ids").bindparams(
+                         bindparam("keyword_ids", expanding=True)),
+                {"user_id": user_id, "keyword_ids": list(removals)},
+            )
+            for keyword_id in removals:
+                keywords.pop(keyword_id)
 
-        recommendations = _refresh_user_recommendations(
-            connection,
-            user_id,
-        )
+        additions = []
+        for item in turn.keyword_additions:
+            updated = {"keyword_id": item.keyword_id, "evidence": merge_evidence(keywords.get(item.keyword_id, {}).get("evidence"), item.evidence)}
+            if keywords.get(item.keyword_id) != updated:
+                additions.append({"user_id": user_id, **updated})
+            keywords[item.keyword_id] = updated
+        if additions:
+            _insert_chat_rows(
+                connection, "user_keywords", ("user_id", "keyword_id", "evidence"),
+                additions,
+                suffix=" ON CONFLICT (user_id, keyword_id) "
+                       "DO UPDATE SET evidence = EXCLUDED.evidence",
+            )
 
+        if set(keywords) != previous_ids:
+            recommendations = _refresh_user_recommendations(
+                connection, user_id, saved_keywords=list(keywords.values())
+            )
+        else:
+            # This query joins current user_keywords, so evidence stays fresh.
+            recommendations = get_recommendations(user_id, connection=connection)
+            # Repair missing saved results (also handles older account data).
+            if keywords and not recommendations:
+                recommendations = _refresh_user_recommendations(
+                    connection, user_id, saved_keywords=list(keywords.values())
+                )
     return recommendations
 
 
@@ -1214,7 +1249,7 @@ def save_chat_turn(user_id, user_message, turn):
 def remove_user(user_id):
     with engine.begin() as connection:
         query=text("""
-                DELETE from users
+                DELETE from public.users
                 WHERE id=:user_id""")
         connection.execute(query,{"user_id":user_id})
 
@@ -1368,7 +1403,7 @@ def _rank_majors_from_keywords(connection, saved_keywords):
         recommendations[cipcode]["evidence"].append({
             "keyword_id": row["keyword_id"],
             "keyword": row["keyword"],
-            "evidence": saved_keyword["evidence"],
+            "evidence": evidence_list(saved_keyword["evidence"]),
         })
 
     return list(recommendations.values())
@@ -1386,62 +1421,28 @@ def get_recommendations_for_keywords(saved_keywords):
             saved_keywords,
         )
 
-def _refresh_user_recommendations(connection, user_id):
-    """
-    Read current account keywords, rank majors, and replace saved results.
+def _refresh_user_recommendations(connection, user_id, *, saved_keywords=None):
+    """Replace rankings inside the caller's transaction and user-row lock."""
+    if saved_keywords is None:
+        rows = connection.execute(
+            text("SELECT keyword_id, evidence FROM public.user_keywords "
+                 "WHERE user_id = :user_id"),
+            {"user_id": user_id},
+        ).mappings().all()
+        saved_keywords = [dict(row) for row in rows]
 
-    Must run inside a transaction whose caller has locked the user row.
-    """
-    keyword_query = text("""
-        SELECT keyword_id, evidence
-        FROM public.user_keywords
-        WHERE user_id = :user_id
-    """)
-
-    rows = connection.execute(
-        keyword_query,
-        {"user_id": user_id},
-    ).mappings().all()
-
-    saved_keywords = [dict(row) for row in rows]
-
-    recommendations = _rank_majors_from_keywords(
-        connection,
-        saved_keywords,
-    )
-
+    recommendations = _rank_majors_from_keywords(connection, saved_keywords)
     connection.execute(
-        text("""
-            DELETE FROM public.major_rec
-            WHERE user_id = :user_id
-        """),
+        text("DELETE FROM public.major_rec WHERE user_id = :user_id"),
         {"user_id": user_id},
     )
-
     if recommendations:
-        connection.execute(
-            text("""
-                INSERT INTO public.major_rec (
-                    user_id,
-                    cipcode,
-                    matching_keywords
-                )
-                VALUES (
-                    :user_id,
-                    :cipcode,
-                    :matching_keywords
-                )
-            """),
-            [
-                {
-                    "user_id": user_id,
-                    "cipcode": item["cipcode"],
-                    "matching_keywords": item["matching_keywords"],
-                }
-                for item in recommendations
-            ],
+        _insert_chat_rows(
+            connection, "major_rec", ("user_id", "cipcode", "matching_keywords"),
+            [{"user_id": user_id, "cipcode": item["cipcode"],
+              "matching_keywords": item["matching_keywords"]}
+             for item in recommendations],
         )
-
     return recommendations
 
 def create_recommendations(user_id):
@@ -1464,7 +1465,7 @@ def create_recommendations(user_id):
             user_id,
         )
 
-def get_recommendations(user_id):
+def get_recommendations(user_id, *, connection=None):
     query = text("""
         SELECT DISTINCT
             mr.cipcode,
@@ -1487,7 +1488,8 @@ def get_recommendations(user_id):
         ORDER BY mr.matching_keywords DESC, mr.cipcode, k.keyword, k.id
     """)
 
-    with engine.connect() as connection:
+    with (nullcontext(connection) if connection is not None
+          else engine.connect()) as connection:
         rows = connection.execute(
             query,
             {
@@ -1508,7 +1510,7 @@ def get_recommendations(user_id):
         rec["evidence"].append({
             "keyword_id":row["keyword_id"],
             "keyword":row["keyword"],
-            "evidence":row["evidence"]
+            "evidence":evidence_list(row["evidence"])
         })
     
     return list(recs.values())
@@ -1556,7 +1558,15 @@ def get_guest_session(guest_id):
             {"guest_id": guest_id},
         ).mappings().one_or_none()
 
-    return dict(row) if row is not None else None
+    if row is None:
+        return None
+    guest = dict(row)
+    for item in guest['state'].get('keywords', []):
+        item['evidence'] = evidence_list(item.get('evidence'))
+    for recommendation in guest['state'].get('recommendations', []):
+        for item in recommendation.get('evidence', []):
+            item['evidence'] = evidence_list(item.get('evidence'))
+    return guest
 
 
 def save_guest_session(guest_id, state, expected_version):
@@ -1713,6 +1723,27 @@ def get_program_favorites(user_id):
     return [dict(row) for row in rows]
 
 
+def get_chat_major_matches(query):
+    """All catalog matches for a chat subject, without autocomplete's 20-row cap."""
+    term = query.strip().rstrip('.').casefold()
+    math_family = term in ('math', 'maths', 'mathematics')
+    if math_family:
+        term = 'math'
+    elif term == 'biology':
+        term = 'biolog'
+    escaped = term.replace('!', '!!').replace('%', '!%').replace('_', '!_')
+    condition = "LOWER(cipdesc) LIKE :query ESCAPE '!'"
+    if math_family:
+        # The catalog's 27xx family includes statistics; also keep named
+        # interdisciplinary mathematics majors outside that family.
+        condition += ' OR cipcode BETWEEN 2700 AND 2799'
+    statement = text('SELECT cipcode, cipdesc AS name FROM public.majors WHERE '
+                     + condition + ' ORDER BY cipdesc, cipcode')
+    with engine.connect() as connection:
+        rows = connection.execute(statement, {'query': '%' + escaped + '%'}).mappings().all()
+    return [dict(row) for row in rows]
+
+
 def get_major_name_suggestions(query):
     # Treat LIKE wildcards in user input as literal characters.
     escaped = query.replace("!", "!!").replace("%", "!%").replace("_", "!_")
@@ -1727,9 +1758,33 @@ def get_major_name_suggestions(query):
     return [dict(row) for row in rows]
 
 
+def get_major_search_selection(user_id, *, saved=False, recs=False, majors=None):
+    """Combine explicit CIP codes with the requested account collections."""
+    if type(saved) is not bool or type(recs) is not bool:
+        raise ValueError('Invalid major filters.')
+    if majors is not None and (not isinstance(majors, (list, tuple)) or
+            len(majors) > 200 or any(type(code) is not int or not 1 <= code <= 2147483647 for code in majors)):
+        raise ValueError('Invalid selected major codes.')
+    codes = set(majors or [])
+    if saved or recs:
+        if type(user_id) is not int or user_id <= 0:
+            raise ValueError('Sign in to use your saved or recommended majors.')
+        with engine.connect() as connection:
+            rows = connection.execute(text("""
+                SELECT cipcode FROM public.major_fav
+                WHERE user_id = :user_id AND :saved
+                UNION
+                SELECT cipcode FROM public.major_rec
+                WHERE user_id = :user_id AND :recs
+            """), {'user_id': user_id, 'saved': saved, 'recs': recs}).scalars().all()
+        codes.update(rows)
+    # None means unrestricted; [] means a selected collection is empty.
+    return sorted(codes) if codes or saved or recs else None
+
+
 def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
                            earnings_min=None, favorites_only=False,
-                           has_programs=False, user_id=None):
+                           has_programs=False, user_id=None, majors=None):
     """Page through majors, independently of the program catalog."""
     if type(page) is not int or not 1 <= page <= 100000:
         raise ValueError('Invalid page.')
@@ -1745,6 +1800,8 @@ def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
         raise ValueError('Invalid user.')
     if favorites_only and user_id is None:
         raise ValueError('Sign in to filter your favorites.')
+    if majors is not None and (not isinstance(majors, (list, tuple)) or any(type(code) is not int or not 1 <= code <= 2147483647 for code in majors)):
+        raise ValueError('Invalid selected major codes.')
     sorts = {
         'name_asc': 'm.cipdesc ASC, m.cipcode ASC',
         'name_desc': 'm.cipdesc DESC, m.cipcode ASC',
@@ -1756,6 +1813,12 @@ def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
         raise ValueError('Invalid major sort.')
     params = {'user_id': user_id, 'limit': page_count + 1, 'offset': (page - 1) * page_count}
     conditions = []
+    if majors is not None:
+        if majors:
+            conditions.append('m.cipcode IN :selected_majors')
+            params['selected_majors'] = sorted(set(majors))
+        else:
+            conditions.append('FALSE')
     if query.strip():
         escaped = query.strip().replace('!', '!!').replace('%', '!%').replace('_', '!_')
         conditions.append("LOWER(m.cipdesc) LIKE LOWER(:query) ESCAPE '!'")
@@ -1785,78 +1848,279 @@ def get_major_catalog_page(page=1, page_count=25, *, query='', sort='name_asc',
         ORDER BY {sorts[sort]}
         LIMIT :limit OFFSET :offset
     """)
+    if majors:
+        statement = statement.bindparams(bindparam('selected_majors', expanding=True))
     with engine.connect() as connection:
         rows = connection.execute(statement, params).mappings().all()
     return {'rows': [dict(row) for row in rows[:page_count]], 'page': page, 'has_next': len(rows) > page_count}
 
-#Save/Delete earch filters
-def save_major_search(user_id,majors=[],earnings=None,only_saved=False,only_recs=False):
-    query=text("""
-                INSERT INTO public.major_search(user_id,majors,earnings,only_saved,only_recs)
-                VALUES (:user_id,:majors,:earnings,:only_saved,:only_recs)
-                ON CONFLICT(user_id,majors,earnings,only_saved,only_recs) DO NOTHING
-                """)
-    params={"user_id":user_id,"majors":majors,"earnings":earnings,"only_saved":only_saved,"only_recs":only_recs}
+#Normalize Search Lists
+def _normalize_search_list(values, *, uppercase=False):
+    if values is None:
+        return []
+
+    if not isinstance(values, (list, tuple)):
+        raise ValueError("Search selections must be a list.")
+
+    cleaned = []
+
+    for value in values:
+        if not isinstance(value, str):
+            raise ValueError("Search selections must contain strings.")
+
+        value = value.strip()
+
+        if not value:
+            continue
+
+        if uppercase:
+            value = value.upper()
+
+        cleaned.append(value)
+
+    return sorted(set(cleaned))
+
+def get_search_major_labels(codes):
+    """Resolve stored CIP strings in one query for display."""
+    ids = sorted({int(code) for code in codes})
+    if not ids:
+        return {}
+    if any(not 1 <= code <= 2147483647 for code in ids):
+        raise ValueError('Invalid major code.')
+    statement = text('SELECT cipcode, cipdesc FROM public.majors WHERE cipcode IN :codes').bindparams(bindparam('codes', expanding=True))
+    with engine.connect() as connection:
+        rows = connection.execute(statement, {'codes': ids}).mappings().all()
+    return {str(row['cipcode']): row['cipdesc'] for row in rows}
+
+
+def resolve_search_major_codes(values):
+    """Store CIP codes as strings in the schema's TEXT[] major selection."""
+    values = _normalize_search_list(values)
+    if len(values) > 200 or any(len(value) > 200 for value in values):
+        raise ValueError('Select at most 200 majors; names must be at most 200 characters.')
+    if not values:
+        return []
+    codes, names = [], []
+    for value in values:
+        if value.isascii() and value.isdecimal():
+            code = int(value)
+            if not 1 <= code <= 2147483647:
+                raise ValueError('Invalid major code.')
+            codes.append(code)
+        else:
+            names.append(value.lower())
+    # Empty untyped expanding lists can compile to INTEGER on PostgreSQL,
+    # which cannot be compared with LOWER(cipdesc). Omit unused predicates.
+    conditions = []
+    params = {}
+    if codes:
+        conditions.append('cipcode IN :codes')
+        params['codes'] = codes
+    if names:
+        conditions.append('LOWER(cipdesc) IN :names')
+        params['names'] = names
+    statement = text(
+        'SELECT cipcode, LOWER(cipdesc) AS name FROM public.majors WHERE '
+        + ' OR '.join(conditions)
+    ).bindparams(*(bindparam(key, expanding=True) for key in params))
+    with engine.connect() as connection:
+        rows = connection.execute(statement, params).mappings().all()
+    if not set(codes) <= {row['cipcode'] for row in rows} or not set(names) <= {row['name'] for row in rows}:
+        raise ValueError('A selected major was not found. Choose a major from the suggestions.')
+    return [str(code) for code in sorted({row['cipcode'] for row in rows})]
+
+
+# Save and retrieve account-owned searches
+def save_major_search(
+    user_id,
+    majors=None,
+    earnings_min=None,
+    saved=False,
+    recs=False,
+    search_text="",
+    sort_order="name_asc",
+):
+    if search_text is None:
+        search_text = ""
+    if not isinstance(search_text, str) or len(search_text) > 200:
+        raise ValueError("Search text must contain at most 200 characters.")
+    search_text = search_text.strip()
+    if not isinstance(sort_order, str) or sort_order not in ('name_asc', 'name_desc', 'earnings_desc', 'earnings_asc', 'programs_desc'):
+        raise ValueError("Invalid saved-search sort order.")
+
+    majors = resolve_search_major_codes(majors)
+
+    if type(user_id) is not int or user_id <= 0:
+        raise ValueError("Invalid user ID.")
+
+    if earnings_min is not None and (
+        type(earnings_min) is not int
+        or not 0 <= earnings_min <= 2147483647
+    ):
+        raise ValueError("Minimum earnings_min must be a nonnegative integer.")
+
+    if type(saved) is not bool or type(recs) is not bool:
+        raise ValueError("Saved and recommended filters must be booleans.")
+
+    selected = get_major_search_selection(user_id, saved=saved, recs=recs,
+                                          majors=[int(code) for code in majors])
+    majors = [str(code) for code in (selected or [])]
+
+    query = text("""
+        INSERT INTO public.major_search (
+            user_id, majors, earnings_min, saved, recs, search_text, sort_order, created_at
+        )
+        VALUES (
+            :user_id, :majors, :earnings_min, :saved, :recs, :search_text, :sort_order, CURRENT_TIMESTAMP
+        )
+        ON CONFLICT ON CONSTRAINT uq_maj_search DO NOTHING
+        RETURNING id
+    """)
+
+    params = {
+        "user_id": user_id,
+        "majors": majors,
+        "earnings_min": earnings_min,
+        "saved": saved,
+        "recs": recs,
+        "search_text": search_text,
+        "sort_order": sort_order,
+    }
 
     with engine.begin() as connection:
-        connection.execute(query,params)
+        search_id = connection.execute(query, params).scalar_one_or_none()
 
-def save_program_search(user_id, majors=[], colleges=[], states=[],degree_lev=None,
-                        max_net_cost=None,max_tuit_in=None,max_tuit_out=None,
-                        min_acc=None,max_acc=None,
+    return {
+        "created": search_id is not None,
+        "id": search_id,
+    }
+
+def save_program_search(user_id, majors=None, colleges=None, states=None,degrees=None,
+                        net_price_max=None,tuition_in_max=None,tuition_out_max=None,
+                        acceptance_min=None,acceptance_max=None,
                         satmt=None,satvr=None,satwr=None,
-                        actmt=None,acten=None,actwr=None):
+                        actmt=None,acten=None,actwr=None,
+                        search_text="", sort_order="school_asc", school_size=None):
+
+    validate_program_filters({"school_size": school_size})
+
+    if search_text is None:
+        search_text = ""
+    if not isinstance(search_text, str) or len(search_text) > 200:
+        raise ValueError("Search text must contain at most 200 characters.")
+    search_text = search_text.strip()
+    if not isinstance(sort_order, str) or sort_order not in ('school_asc', 'school_desc', 'earnings_desc', 'net_price_asc', 'tuition_in_asc', 'tuition_out_asc'):
+        raise ValueError("Invalid saved-search sort order.")
+
+    majors = resolve_search_major_codes(majors)
+    colleges = _normalize_search_list(colleges)
+    states = _normalize_search_list(states, uppercase=True)
+    if len(colleges) > 200 or any(len(value) > 200 for value in colleges):
+        raise ValueError('Invalid college selections.')
+    if len(states) > 100 or any(not re.fullmatch(r'[A-Z]{2,3}', value) for value in states):
+        raise ValueError('Use state abbreviations.')
+
+    if type(user_id) is not int or user_id <= 0:
+        raise ValueError("Invalid user ID.")
+
+    if degrees is not None:
+        if not isinstance(degrees, str):
+            raise ValueError("Degree level must be text.")
+
+        selected_degrees = {
+            value.strip()
+            for value in degrees.split(",")
+            if value.strip()
+        }
+
+        if not selected_degrees <= {"2", "3"}:
+            raise ValueError("Invalid degree level.")
+
+        degrees = ",".join(sorted(selected_degrees)) or None
+
+    limits = {
+        "net_price_max": (net_price_max, 0, 2147483647),
+        "tuition_in_max": (tuition_in_max, 0, 2147483647),
+        "tuition_out_max": (tuition_out_max, 0, 2147483647),
+        "acceptance_min": (acceptance_min, 0, 100),
+        "acceptance_max": (acceptance_max, 0, 100),
+        "satmt": (satmt, 200, 800),
+        "satvr": (satvr, 200, 800),
+        "satwr": (satwr, 200, 800),
+        "actmt": (actmt, 1, 36),
+        "acten": (acten, 1, 36),
+        "actwr": (actwr, 2, 12),
+    }
+
+    for name, (value, minimum, maximum) in limits.items():
+        if value is not None and (
+            type(value) is not int
+            or not minimum <= value <= maximum
+        ):
+            raise ValueError(
+                f"{name} must be a whole number between "
+                f"{minimum} and {maximum}."
+            )
+
+    if (
+        acceptance_min is not None
+        and acceptance_max is not None
+        and acceptance_min > acceptance_max
+    ):
+        raise ValueError(
+            "Minimum acceptance rate cannot exceed maximum."
+        )
+
+
     query=text("""
-                INSERT INTO public.program_search(user_id,majors,colleges,states,degree_lev,
-                                                    max_net_cost,max_tuit_in,max_tuit_out,min_acc,max_acc,
-                                                    satmt,satvr,satwr,actmt,acten,actwr)
-                VALUES (:user_id,:majors,:colleges,:states,:degree_lev,
-                        :max_net_cost,:max_tuit_in,:max_tuit_out,:min_acc,:max_acc,
-                        :satmt,:satvr,:satwr,:actmt,:acten,:actwr)
-                ON CONFLICT(user_id,majors,colleges,states,degree_lev,max_net_cost,
-                            max_tuit_in,max_tuit_out,min_acc,max_acc,
-                            satmt,satvr,satwr,actmt,acten,actwr) DO NOTHING
+                INSERT INTO public.program_search(user_id,majors,colleges,states,degrees,
+                                                    net_price_max,tuition_in_max,tuition_out_max,acceptance_min,acceptance_max,
+                                                    satmt,satvr,satwr,actmt,acten,actwr,search_text,sort_order,school_size,created_at)
+                VALUES (:user_id,:majors,:colleges,:states,:degrees,
+                        :net_price_max,:tuition_in_max,:tuition_out_max,:acceptance_min,:acceptance_max,
+                        :satmt,:satvr,:satwr,:actmt,:acten,:actwr,:search_text,:sort_order,:school_size,CURRENT_TIMESTAMP)
+                ON CONFLICT ON CONSTRAINT uq_prog_search DO NOTHING
+                RETURNING id
                 """)
-    params={"user_id":user_id,"majors":majors,"colleges":colleges,"states":states,"max_net_cost":max_net_cost,
-            "max_tuit_in":max_tuit_in,"max_tuit_out":max_tuit_out,"min_acc":min_acc,"max_acc":max_acc,
-            "satmt":satmt,"satvr":satvr,"satwr":satwr,"actmt":actmt,"acten":acten,"actwr":actwr}
+    params={"user_id":user_id,"majors":majors,"colleges":colleges,"states":states,"degrees":degrees,
+            "net_price_max":net_price_max,"tuition_in_max":tuition_in_max,"tuition_out_max":tuition_out_max,"acceptance_min":acceptance_min,"acceptance_max":acceptance_max,
+            "satmt":satmt,"satvr":satvr,"satwr":satwr,"actmt":actmt,"acten":acten,"actwr":actwr,"search_text":search_text,"sort_order":sort_order,"school_size":school_size}
 
     with engine.begin() as connection:
-        connection.execute(query,params)
+        search_id = connection.execute(query, params).scalar_one_or_none()
 
-def remove_major_search(user_id,majors=[],earnings=None,only_saved=False,only_recs=False):
+    return {
+        "created": search_id is not None,
+        "id": search_id,
+    }
+
+def remove_major_search(search_id, user_id):
     query=text("""
                 DELETE FROM public.major_search
-                WHERE user_id=:user_id,majors=:majors,earnings=:earnings,only_saved=:only_saved,only_recs=:only_recs
+                WHERE id=:search_id AND user_id=:user_id
                 """)
-    params={"user_id":user_id,"majors":majors,"earnings":earnings,"only_saved":only_saved,"only_recs":only_recs}
+    params={"search_id":search_id,"user_id":user_id}
 
     with engine.begin() as connection:
-        connection.execute(query,params)
-
-def remove_program_search(user_id, majors=[], colleges=[], states=[],degree_lev=None,
-                        max_net_cost=None,max_tuit_in=None,max_tuit_out=None,
-                        min_acc=None,max_acc=None,
-                        satmt=None,satvr=None,satwr=None,
-                        actmt=None,acten=None,actwr=None):
+        result=connection.execute(query,params)
+    return result.rowcount>0
+def remove_program_search(search_id, user_id):
     query=text("""
                 DELETE FROM public.program_search
-                WHERE user_id=:user_id,majors=:majors,colleges=:colleges,states=:states,degree_lev=:degree_lev,
-                        max_net_cost=:max_net_cost,max_tuit_in=:max_tuit_in,max_tuit_out=:max_tuit_out,min_acc=:min_acc,max_acc=:max_acc,
-                        satmt=:satmt,satvr=:satvr,satwr=:satwr,actmt=:actmt,acten=:acten,actwr=:actwr
+                WHERE id=:search_id AND user_id=:user_id
                 """)
-    params={"user_id":user_id,"majors":majors,"colleges":colleges,"states":states,"max_net_cost":max_net_cost,
-            "max_tuit_in":max_tuit_in,"max_tuit_out":max_tuit_out,"min_acc":min_acc,"max_acc":max_acc,
-            "satmt":satmt,"satvr":satvr,"satwr":satwr,"actmt":actmt,"acten":acten,"actwr":actwr}
+    params={"search_id":search_id,"user_id":user_id}
 
     with engine.begin() as connection:
-        connection.execute(query,params)
+        result=connection.execute(query,params)
+    return result.rowcount>0
 
 def get_all_major_search_filters(user_id):
         query=text("""
-                SELECT id,majors,earnings,only_saved,only_recs
+                SELECT id,majors,earnings_min,saved,recs,search_text,sort_order,created_at
                 FROM public.major_search
                 WHERE user_id=:user_id
+                ORDER BY created_at DESC NULLS LAST, id DESC
                 """)
         params={"user_id":user_id}
         with engine.connect() as connection:
@@ -1866,11 +2130,12 @@ def get_all_major_search_filters(user_id):
 
 def get_all_program_search_filters(user_id):
         query=text("""
-                SELECT id,majors,colleges,states,degree_lev,
-                        max_net_cost,max_tuit_in,max_tuit_out,min_acc,max_acc,
-                        satmt,satvr,satwr,actmt,acten,actwr
+                SELECT id,majors,colleges,states,degrees,
+                        net_price_max,tuition_in_max,tuition_out_max,acceptance_min,acceptance_max,
+                        satmt,satvr,satwr,actmt,acten,actwr,search_text,sort_order,school_size,created_at
                 FROM public.program_search
                 WHERE user_id=:user_id
+                ORDER BY created_at DESC NULLS LAST, id DESC
                 """)
         params={"user_id":user_id}
         with engine.connect() as connection:
@@ -1878,28 +2143,76 @@ def get_all_program_search_filters(user_id):
 
         return [dict(row) for row in rows]
 
-def get_all_major_search_filters(id):
+def get_major_search_filters(id,user_id):
         query=text("""
-                SELECT id,majors,earnings,only_saved,only_recs
+                SELECT id,majors,earnings_min,saved,recs,search_text,sort_order,created_at
                 FROM public.major_search
-                WHERE id=:id
+                WHERE id=:id AND user_id=:user_id
                 """)
-        params={"id":id}
+        params={"id":id,"user_id":user_id}
         with engine.connect() as connection:
             row=connection.execute(query,params).mappings().one_or_none()
 
-        return dict(row)
+        return dict(row) if row is not None else None
 
-def get_program_search_filters(id):
+def get_program_search_filters(id,user_id):
         query=text("""
-                SELECT id,majors,colleges,states,degree_lev,
-                        max_net_cost,max_tuit_in,max_tuit_out,min_acc,max_acc,
-                        satmt,satvr,satwr,actmt,acten,actwr
+                SELECT id,majors,colleges,states,degrees,
+                        net_price_max,tuition_in_max,tuition_out_max,acceptance_min,acceptance_max,
+                        satmt,satvr,satwr,actmt,acten,actwr,search_text,sort_order,school_size,created_at
                 FROM public.program_search
-                WHERE id=:id
+                WHERE id=:id AND user_id=:user_id
                 """)
-        params={"id":id}
+        params={"id":id,"user_id":user_id}
         with engine.connect() as connection:
             row=connection.execute(query,params).mappings().one_or_none()
 
-        return dict(row)
+        return dict(row) if row is not None else None
+
+def merge_guest_into_user(user_id, guest_id):
+    """Consume an unexpired guest session exactly once, after verified login.
+
+    Deletion and all imported data commit together. Missing/expired sessions
+    are harmless on login retries. No favorites or saved searches are modified.
+    """
+    if type(user_id) is not int or user_id <= 0 or not isinstance(guest_id, str) or not guest_id:
+        raise ValueError("Invalid account or guest session.")
+    with engine.begin() as connection:
+        user = connection.execute(text("SELECT id FROM public.users WHERE id=:user_id FOR UPDATE"),
+                                  {"user_id":user_id}).scalar_one_or_none()
+        if user is None:
+            raise ValueError("User does not exist.")
+        guest = connection.execute(text("""
+            SELECT state FROM public.guest_sessions
+            WHERE guest_id=:guest_id AND expires_at > CURRENT_TIMESTAMP
+            FOR UPDATE
+        """), {"guest_id":guest_id}).mappings().one_or_none()
+        if guest is None:
+            return False
+        state = guest['state']
+        rows = connection.execute(text("SELECT keyword_id, evidence FROM public.user_keywords WHERE user_id=:user_id"),
+                                  {"user_id":user_id}).mappings().all()
+        combined = {row['keyword_id']: evidence_list(row['evidence']) for row in rows}
+        additions = {}
+        for item in state.get('keywords', []):
+            keyword_id = item['keyword_id']
+            if type(keyword_id) is not int or keyword_id <= 0:
+                raise ValueError("Invalid guest keyword.")
+            combined[keyword_id] = merge_evidence(combined.get(keyword_id), item.get('evidence'))
+            additions[keyword_id] = {'user_id':user_id,'keyword_id':keyword_id,'evidence':combined[keyword_id]}
+        _insert_chat_rows(connection, 'user_keywords', ('user_id','keyword_id','evidence'), list(additions.values()),
+                          suffix=' ON CONFLICT (user_id, keyword_id) DO UPDATE SET evidence=EXCLUDED.evidence')
+        messages = []
+        for message in state.get('messages', []):
+            if message.get('role') not in ('user','assistant') or not isinstance(message.get('content'), str):
+                raise ValueError("Invalid guest message.")
+            metadata = message.get('metadata') or {}
+            if not isinstance(metadata, dict):
+                raise ValueError("Invalid guest message metadata.")
+            messages.append({'user_id':user_id,'sender':message['role'],'content':message['content'],
+                             'metadata':json.dumps(metadata)})
+        _insert_chat_rows(connection, 'chatlog', ('user_id','content','sender','metadata'), messages)
+        _refresh_user_recommendations(connection, user_id,
+            saved_keywords=[{'keyword_id':key,'evidence':value} for key,value in combined.items()])
+        connection.execute(text("DELETE FROM public.guest_sessions WHERE guest_id=:guest_id"), {'guest_id':guest_id})
+    return True

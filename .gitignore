@@ -5,7 +5,16 @@ __pycache__/
 instance/
 
 # Generated database import files
-/data/
-/tables/
+/database/data/
+/database/tables/
 /testoutput
+
+#Deployment Files
+deploy.sh
+cloudrun.env.yaml
+Procfile
+
 cloud_admin_connection.py
+/tables
+/database/seed_data/seed_manifest.json
+.gcloudignore

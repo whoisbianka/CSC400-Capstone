@@ -3,15 +3,20 @@ from sqlalchemy import create_engine, text
 import numpy as np
 import os
 from dotenv import load_dotenv
-from cloud_admin_connection import connect_with_connector, close_connector
 import sqlparse
+
+DATABASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(DATABASE_DIR)
+
+DATA_DIR = os.path.join(DATABASE_DIR, "data")
+TABLES_DIR = os.path.join(DATABASE_DIR, "tables")
+SEED_DIR = os.path.join(DATABASE_DIR, "seed_data")
 
 def main():
     load_dotenv()
-    engine=connect_with_connector()
 
     #--FORMAT PANDAS DATAFRAMES AND CSV FILES--
-    p_df=pd.read_csv("./data/Most-Recent-Cohorts-Field-of-Study.csv")
+    p_df=pd.read_csv(os.path.join(DATA_DIR,"Most-Recent-Cohorts-Field-of-Study.csv"))
     p_df=p_df[['UNITID','OPEID6','INSTNM','CIPCODE','CIPDESC','CREDLEV','EARN_COUNT_WNE_4YR_NAT','EARN_MDN_4YR_NAT']].copy()
     p_df=p_df[(((p_df['CREDLEV']==3) | (p_df['CREDLEV']==2)))]
     p_df['EARN_COUNT_WNE_4YR_NAT']=p_df['EARN_COUNT_WNE_4YR_NAT'].replace('PS',np.nan)
@@ -20,7 +25,7 @@ def main():
     p_df.dropna(subset=['EARN_COUNT_WNE_4YR_NAT'],inplace=True)
 
 
-    institution_df=pd.read_csv("./data/Most-Recent-Cohorts-Institution.csv", low_memory=False)
+    institution_df=pd.read_csv(os.path.join(DATA_DIR,"Most-Recent-Cohorts-Institution.csv"), low_memory=False)
 
     #Combine NPT_PUB and NPT_PRIV columns to just NPT Column
     npt_data=pd.DataFrame({
@@ -48,12 +53,12 @@ def main():
     p_df=p_df[p_df['UNITID'].isin(i_df['UNITID'])]
 
 
-    p_df.to_csv("./data/FieldOfStudy.csv",index=False)
-    i_df.to_csv("./data/Institution.csv", index=False)
+    p_df.to_csv(os.path.join(DATA_DIR,"FieldOfStudy.csv"),index=False)
+    i_df.to_csv(os.path.join(DATA_DIR,"Institution.csv"), index=False)
     #-----
 
-    prog_df=pd.read_csv("./data/FieldOfStudy.csv")
-    institution_df=pd.read_csv("./data/Institution.csv", low_memory=False)
+    prog_df=pd.read_csv(os.path.join(DATA_DIR,"FieldOfStudy.csv"))
+    institution_df=pd.read_csv(os.path.join(DATA_DIR,"Institution.csv"), low_memory=False)
     prog_df['program_id']=prog_df.index+1
 
     prog_df=prog_df.merge(institution_df[['UNITID','UG12MN']], on='UNITID', how='left')
@@ -86,62 +91,27 @@ def main():
     }
 
     majors1_df=pd.DataFrame(majors1)
-    major_info_df=pd.read_csv("./tables/base_major_info.csv", low_memory=False)
+    major_info_df=pd.read_csv(os.path.join(DATA_DIR,"base_major_info.csv"), low_memory=False)
     major_info_df=major_info_df.merge(majors1_df[['cipcode','mdn_earnings']], on='cipcode', how='left')
 
     #Add keywords tables
-    kwd_df=pd.read_csv("./tables/kwd_list.csv",low_memory=False)
-    major_kwds_df=pd.read_csv("./tables/major_keywords.csv",low_memory=False)
+    kwd_df=pd.read_csv(os.path.join(DATA_DIR,"kwd_list.csv"),low_memory=False)
+    major_kwds_df=pd.read_csv(os.path.join(DATA_DIR,"major_keywords.csv"),low_memory=False)
 
     #Add Careers Tables
-    careers_df=pd.read_csv("./tables/majors_careers.csv",low_memory=False)
+    careers_df=pd.read_csv(os.path.join(DATA_DIR,"majors_careers.csv"),low_memory=False)
     careers_df=careers_df[["cipcode","career","source"]]
 
-    schools_df.to_csv("./tables/schools.csv", index=False)
-    program_rank_crit.to_csv("./tables/program_rank_crit.csv", index=False)
-    majors_df.to_csv("./tables/majors.csv", index=False)
-    programs_df.to_csv("./tables/programs.csv", index=False)
-    cost_info_df.to_csv("./tables/cost_info.csv", index=False)
-    adm_crit_df.to_csv("./tables/adm_crit.csv", index=False)
-    major_info_df.to_csv("./tables/major_info.csv",index=False)
-    careers_df.to_csv("./tables/careers.csv")
-
-    with engine.begin() as connection:
-        with open("./schemas/all_schema.sql", "r") as f:
-            schema=f.read()
-            for statement in sqlparse.split(schema):
-                if statement.strip():
-                    connection.execute(text(statement))
-
-
-    #If running this, reset database by running schema first
-    upload=[
-        ("schools", schools_df),
-        ("majors", majors_df),
-        ("programs", programs_df),
-        ("adm_crit",adm_crit_df),
-        ("cost_info",cost_info_df),
-        ("program_rank_crit",program_rank_crit),
-        ("major_info",major_info_df),
-        ("keywords",kwd_df),
-        ("major_keywords",major_kwds_df),
-        ("careers",careers_df)
-    ]
-
-    for table_name, df in upload:
-        df.to_sql(
-            name=table_name,
-            schema="public",
-            con=engine,
-            if_exists="append",
-            index=False,
-            chunksize=1000,
-            method="multi"
-        )
-
-    engine.dispose()
-    close_connector()
-
+    schools_df.to_csv(os.path.join(SEED_DIR,"schools.csv"), index=False)
+    program_rank_crit.to_csv(os.path.join(SEED_DIR,"program_rank_crit.csv"), index=False)
+    majors_df.to_csv(os.path.join(SEED_DIR,"majors.csv"), index=False)
+    programs_df.to_csv(os.path.join(SEED_DIR,"programs.csv"), index=False)
+    cost_info_df.to_csv(os.path.join(SEED_DIR,"cost_info.csv"), index=False)
+    adm_crit_df.to_csv(os.path.join(SEED_DIR,"adm_crit.csv"), index=False)
+    major_info_df.to_csv(os.path.join(SEED_DIR,"major_info.csv"),index=False)
+    careers_df.to_csv(os.path.join(SEED_DIR,"careers.csv"), index=False)
+    kwd_df.to_csv(os.path.join(SEED_DIR,"kwd_list.csv"), index=False)
+    major_kwds_df.to_csv(os.path.join(SEED_DIR,"major_keywords.csv"), index=False)
 
 if __name__ == "__main__":
     main()

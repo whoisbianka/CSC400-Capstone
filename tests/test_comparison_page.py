@@ -16,7 +16,7 @@ class ComparisonPageTests(unittest.TestCase):
         functions = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'compare']
         exec(compile(ast.Module(body=functions, type_ignores=[]), 'routes.py', 'exec'),
              dict(web=web, render_template=render_template, request=request))
-        for endpoint in ('home','explore','profile','settings','saved_majors_page','compare_api'):
+        for endpoint in ('chat', 'home','explore','profile','settings','saved_majors_page','compare_api'):
             web.add_url_rule('/' + endpoint, endpoint, lambda: '')
         self.app.register_blueprint(web)
         self.client = self.app.test_client()

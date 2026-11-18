@@ -61,7 +61,7 @@ class ExplorePageTests(unittest.TestCase):
                   url_for=url_for, secrets=secrets, db_functions=database,
                   program_page=self.page, explore_major_catalog=Mock(return_value='major catalog'))
         load_functions(ROOT / 'degree_path/routes.py', {'explore', 'explore_major_catalog', 'positive_arg'}, ns)
-        for endpoint in ('home', 'profile', 'settings', 'saved_majors_page', 'favorites', 'major_names_api'):
+        for endpoint in ('major_details', 'chat', 'home', 'profile', 'settings', 'saved_majors_page', 'favorites', 'major_names_api'):
             web.add_url_rule('/' + endpoint, endpoint, lambda: '')
         web.add_url_rule('/programs/<int:program_id>', 'program_details', lambda program_id: '')
         self.app.register_blueprint(web)
@@ -89,8 +89,9 @@ class ExplorePageTests(unittest.TestCase):
         self.assertEqual(self.client.get('/explore?q=' + 'x' * 201).status_code, 400)
         self.assertEqual(self.client.get('/explore?acceptance_min=80&acceptance_max=20').status_code, 400)
         html = self.client.get('/explore?view=majors').get_data(as_text=True)
-        self.assertIn('Find your field of study', html)
-        self.assertIn('Find colleges for this major', html)
+        self.assertNotIn('Find your field of study', html)
+        self.assertIn('program-card major-explore-card', html)
+        self.assertIn('Explore colleges that offer this major', html)
         self.page.assert_not_called()
 
     def test_program_cards_open_real_details_in_new_tab_and_keep_favorites_separate(self):
@@ -108,7 +109,7 @@ class ExplorePageTests(unittest.TestCase):
     def test_major_handoff_and_removable_major_chip_preserve_search_context(self):
         html = self.client.get('/explore?view=majors&q=Computer').get_data(as_text=True)
         links = Links(html).links
-        handoff = next(link for link in links if parse_qs(urlsplit(link).query).get('cipcode') == ['1107'])
+        handoff = next(link for link in links if urlsplit(link).path == '/explore' and parse_qs(urlsplit(link).query).get('cipcode') == ['1107'])
         response = self.client.get(handoff + '&state=CT&sort=net_price_asc')
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
@@ -158,6 +159,15 @@ class ExploreSearchTests(unittest.TestCase):
         self.assertEqual(self.search('UConn', state='MA'), [])
         self.assertEqual(self.search('UConn')[0]['enrollment'], 1000)
         self.assertIsNone(self.search('%_')[0]['enrollment'])
+
+    def test_school_size_boundaries_and_missing_enrollment(self):
+        for enrollment, expected in [(0,'small'),(2999,'small'),(3000,'medium'),(14999,'medium'),(15000,'large'),(None,None),(-1,None)]:
+            with self.engine.begin() as c:
+                c.execute(text('UPDATE schools SET ug12mn=:n WHERE unitid=1'), {'n':enrollment})
+            for size in ('small','medium','large'):
+                rows=self.search('', school_size=size)
+                self.assertEqual(len(rows), 2 if size == expected else 0, (enrollment,size))
+        with self.assertRaises(ValueError): self.search('',school_size='invalid')
 
     def test_wildcards_and_sql_like_input_are_literal(self):
         self.assertEqual([p['id'] for p in self.search('%_')], [3])

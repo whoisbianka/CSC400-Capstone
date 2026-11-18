@@ -7,6 +7,8 @@ DROP TABLE IF EXISTS public.chatlog CASCADE;
 DROP TABLE IF EXISTS public.user_keywords CASCADE;
 DROP TABLE IF EXISTS public.user_info CASCADE;
 DROP TABLE IF EXISTS public.guest_sessions CASCADE;
+DROP TABLE IF EXISTS public.program_search CASCADE;
+DROP TABLE IF EXISTS public.major_search CASCADE;
 
 CREATE TABLE public.users(
     id SERIAL PRIMARY KEY,
@@ -17,32 +19,58 @@ CREATE TABLE public.users(
 CREATE TABLE public.program_search(
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
+    sort_order TEXT NOT NULL,
+    search_text TEXT,
     majors TEXT[],
     colleges TEXT[],
     states TEXT[],
-    degree_lev TEXT,
-    max_net_cost INT,
-    max_tuit_in INT,
-    max_tuit_out INT,
-    min_acc DECIMAL(6,4),
-    max_acc DECIMAL(6,4),
+    degrees TEXT,
+    net_price_max INT,
+    tuition_in_max INT,
+    tuition_out_max INT,
+    acceptance_min DECIMAL(7,4)
+        CHECK (acceptance_min BETWEEN 0 AND 100),
+    acceptance_max DECIMAL(7,4)
+        CHECK (acceptance_max BETWEEN 0 AND 100),
     satmt INT,
     satvr INT,
     satwr INT,
     actmt INT,
     acten INT,
     actwr INT,
-    CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    school_size TEXT CHECK (school_size IN ('small', 'medium', 'large')),
+    created_at TIMESTAMPTZ,
+    CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT uq_prog_search UNIQUE NULLS NOT DISTINCT (
+        user_id, majors, colleges, states, degrees,
+        net_price_max, tuition_in_max, tuition_out_max,
+        acceptance_min, acceptance_max,
+        satmt, satvr, satwr, actmt, acten, actwr,
+        search_text, sort_order, school_size
+    ),
+    CONSTRAINT ck_search_acceptance_range
+        CHECK (
+            acceptance_min IS NULL
+            OR acceptance_max IS NULL
+            OR acceptance_min <= acceptance_max
+        )
 );
 
 CREATE TABLE public.major_search(
-    id SERIAL NOT NULL,
+    id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
+    sort_order TEXT NOT NULL,
+    search_text TEXT,
     majors TEXT[],
-    earnings INT,
-    only_saved BOOLEAN,
-    only_recs BOOLEAN,
-    CONSTRAINT fk_maj_search_uid FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    earnings_min INT,
+    saved BOOLEAN,
+    recs BOOLEAN,
+    created_at TIMESTAMPTZ,
+    CONSTRAINT fk_maj_search_uid FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT uq_maj_search UNIQUE NULLS NOT DISTINCT (
+        user_id, majors, earnings_min, saved, recs,
+        search_text, sort_order
+    )
 );
 
 CREATE TABLE public.major_rec(
@@ -69,6 +97,7 @@ CREATE TABLE public.chatlog(
 	user_id INT NOT NULL,
     content TEXT NOT NULL,
     sender TEXT NOT NULL CHECK(sender IN('user','assistant')),
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES public.users(id) ON DELETE CASCADE
 );
@@ -95,7 +124,7 @@ CREATE TABLE public.user_keywords(
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
     keyword_id INT NOT NULL,
-    evidence TEXT NOT NULL,
+    evidence TEXT[] NOT NULL,
     CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
     CONSTRAINT fk_kwd_id FOREIGN KEY (keyword_id) REFERENCES public.keywords(id),
     CONSTRAINT uq_uid_kwd UNIQUE (user_id, keyword_id)

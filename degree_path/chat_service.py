@@ -97,6 +97,11 @@ def interpret_message(
         "saved_keywords": [row["keyword"] for row in saved],
         "recent_messages": history,
         "latest_message": message,
+        "latest_search": next((entry.get("metadata", {}).get("explore_search", {}).get("request")
+                               for entry in reversed(recent_messages)
+                               if entry.get("role") == "assistant" and
+                               isinstance(entry.get("metadata"), dict) and
+                               entry["metadata"].get("explore_search")), None),
     }
 
     config = types.GenerateContentConfig(
@@ -213,16 +218,18 @@ def interpret_message(
                 "Keyword evidence was not in the latest message."
             )
 
-    # Convert the Gemini response to the application's existing format.
+    # Gemini's excerpt validates the interest. Store the full user message
+    # as evidence for both account and guest persistence, never a model summary.
     return AdvisorTurn(
         reply=gemini_turn.reply,
         keyword_additions=[
             KeywordAddition(
                 keyword_id=keyword_ids[item.keyword],
-                evidence=item.evidence,
+                evidence=[message],
             )
             for item in gemini_turn.keyword_additions
         ],
         keyword_removals=removal_ids,
         major_mentions=gemini_turn.major_mentions,
+        explore_search=gemini_turn.explore_search,
     )

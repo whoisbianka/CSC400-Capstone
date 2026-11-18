@@ -1,5 +1,5 @@
 import os
-from google.cloud import secretmanager
+from secret_loader import read_secret
 from google.cloud.sql.connector import Connector, IPTypes
 import pg8000
 import sqlalchemy
@@ -8,14 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_database_password():
-    secret_version = os.environ["DB_PASSWORD_SECRET_VERSION"]
+    return read_secret(os.environ["DB_PASSWORD_SECRET_VERSION"])
 
-    with secretmanager.SecretManagerServiceClient() as client:
-        response = client.access_secret_version(
-            request={"name": secret_version}
-        )
-
-    return response.payload.data.decode("utf-8")
 
 _connector=Connector(refresh_strategy="LAZY")
 

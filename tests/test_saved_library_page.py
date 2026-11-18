@@ -24,7 +24,7 @@ class SavedLibraryPageTests(unittest.TestCase):
                   request=request, url_for=url_for, abort=abort, jsonify=jsonify,
                   database_errors=lambda f:f, db_functions=self.database,
                   get_current_user=lambda: {'id':session['user_id']} if session.get('user_id') else None))
-        for endpoint in ('home', 'explore', 'profile', 'settings', 'compare'):
+        for endpoint in ('chat', 'home', 'explore', 'profile', 'settings', 'compare'):
             web.add_url_rule('/' + endpoint, endpoint, lambda: '')
         self.app.register_blueprint(web)
         self.app.context_processor(lambda: dict(csrf_token='offline', clerk_publishable_key=''))

@@ -1,13 +1,43 @@
 {% extends 'base.html' %}
-{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/program-details.css') }}">{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/program-details.css', v='major-style-1') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/major-details.css') }}">
+{% if session.get('user_id') %}
+<script src="{{ url_for('static', filename='js/chat-api.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/program-card-favorites.js', v='program-feedback-1') }}" defer></script>
+{% endif %}
+{% endblock %}
 {% block content %}
-<div class="page-workspace program-details">
+<div class="page-workspace program-details major-details program-detail-page">
 <a class="details-back" href="{{ url_for('web.explore') }}">← Explore programs</a> <!--back button-->
-<header class="details-hero">
-
-<h1 id="page-title">{{ program.major }}</h1>
-<button type="button" class="save-major-button" data-save-major="{{ program.cipcode }}" data-major-name="{{ program.major }}" aria-pressed="false">☆ Save Program</button>
-<div class="details-college"><span class="details-monogram" aria-hidden="true">{{ program.college[:1] }}</span><div><h2>{{ program.college }}</h2><p>{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p>{% if program.website %}<a class="college-website-link" href="{{ program.website }}" target="_blank" rel="noopener noreferrer">College website <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a>{% endif %}</div></div>
+<header class="details-hero major-details-hero">
+  <div class="major-title-row">
+    <div>
+      <p class="details-kicker">COLLEGE PROGRAM</p>
+      <h1 id="page-title">{{ program.major }}</h1>
+      <div class="details-college">
+        <span class="details-monogram" aria-hidden="true">{{ program.college[:1] }}</span>
+        <div><h2>{{ program.college }}</h2><p>{{ program.city or 'City unavailable' }}{% if program.state %}, {{ program.state }}{% endif %}</p></div>
+      </div>
+    </div>
+    {% if session.get('user_id') %}
+    <button type="button" class="program-favorite-button major-detail-heart"
+            data-program-favorite="{{ program.id }}" data-program-label="{{ program.major }} at {{ program.college }}"
+            aria-label="Loading favorite status for {{ program.major }} at {{ program.college }}" aria-pressed="false" disabled>♡</button>
+    {% else %}
+    <button type="button" class="program-favorite-button major-detail-heart"
+            data-save-requires-signin="program" aria-label="Favorite {{ program.major }} at {{ program.college }}" title="Favorite program">♡</button>
+    {% endif %}
+  </div>
+  {% if program.website %}
+  <a class="primary-link" href="{{ program.website }}" target="_blank" rel="noopener noreferrer">College website <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a>
+  {% else %}
+  <p class="details-description">College website unavailable.</p>
+  {% endif %}
+  {% if session.get('user_id') %}
+  <p id="program-favorites-status" role="status" aria-live="polite"></p>
+  <button id="program-favorites-retry" class="secondary-button" type="button" hidden>Retry favorites</button>
+  {% endif %}
 </header>
 
 <div class="details-overview" aria-label="Program at a glance">

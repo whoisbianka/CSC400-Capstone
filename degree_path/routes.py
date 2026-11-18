@@ -1,4 +1,6 @@
-from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
+from .evidence import evidence_list, merge_evidence
+from .chat_search import build_search_metadata, search_card
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 import re
 import secrets
 from urllib.parse import urlsplit
@@ -9,9 +11,13 @@ from copy import deepcopy
 
 import db_functions
 
-from .auth import get_current_user, establish_login
+from .auth import delete_clerk_user, get_current_user, establish_login
 from .guest_state import get_or_create_guest_session
 from .chat_service import interpret_message, InvalidAdvisorResponse
+from .chat_cache import KeywordCatalogCache
+
+
+_chat_keyword_catalog = KeywordCatalogCache(ttl_seconds=300)
 
 
 def database_errors(function):
@@ -219,21 +225,42 @@ def home():
 @web.post('/')
 @web.route('/chat', methods=['GET', 'POST'])
 def chat():
-    question = ''
-    result = None
-    if request.method == 'POST':
-        question = text_value(request.form.get('question'))
-        result = recommendations([question])
-    return render_template('chat.html', title='Pathfinder Assistant', question=question, result=result)
+    return render_template('chat.html', title='Chat')
 
 
 @web.post('/chat/reset')
 def reset_chat():
     return redirect(url_for('web.chat'), code=303)
 
+@web.get('/majors/<int:cipcode>')
+@database_errors
+def major_details(cipcode):
+    if not 1 <= cipcode <= 2147483647:
+        abort(404)
+    user = get_current_user()
+    data = db_functions.get_major_catalog_page(
+        page_count=1, majors=[cipcode], user_id=user['id'] if user else None,
+    )
+    if not data['rows']:
+        abort(404, description='Major not found.')
+    recommendations = []
+    if user:
+        recommendations = db_functions.get_recommendations(user['id'])
+    elif session.get('guest_id'):
+        guest = db_functions.get_guest_session(session['guest_id'])
+        if guest:
+            recommendations = guest['state'].get('recommendations', [])
+    evidence = next((item.get('evidence', []) for item in recommendations
+                     if int(item['cipcode']) == cipcode), [])
+    evidence = [{**item, 'evidence': evidence_list(item.get('evidence'))} for item in evidence]
+    major = data['rows'][0]
+    return render_template('major_details.html', title=major['major'],
+                           major=major, evidence=evidence)
+
+
 @web.get('/questionnaire')
 def questionnaire():
-    return render_template('guided_chat.html', title='Find my major')
+    return redirect(url_for('web.chat'), code=302)
 
 @web.get('/explore')
 def explore():
@@ -255,7 +282,7 @@ def explore():
         abort(400, description='Search must be at most 200 characters.')
     major_query = request.args.get('major_name', '').strip()
     major_filter = request.args.get('major_filter', 'name' if cipcode or major_query else 'all')
-    if major_filter not in ('all', 'name', 'favorites'):
+    if major_filter not in ('all', 'name', 'favorites', 'selected'):
         abort(400, description='Invalid major filter.')
     if len(major_query) > 200:
         abort(400, description='Major names must be at most 200 characters.')
@@ -268,7 +295,19 @@ def explore():
             abort(503, description='Unable to load favorite majors. Please retry.')
     selected_favorites = []
     major_filters = {}
-    if major_filter == 'favorites':
+    selected_major_rows = []
+    selected_major_labels = {}
+    if major_filter == 'selected':
+        try:
+            codes = db_functions.resolve_search_major_codes(request.args.getlist('majors'))
+            major_filters['cipcodes'] = [int(code) for code in codes]
+            selected_favorites = major_filters['cipcodes']
+            selected_major_rows = codes
+            selected_major_labels = db_functions.get_search_major_labels(codes)
+            cipcode = None
+        except ValueError as error:
+            abort(400, description=str(error))
+    elif major_filter == 'favorites':
         if not session.get('user_id'):
             return redirect(url_for('web.favorites'))
         try:
@@ -296,19 +335,21 @@ def explore():
         abort(400, description='Invalid degree level.')
     degrees = tuple(sorted({int(value) for value in degree_values if value}))
     filters = {}
+    school_size = request.args.get('school_size', '').strip()
+    if school_size:
+        filters['school_size'] = school_size
     if query:
         filters['q'] = query
-    school_query = request.args.get('school_name', '').strip()
-    if len(school_query) > 200:
-        abort(400, description='School names must be at most 200 characters.')
-    if school_query:
-        filters['school_name'] = school_query
-    for key in ('state', 'city'):
-        value = request.args.get(key, '').strip()
-        if value:
-            if len(value) > (3 if key == 'state' else 100):
-                abort(400, description='Invalid location filter.')
-            filters[key] = value
+    for key, max_length in (('school_name', 200), ('state', 3)):
+        values = sorted({value.strip() for value in request.args.getlist(key) if value.strip()})
+        if len(values) > 200 or any(len(value) > max_length for value in values):
+            abort(400, description='Invalid college or state filter.')
+        if key == 'state':
+            values = sorted({value.upper() for value in values})
+        if len(values) == 1:
+            filters[key] = values[0]
+        elif values:
+            filters['school_names' if key == 'school_name' else 'states'] = values
     for key in ('net_price_max', 'tuition_in_max', 'tuition_out_max',
                 'acceptance_min', 'acceptance_max'):
         value = request.args.get(key, '').strip()
@@ -320,6 +361,17 @@ def explore():
             if not 0 <= number <= (100 if key.startswith('acceptance_') else 2147483647):
                 abort(400, description='Filter value is out of range.')
             filters[key] = number
+    for key in ('satmt', 'satvr', 'satwr', 'actmt', 'acten', 'actwr'):
+        raw = request.args.get(key, '').strip()
+        if raw:
+            try:
+                filters[key] = int(raw)
+            except ValueError:
+                abort(400, description='Test scores must be whole numbers.')
+    try:
+        db_functions.validate_program_filters(filters)
+    except ValueError as error:
+        abort(400, description=str(error))
     for prefix in ('acceptance',):
         if filters.get(prefix + '_min', 0) > filters.get(prefix + '_max', 2147483647):
             abort(400, description='Minimum must not exceed maximum.')
@@ -334,6 +386,12 @@ def explore():
         major_query = major_name
     pagination = {**filters, 'view': 'programs', 'sort': sort, 'degrees': ','.join(map(str, degrees)),
                   'major_filter': major_filter}
+    if 'school_names' in pagination:
+        pagination['school_name'] = pagination.pop('school_names')
+    if 'states' in pagination:
+        pagination['state'] = pagination.pop('states')
+    if major_filter == 'selected':
+        pagination['majors'] = selected_major_rows
     if major_filter == 'name':
         pagination.update(major_name=major_query, cipcode=cipcode)
     elif major_filter == 'favorites':
@@ -349,14 +407,23 @@ def explore():
             remaining[key] = replacement
         filter_chips.append({'label': label, 'url': url_for('web.explore', **remaining)})
 
-    labels = {'q': 'Search', 'school_name': 'College', 'state': 'State', 'city': 'City',
+    labels = {'school_size': 'College size', 'q': 'Search', 'school_name': 'College', 'state': 'State', 'city': 'City',
               'net_price_max': 'Cost after aid up to', 'tuition_in_max': 'In-state tuition up to',
               'tuition_out_max': 'Out-of-state tuition up to',
               'acceptance_min': 'Acceptance at least', 'acceptance_max': 'Acceptance up to'}
     for key, value in filters.items():
+        if key in ('school_names', 'states'):
+            url_key = 'school_name' if key == 'school_names' else 'state'
+            for item in value:
+                add_chip(f'{labels[url_key]}: {item}', url_key, [v for v in value if v != item])
+            continue
         display = (f'${value:,}' if key.endswith('_max') and not key.startswith('acceptance_')
                    else f'{value}%' if key.startswith('acceptance_') else str(value))
-        add_chip(f'{labels[key]}: {display}', key)
+        add_chip(f'{labels.get(key, key.upper())}: {display}', key)
+    if major_filter == 'selected':
+        remaining = {key: value for key, value in active_params.items() if key not in ('majors', 'major_filter')}
+        remaining['major_filter'] = 'all'
+        filter_chips.insert(0, {'label': 'Selected majors', 'url': url_for('web.explore', **remaining)})
     if major_filter == 'name':
         remaining = {key: value for key, value in active_params.items()
                      if key not in ('major_name', 'cipcode', 'major_filter')}
@@ -374,7 +441,7 @@ def explore():
     return render_template('explore.html', title='Explore programs', data=data,
                            major_name=major_name, cipcode=cipcode, degrees=degrees,
                            degree_query=','.join(map(str, degrees)), filters=filters,
-                           major_filter=major_filter, major_query=major_query,
+                           major_filter=major_filter, major_query=major_query, selected_major_rows=selected_major_rows, selected_major_labels=selected_major_labels,
                            favorite_majors=favorite_majors, selected_favorites=selected_favorites,
                            pagination=pagination, explore_view='programs', program_sort=sort,
                            filter_chips=filter_chips)
@@ -476,8 +543,9 @@ def api_chat():
             mode = "user"
             user_id = user["id"]
 
-            messages = db_functions.get_recent_chatlog(user_id)
-            keywords = db_functions.get_user_keywords(user_id)
+            account_state = db_functions.get_chat_state(user_id, include_recommendations=request.method == 'GET')
+            messages = account_state["messages"]
+            keywords = account_state["keywords"]
 
         else:
             mode = "guest"
@@ -488,9 +556,7 @@ def api_chat():
 
         if request.method == "GET":
             if user is not None:
-                major_recommendations = db_functions.get_recommendations(
-                    user_id
-                )
+                major_recommendations = account_state["recommendations"]
             else:
                 major_recommendations = guest["state"].get(
                     "recommendations",
@@ -499,48 +565,48 @@ def api_chat():
 
             return jsonify(
                 mode=mode,
-                messages=messages,
+                messages=[{**item, "search_card": search_card(item.get("metadata"))} for item in messages],
                 keywords=keywords,
                 recommendations=major_recommendations,
             )
 
-        catalog = db_functions.get_keywords()
+        catalog = _chat_keyword_catalog.get(db_functions.get_keywords)
 
-        turn = interpret_message(
-            message=message,
-            keyword_catalog=catalog,
-            saved_keywords=keywords,
-            recent_messages=messages[-20:],
-        )
+        turn = interpret_message(message=message, keyword_catalog=catalog, saved_keywords=keywords, recent_messages=messages[-20:])
+
+        try:
+            metadata = build_search_metadata(getattr(turn, "explore_search", None), db_functions)
+        except ValueError as error:
+            # Keep useful interest extraction, but do not link to a broadened/wrong search.
+            turn = turn.model_copy(update={"reply": str(error), "explore_search": None})
+            metadata = {}
 
         if user is not None:
-            major_recommendations = db_functions.save_chat_turn(
-                user_id,
-                message,
-                turn,
-            )
+            major_recommendations = db_functions.save_chat_turn(user_id, message, turn, metadata=metadata)
 
         else:
-            updated_state = apply_guest_chat_turn(
-                state=guest["state"],
-                message=message,
-                turn=turn,
-                catalog=catalog,
-            )
+            updated_state = apply_guest_chat_turn(state=guest['state'], message=message, turn=turn, catalog=catalog)
 
-            major_recommendations = (
-                db_functions.get_recommendations_for_keywords(
-                    updated_state["keywords"]
-                )
-            )
+            updated_state['messages'][-1]['metadata'] = metadata
+
+            # Include evidence in the comparison so major detail pages stay current.
+            previous_keywords = {
+                item["keyword_id"]: item for item in guest["state"]["keywords"]
+            }
+            current_keywords = {
+                item["keyword_id"]: item for item in updated_state["keywords"]
+            }
+            if (
+                current_keywords == previous_keywords
+                and "recommendations" in guest["state"]
+            ):
+                major_recommendations = guest["state"]["recommendations"]
+            else:
+                major_recommendations = db_functions.get_recommendations_for_keywords(updated_state['keywords'])
 
             updated_state["recommendations"] = major_recommendations
 
-            new_version = db_functions.save_guest_session(
-                guest_id=guest_id,
-                state=updated_state,
-                expected_version=guest["version"],
-            )
+            new_version = db_functions.save_guest_session(guest_id=guest_id, state=updated_state, expected_version=guest['version'])
 
             if new_version is None:
                 abort(
@@ -554,6 +620,7 @@ def api_chat():
         return jsonify(
             mode=mode,
             reply=turn.reply,
+            search_card=search_card(metadata),
             recommendations=major_recommendations,
         )
 
@@ -577,11 +644,13 @@ def api_chat():
         )
 
 
+
+
 def apply_guest_chat_turn(state, message, turn, catalog):
     updated = deepcopy(state)
 
     keywords_by_id = {
-        item["keyword_id"]: item
+        item["keyword_id"]: {**item, "evidence": evidence_list(item.get("evidence"))}
         for item in updated["keywords"]
     }
 
@@ -597,7 +666,7 @@ def apply_guest_chat_turn(state, message, turn, catalog):
         keywords_by_id[addition.keyword_id] = {
             "keyword_id": addition.keyword_id,
             "keyword": labels_by_id[addition.keyword_id],
-            "evidence": addition.evidence,
+            "evidence": merge_evidence(keywords_by_id.get(addition.keyword_id, {}).get("evidence"), addition.evidence),
         }
 
     updated["keywords"] = list(keywords_by_id.values())
@@ -700,6 +769,26 @@ def logout():
     return jsonify(ok=True)
 
 
+@web.delete("/api/account")
+def delete_account_api():
+    user = get_current_user()
+    if user is None or not request.headers.get("X-App-User-ID"):
+        abort(401, description="Reload your profile and sign in before deleting your account.")
+
+    # Revoke the sign-in identity before removing app records so it cannot sign in again.
+    try:
+        delete_clerk_user(user["clerk_user_id"])
+        db_functions.remove_user(user["id"])
+    except Exception:
+        current_app.logger.exception("Account deletion failed.")
+        abort(503, description="Couldn’t finish deleting your account. Please try again.")
+
+    session.clear()
+    flash("Your Pathfinder account was deleted.", "account-deleted")
+    return jsonify(ok=True)
+
+
+
 @web.get("/compare")
 def compare():
     if request.args.get("view") == "favorites":
@@ -787,23 +876,31 @@ def explore_major_catalog():
     page = positive_arg('page', 1, 100000)
     query = request.args.get('q', '').strip()
     sort = request.args.get('sort', 'name_asc')
-    favorite_flag = request.args.get('favorites_only', '0')
-    program_flag = request.args.get('has_programs', '0')
-    if favorite_flag not in ('0', '1') or program_flag not in ('0', '1'):
+    saved_flag = request.args.get('saved', request.args.get('favorites_only', '0'))
+    recs_flag = request.args.get('recs', '0')
+    if saved_flag not in ('0', '1') or recs_flag not in ('0', '1'):
         abort(400, description='Invalid major filter.')
-    favorites_only, has_programs = favorite_flag == '1', program_flag == '1'
-    if favorites_only and not session.get('user_id'):
+    saved, recs = saved_flag == '1', recs_flag == '1'
+    user_id = session.get('user_id')
+    if (saved or recs) and not user_id:
         return redirect(url_for('web.favorites'))
     raw_earnings = request.args.get('earnings_min', '').strip()
     try:
         earnings_min = int(raw_earnings) if raw_earnings else None
-    except ValueError:
-        abort(400, description='Minimum earnings must be a whole number.')
-    try:
+        explicit_majors = sorted({int(code) for code in request.args.getlist('majors')})
+        snapshot = request.args.get('collection_snapshot', '0')
+        if snapshot not in ('0', '1'):
+            raise ValueError('Invalid saved-search selection.')
+        if snapshot == '1':
+            codes = db_functions.resolve_search_major_codes([str(code) for code in explicit_majors])
+            selected_majors = [int(code) for code in codes] if codes or saved or recs else None
+        else:
+            selected_majors = db_functions.get_major_search_selection(
+                user_id, saved=saved, recs=recs, majors=explicit_majors,
+            )
         data = db_functions.get_major_catalog_page(
             page, query=query, sort=sort, earnings_min=earnings_min,
-            favorites_only=favorites_only, has_programs=has_programs,
-            user_id=session.get('user_id'),
+            user_id=user_id, majors=selected_majors,
         )
     except ValueError as error:
         abort(400, description=str(error))
@@ -811,12 +908,12 @@ def explore_major_catalog():
         current_app.logger.exception('Unable to load major catalog.')
         abort(503, description='The major catalog is unavailable. Please retry.')
     pagination = {'view': 'majors', 'q': query, 'sort': sort,
-                  'earnings_min': earnings_min, 'favorites_only': int(favorites_only),
-                  'has_programs': int(has_programs)}
+                  'earnings_min': earnings_min, 'saved': int(saved),
+                  'recs': int(recs), 'majors': explicit_majors, 'collection_snapshot': snapshot}
     return render_template('explore_majors.html', title='Explore majors', explore_view='majors',
                            data=data, query=query, sort=sort, earnings_min=earnings_min,
-                           favorites_only=favorites_only, has_programs=has_programs,
-                           pagination=pagination)
+                           saved=saved, recs=recs, explicit_majors=explicit_majors, collection_snapshot=snapshot,
+                           selected_major_ids=selected_majors or [], pagination=pagination)
 
 
 @web.get('/api/saved-majors/summary')
@@ -831,3 +928,131 @@ def saved_major_summaries_api():
 @web.get('/saved-majors')
 def saved_majors_page():
     return render_template('saved_majors.html', title='Saved majors')
+
+
+def _saved_search_handlers(kind):
+    if kind == "majors":
+        return {
+            "save": db_functions.save_major_search,
+            "list": db_functions.get_all_major_search_filters,
+            "get": db_functions.get_major_search_filters,
+            "delete": db_functions.remove_major_search,
+            "fields": {
+                "majors", "earnings_min", "saved", "recs",
+                "search_text", "sort_order",
+            },
+        }
+
+    if kind == "programs":
+        return {
+            "save": db_functions.save_program_search,
+            "list": db_functions.get_all_program_search_filters,
+            "get": db_functions.get_program_search_filters,
+            "delete": db_functions.remove_program_search,
+            "fields": {
+                "majors", "colleges", "states", "degrees",
+                "net_price_max", "tuition_in_max", "tuition_out_max",
+                "acceptance_min", "acceptance_max",
+                "satmt", "satvr", "satwr",
+                "actmt", "acten", "actwr",
+                "search_text", "sort_order", "school_size",
+            },
+        }
+
+    abort(404, description="Unknown saved-search type.")
+
+
+@web.route("/api/saved-searches/<kind>", methods=["GET", "POST"])
+def saved_searches_api(kind):
+    user = get_current_user()
+
+    if user is None:
+        abort(401, description="Sign in to save searches.")
+
+    handlers = _saved_search_handlers(kind)
+
+    if request.method == "GET":
+        try:
+            searches = handlers["list"](user["id"])
+            labels = db_functions.get_search_major_labels(
+                code for row in searches for code in (row.get('majors') or [])
+            )
+            for row in searches:
+                row['major_names'] = [labels.get(str(code), 'Unavailable major') for code in (row.get('majors') or [])]
+        except Exception:
+            current_app.logger.exception("Unable to load saved searches.")
+            abort(503, description="Saved searches are unavailable.")
+
+        return jsonify(searches=searches)
+
+    body = request.get_json(silent=True)
+
+    if not isinstance(body, dict):
+        abort(400, description="Send a JSON object.")
+
+    if set(body) - handlers["fields"]:
+        abort(400, description="Unknown saved-search fields.")
+
+    try:
+        result = handlers["save"](
+            user_id=user["id"],
+            **body,
+        )
+    except ValueError as error:
+        abort(400, description=str(error))
+    except Exception:
+        current_app.logger.exception("Unable to save search.")
+        abort(503, description="Unable to save this search.")
+
+    return jsonify(result), 201 if result["created"] else 200
+
+
+@web.route(
+    "/api/saved-searches/<kind>/<int:search_id>",
+    methods=["GET", "DELETE"],
+)
+def saved_search_api(kind, search_id):
+    user = get_current_user()
+
+    if user is None:
+        abort(401, description="Sign in to access saved searches.")
+
+    if not 1 <= search_id <= 2147483647:
+        abort(404, description="Saved search not found.")
+
+    handlers = _saved_search_handlers(kind)
+
+    try:
+        if request.method == "DELETE":
+            result = handlers["delete"](search_id, user["id"])
+        else:
+            result = handlers["get"](search_id, user["id"])
+    except Exception:
+        current_app.logger.exception("Unable to access saved search.")
+        abort(503, description="Saved searches are unavailable.")
+
+    if result is None or result is False:
+        abort(404, description="Saved search not found.")
+
+    if request.method == "DELETE":
+        return jsonify(deleted=True)
+
+    return jsonify(search=result)
+
+@web.get('/saved-searches/<kind>/<int:search_id>/apply')
+def apply_saved_search(kind, search_id):
+    from .saved_searches import search_url_values
+    user = get_current_user()
+    if user is None:
+        return redirect(url_for('web.saved_majors_page', view='filters'))
+    if not 1 <= search_id <= 2147483647:
+        abort(404, description='Saved search not found.')
+    handlers = _saved_search_handlers(kind)
+    try:
+        row = handlers['get'](search_id, user['id'])
+    except Exception:
+        current_app.logger.exception('Unable to restore saved search.')
+        abort(503, description='Saved searches are unavailable.')
+    if row is None:
+        abort(404, description='Saved search not found.')
+    return redirect(url_for('web.explore', **search_url_values(kind, row)))

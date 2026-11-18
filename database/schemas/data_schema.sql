@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS public.program_rank_crit CASCADE;
 DROP TABLE IF EXISTS public.major_info CASCADE;
 DROP TABLE IF EXISTS public.keywords CASCADE;
 DROP TABLE IF EXISTS public.major_keywords CASCADE;
+DROP TABLE IF EXISTS public.careers CASCADE;
 
 --Create Tables--
 CREATE TABLE public.schools(
@@ -18,8 +19,8 @@ CREATE TABLE public.schools(
     ug12mn INT,
     city TEXT,
     stabbr VARCHAR(3),
-    longitude NUMERIC(9,6),
-    latitude NUMERIC(9,6),
+    longitude NUMERIC(10,7),
+    latitude NUMERIC(10,7),
     iclevel INT,
     insturl TEXT
 );
@@ -33,7 +34,7 @@ CREATE TABLE public.majors(
 CREATE TABLE public.major_info(
     id SERIAL PRIMARY KEY,
     cipcode INT UNIQUE NOT NULL,
-    mdn_earnings INT,
+    mdn_earnings NUMERIC(12,1),
     major_description TEXT,
     description_source TEXT,
     CONSTRAINT fk_cipcode FOREIGN KEY (cipcode) REFERENCES public.majors(cipcode)
@@ -104,7 +105,7 @@ CREATE TABLE public.program_rank_crit(
 );
 
 CREATE TABLE public.careers(
-    id SERIAL NOT NULL,
+    id SERIAL PRIMARY KEY,
     cipcode INT NOT NULL,
     career TEXT NOT NULL,
     source TEXT NOT NULL,

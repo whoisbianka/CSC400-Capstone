@@ -1,27 +1,28 @@
-// Save current form values, including search and sort controls outside the form.
 (() => {
-  const form = document.getElementById('degree-filter-form');
+  const form = document.getElementById('degree-filter-form') || document.getElementById('major-filter-form');
   if (!form) return;
   const status = document.querySelector('[data-explore-preferences-status]');
-  const account = document.getElementById('account-navigation');
-  const legacyKey = `degree-path:explore:programs:${account.dataset.userId || 'guest'}`;
-  document.querySelector('[data-save-explore-preferences]').addEventListener('click', () => {
+  const save = document.querySelector('[data-save-explore-preferences]');
+  const restore = document.querySelector('[data-restore-explore-preferences]');
+  let busy = false;
+  async function run(callback) {
+    if (busy) return;
+    busy = true; save.disabled = true; restore.disabled = true;
+    try { await callback(); }
+    catch (error) { status.textContent = error.message || 'Unable to access saved searches. Please retry.'; }
+    finally { busy = false; save.disabled = false; restore.disabled = false; }
+  }
+  save.addEventListener('click', () => run(async () => {
     if (!form.reportValidity()) return;
-    try {
-      const params = new URLSearchParams(new FormData(form));
-      params.set('degrees', [...form.querySelectorAll('.degree-choice:checked')].map(input => input.value).join(','));
-      const result = window.SavedFilterStore.save(params.toString());
-      status.textContent = result.duplicate ? 'These filters are already in Saved filters.' : 'Filters saved. Find them in Saved → Saved filters.';
-    } catch (error) {
-      status.textContent = error.message.startsWith('You have 50') ? error.message : 'This browser could not save your filters. Your current search is unchanged.';
-    }
-  });
-  document.querySelector('[data-restore-explore-preferences]').addEventListener('click', () => {
-    try {
-      const latest = window.SavedFilterStore.read()[0];
-      const saved = latest?.params || window.sessionStorage.getItem(legacyKey);
-      if (!saved) { status.textContent = 'Save preferences first.'; return; }
-      window.location.assign(window.SavedFilterStore.url(saved, form.action));
-    } catch { status.textContent = 'This browser could not restore your filters.'; }
-  });
+    status.textContent = 'Saving search…';
+    const result = await window.SavedFilterStore.save(new URLSearchParams(new FormData(form)).toString());
+    status.textContent = result.duplicate ? 'This search is already saved.' : 'Search saved to your account. Find it in Saved → Saved filters.';
+  }));
+  restore.addEventListener('click', () => run(async () => {
+    status.textContent = 'Loading saved searches…';
+    const kind = new FormData(form).get('view') || 'programs';
+    const item = (await window.SavedFilterStore.read()).find(row=>row.kind === kind);
+    if (!item) { status.textContent = 'No saved searches for this view yet.'; return; }
+    window.location.assign(window.SavedFilterStore.url(item));
+  }));
 })();
