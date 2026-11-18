@@ -12,6 +12,7 @@ class KeywordAddition(BaseModel):
     evidence: str = Field(min_length=1)
 
 
+
 class CollegeSearchRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -22,6 +23,8 @@ class CollegeSearchRequest(BaseModel):
     major: str | None
     state: str | None
     school_size: str | None
+    limit: int | None = Field(default=10, ge=1)
+
 
 
 class AdvisorTurn(BaseModel):

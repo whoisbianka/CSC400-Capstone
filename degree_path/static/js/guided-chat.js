@@ -1,3 +1,4 @@
+
 (async function () {
   "use strict";
 
@@ -10,6 +11,7 @@
   const recommendationCards = document.getElementById("recommendationCards");
   const majorUrl = document.getElementById("guided-chat").dataset.majorUrl;
   const exploreUrl = document.getElementById("guided-chat").dataset.exploreUrl;
+
   let api = null;
   let busy = false;
 
@@ -77,39 +79,63 @@
       return;
     }
 
+    
     for (const message of history) {
       addMessage(message.role, message.content);
+
+      if (message.role === "assistant") {
+        renderCollegeRecommendations(
+          message.college_recommendations ?? [],
+          message.college_ranking_direction ?? null
+        );
+      }
     }
   }
 
+
   function renderRecommendations(recommendations) {
     recommendationCards.replaceChildren();
+
     if (!recommendations.length) {
       const empty = document.createElement("p");
       empty.className = "recommendations-empty";
-      empty.textContent = "Your recommendations will appear as we learn about your interests.";
+      empty.textContent =
+        "Your recommendations will appear as we learn about your interests.";
       recommendationCards.append(empty);
     }
+
     for (const recommendation of recommendations) {
       const card = document.createElement("article");
       card.className = "major-recommendation";
+
       const details = document.createElement("div");
+
       const title = document.createElement("h3");
       const link = document.createElement("a");
       link.href = majorUrl.replace(/0$/, String(recommendation.cipcode));
       link.textContent = recommendation.major;
       title.append(link);
+
       const count = document.createElement("p");
       const number = recommendation.matching_keywords;
-      count.textContent = `${number} matching ${number === 1 ? "interest" : "interests"}`;
+      count.textContent =
+        `${number} matching ${number === 1 ? "interest" : "interests"}`;
+
       const colleges = document.createElement("a");
       const destination = new URL(exploreUrl, window.location.origin);
+
       destination.searchParams.set("view", "programs");
-      destination.searchParams.set("cipcode", String(recommendation.cipcode));
+      destination.searchParams.set(
+        "cipcode",
+        String(recommendation.cipcode)
+      );
+
       colleges.href = destination.href;
       colleges.className = "recommendation-colleges";
       colleges.textContent = "Explore colleges that offer this major →";
+
       details.append(title, count, colleges);
+
       const heart = document.createElement("button");
       heart.type = "button";
       heart.className = "save-major-button recommendation-heart";
@@ -117,14 +143,141 @@
       heart.dataset.majorName = recommendation.major;
       heart.dataset.favoriteIcon = "heart";
       heart.textContent = "♡";
+
       heart.setAttribute("aria-pressed", "false");
-      heart.setAttribute("aria-label", `Save ${recommendation.major} to favorites`);
+      heart.setAttribute(
+        "aria-label",
+        `Save ${recommendation.major} to favorites`
+      );
+
       card.append(details, heart);
       recommendationCards.append(card);
     }
-    // Use the same favorite state, sign-in prompt and save/undo flow as Explore.
+
+    // Preserve existing favorite state and save/undo behavior.
     document.dispatchEvent(new Event("major-controls:render"));
   }
+
+  // Display database-backed college recommendations in the chat.
+  
+  function renderCollegeRecommendations(colleges, rankingDirection = null) {
+    if (!Array.isArray(colleges) || colleges.length === 0) {
+      return;
+    }
+
+    const section = document.createElement("section");
+    section.className = "college-recommendations";
+
+    const heading = document.createElement("h3");
+
+    if (rankingDirection === "lowest") {
+      heading.textContent = "Colleges ranked by lowest enrollment";
+    } else if (rankingDirection === "highest") {
+      heading.textContent = "Colleges ranked by highest enrollment";
+    } else {
+      heading.textContent = "Colleges that match your search";
+    }
+
+
+    const counter = document.createElement("p");
+    counter.className = "college-results-count";
+
+    const cardList = document.createElement("div");
+    cardList.className = "college-card-list";
+
+    const showMore = document.createElement("button");
+    showMore.type = "button";
+    showMore.className = "college-show-more";
+    showMore.textContent = "Show more colleges";
+
+    const pageSize = 10;
+    let displayed = 0;
+
+    section.append(heading, counter, cardList, showMore);
+
+    function displayNextPage() {
+      const nextColleges = colleges.slice(
+        displayed,
+        displayed + pageSize
+      );
+
+      for (const [index, college] of nextColleges.entries()) {
+        const card = document.createElement("article");
+        card.className = "college-recommendation";
+
+        const name = document.createElement("h4");
+
+        const collegeName = college.name ?? "College";
+
+        name.textContent = rankingDirection
+          ? `#${displayed + index + 1} — ${collegeName}`
+          : collegeName;
+
+
+        const location = document.createElement("p");
+        location.textContent = [college.city, college.state]
+          .filter(Boolean)
+          .join(", ");
+
+        const major = document.createElement("p");
+        major.textContent = `Major: ${college.major ?? "Not specified"}`;
+
+        const enrollment = document.createElement("p");
+        enrollment.textContent =
+          college.enrollment != null
+            ? `Enrollment: ${Number(college.enrollment).toLocaleString()} students`
+            : "Enrollment: Not reported";
+
+        card.append(name, location, major, enrollment);
+
+        if (college.website) {
+          try {
+            const website = String(college.website).trim();
+
+            const fullUrl = /^https?:\/\//i.test(website)
+              ? website
+              : `https://${website}`;
+
+            const url = new URL(fullUrl);
+
+            if (["http:", "https:"].includes(url.protocol)) {
+              const link = document.createElement("a");
+
+              link.href = url.href;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              link.textContent = "Visit college website";
+
+              card.appendChild(link);
+            }
+          } catch (error) {
+            // Ignore invalid website URLs.
+          }
+        }
+
+        cardList.appendChild(card);
+      }
+
+      displayed += nextColleges.length;
+
+      counter.textContent =
+        `Showing ${displayed} of ${colleges.length} colleges`;
+
+      showMore.hidden = displayed >= colleges.length;
+
+      showMore.textContent =
+        `Show more colleges (${colleges.length - displayed} remaining)`;
+    }
+
+    showMore.addEventListener("click", displayNextPage);
+
+    displayNextPage();
+
+    messages.appendChild(section);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+
   async function sendMessage() {
     if (busy || api === null) {
       return;
@@ -158,7 +311,16 @@
       input.value = "";
 
       showStorageNote(result.mode);
+
+      // Existing major recommendations.
       renderRecommendations(result.recommendations ?? []);
+
+      // New college recommendations returned by Flask.
+      renderCollegeRecommendations(
+        result.college_recommendations ?? [],
+        result.college_ranking_direction ?? null
+      );
+
       setStatus("");
     } catch (error) {
       // Keep the typed message so the user does not lose it.
@@ -205,6 +367,7 @@
     api = await window.chatApiReady;
 
     const saved = await api.load();
+
     renderHistory(saved.messages);
     showStorageNote(saved.mode);
     renderRecommendations(saved.recommendations ?? []);
