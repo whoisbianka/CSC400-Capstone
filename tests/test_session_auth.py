@@ -215,14 +215,18 @@ class SessionAuthTests(unittest.TestCase):
     def test_comparison_requires_login_and_valid_kind(self):
         self.assertEqual(self.client.get('/api/compare').status_code, 401)
         self.assertEqual(self.client.get('/api/compare?kind=invalid').status_code, 400)
+
         html = self.client.get('/compare').get_data(as_text=True)
-        self.assertIn('Back to home', html)
+        self.assertIn('data-user-id=""', html)
         self.assertIn('data-auth-action="login"', html)
+        self.assertIn('js/saved-major-comparison.js', html)
         self.assertNotIn('js/compare.js', html)
+
         self.login()
-        html = self.client.get('/compare').get_data(as_text=True)
+        html = self.client.get('/compare?view=favorites').get_data(as_text=True)
         self.assertIn('data-compare-kind="majors"', html)
         self.assertIn('data-compare-kind="programs"', html)
+        self.assertIn('js/compare.js', html)
         self.database.get_comparison_favorites.assert_not_called()
 
     def test_comparison_reads_only_session_user(self):

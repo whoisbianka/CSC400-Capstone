@@ -17,7 +17,7 @@ let events = 0;
 const recommendation = {cipcode:26,major:'Biology <script>',matching_keywords:2,evidence:[]};
 (async () => {
   await vm.runInNewContext(fs.readFileSync('degree_path/static/js/guided-chat.js','utf8'), {
-    document: {getElementById:id=>nodes[id], createElement:()=>new Element(), dispatchEvent:e=>{ assert.equal(e.type,'major-controls:render'); events++; }},
+    document: {getElementById:id=>nodes[id], createElement:()=>new Element(), createTextNode:text=>({textContent:text}), dispatchEvent:e=>{ assert.equal(e.type,'major-controls:render'); events++; }},
     URL,
     Event: class { constructor(type) {this.type=type;} },
     window: {location: {origin:'http://localhost'}, chatApiReady:Promise.resolve({load:async()=>({mode:'guest',messages:[],recommendations:[recommendation]}), send:async()=>({reply:'Tell me more.',mode:'guest',recommendations:[]})})},

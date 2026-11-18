@@ -21,3 +21,95 @@
 @media (max-width: 850px) { #guided-chat.advisor-workspace { grid-template-columns: minmax(0, 1fr); gap: 16px; } #guided-chat .chat-container { grid-row: 1; } }
 
 #guided-chat .recommendation-colleges { display: inline-block; margin-top: 8px; font-size: 12px; line-height: 1.45; text-underline-offset: 3px; }
+
+
+/* College search and ranking results */
+
+#guided-chat .college-recommendations {
+    margin: 16px 0 24px;
+    padding: 16px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+}
+
+#guided-chat .college-recommendations h3 {
+    font-size: 17px;
+    color: var(--text);
+    margin: 0 0 6px;
+}
+
+#guided-chat .college-results-count {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0 0 16px;
+}
+
+#guided-chat .college-card-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+}
+
+#guided-chat .college-recommendation {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+    transition: border-color 0.2s ease;
+}
+
+#guided-chat .college-recommendation:hover {
+    border-color: var(--primary);
+}
+
+#guided-chat .college-recommendation h4 {
+    font-size: 15px;
+    color: var(--text);
+    margin: 0 0 8px;
+    overflow-wrap: anywhere;
+}
+
+#guided-chat .college-recommendation p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin: 4px 0;
+}
+
+#guided-chat .college-recommendation a {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    text-underline-offset: 3px;
+}
+
+#guided-chat .college-show-more {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--primary);
+    color: var(--on-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+#guided-chat .college-show-more:hover {
+    opacity: 0.85;
+}
+
+#guided-chat .college-show-more[hidden] {
+    display: none;
+}
+
+/* Preserve chatbot response formatting */
+#guided-chat .bot-message,
+#guided-chat .user-message {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}

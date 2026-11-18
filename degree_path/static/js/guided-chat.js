@@ -50,11 +50,27 @@
     label.textContent =
       role === "user" ? "You:" : "Pathfinder:";
 
-    const text = document.createElement("span");
-
-    // Treat user and Gemini output as text, never executable HTML.
-    text.textContent = content;
+        const text = document.createElement("span");
+    text.className = "chat-message-content";
     text.style.whiteSpace = "pre-wrap";
+    text.style.fontWeight = "normal";
+
+    // Safely format bold Markdown in assistant responses.
+    if (role === "assistant") {
+      const parts = String(content).split(/(\*\*[^*\n]+\*\*)/g);
+
+      for (const part of parts) {
+        if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+          const bold = document.createElement("strong");
+          bold.textContent = part.slice(2, -2);
+          text.appendChild(bold);
+        } else {
+          text.appendChild(document.createTextNode(part));
+        }
+      }
+    } else {
+      text.textContent = content;
+    }
 
     bubble.append(
       label,

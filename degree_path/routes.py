@@ -361,7 +361,7 @@ def explore():
         if len(values) == 1:
             filters[key] = values[0]
         elif values:
-            filters['school_names' if key == 'school_name' else 'states'] = valu
+            filters['school_names' if key == 'school_name' else 'states'] = values
     for key in ('net_price_max', 'tuition_in_max', 'tuition_out_max',
                 'acceptance_min', 'acceptance_max'):
         value = request.args.get(key, '').strip()
@@ -762,10 +762,8 @@ def api_chat():
                     turn = turn.model_copy(
                         update={"reply": ranked_reply}
                     )
+        display_reply = turn.reply
 
-
-
-        display_reply = turn.reply 
         if turn.college_search is not None:
             if college_search_error:
                 search_summary = college_search_error
@@ -778,7 +776,7 @@ def api_chat():
                         f"- {college['name']} "
                         f"({college['city']}, {college['state']}) | "
                         f"Major: {college['major']} | "
-                        f"Enrollment: {college.get('enrollment') or 'Not reported'}"
+                        f"Enrollment: {college.get('enrollment') if college.get('enrollment') is not None else 'Not reported'}"
                     )
 
                 search_summary = (
@@ -791,9 +789,20 @@ def api_chat():
                     "No matching colleges were found in Pathfinder's database."
                 )
 
-            original_reply = turn.reply
-            summary = "\n\n" + search_summary
-            original_reply = turn.reply
+            if college_search_error:
+                display_reply = (
+                    turn.reply + "\n\n" + college_search_error
+                )
+            elif not college_recommendations:
+                display_reply = (
+                    turn.reply
+                    + "\n\n"
+                    + search_summary
+                    + " Try expanding your search to other states "
+                    + "or removing the school size restriction."
+                )
+
+            original_reply = display_reply
 
             metadata_text = json.dumps(college_search_metadata)
 
