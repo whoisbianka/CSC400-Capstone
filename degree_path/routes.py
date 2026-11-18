@@ -1,5 +1,6 @@
-from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 import re
+import json   
 import secrets
 from urllib.parse import urlsplit
 from functools import wraps
@@ -9,9 +10,18 @@ from copy import deepcopy
 
 import db_functions
 
-from .auth import get_current_user, establish_login
+from .auth import delete_clerk_user, get_current_user, establish_login
 from .guest_state import get_or_create_guest_session
 from .chat_service import interpret_message, InvalidAdvisorResponse
+from .college_search import (
+    find_matching_colleges,
+    find_major_cipcode,
+    rank_colleges_by_enrollment,
+    get_previous_college_results,
+    build_college_search_metadata,
+    restore_college_search,
+    restore_college_chat_history,
+)
 
 
 def database_errors(function):
@@ -327,11 +337,23 @@ def explore():
     if any(value not in ('', '2', '3') for value in degree_values):
         abort(400, description='Invalid degree level.')
     degrees = tuple(sorted({int(value) for value in degree_values if value}))
+
     filters = {}
     if query:
         filters['q'] = query
+
+    school_size = request.args.get('school_size', '').strip().lower()
+    if school_size:
+        if school_size not in ('small', 'medium', 'large'):
+            abort(400, description='Invalid school size.')
+        filters['school_size'] = school_size
+
     for key, max_length in (('school_name', 200), ('state', 3)):
-        values = sorted({value.strip() for value in request.args.getlist(key) if value.strip()})
+        values = sorted({
+            value.strip()
+            for value in request.args.getlist(key)
+            if value.strip()
+        })
         if len(values) > 200 or any(len(value) > max_length for value in values):
             abort(400, description='Invalid college or state filter.')
         if key == 'state':
@@ -556,7 +578,7 @@ def api_chat():
 
             return jsonify(
                 mode=mode,
-                messages=messages,
+                messages=restore_college_chat_history(messages),
                 keywords=keywords,
                 recommendations=major_recommendations,
             )
@@ -567,8 +589,256 @@ def api_chat():
             message=message,
             keyword_catalog=catalog,
             saved_keywords=keywords,
-            recent_messages=messages[-20:],
+            recent_messages=messages[-8:],
         )
+
+        college_recommendations = []
+        college_search_error = None
+        college_search_metadata = None
+        college_ranking_direction = None
+        college_ranking_metadata = None
+
+
+        if turn.college_search is not None:
+            search = turn.college_search
+
+            try:
+                major_name = search.major
+                state = search.state
+                school_size = search.school_size
+
+                if state is not None:
+                    state = state.strip().upper()
+                    if not re.fullmatch(r"[A-Z]{2}", state):
+                        raise ValueError("Invalid state abbreviation.")
+
+                if school_size is not None:
+                    school_size = school_size.strip().lower()
+                    if school_size not in ("small", "medium", "large"):
+                        raise ValueError("Invalid school size.")
+
+                if major_name:
+                    cipcode = find_major_cipcode(major_name)
+
+                    if cipcode is not None:
+                        college_recommendations = find_matching_colleges(
+                            major_cipcode=cipcode,
+                            state=state,
+                            school_size=school_size,
+                            limit=search.limit,
+                        )
+
+                        college_search_metadata = build_college_search_metadata(
+                            cipcode=cipcode,
+                            state=state,
+                            school_size=school_size,
+                            limit=search.limit,
+                        )
+                    else:
+                        college_search_error = (
+                            "The requested major was not found in "
+                            "Pathfinder's college database."
+                        )
+                else:
+                    college_search_error = (
+                        "Please specify a major to search for colleges."
+                    )
+
+            except Exception:
+                current_app.logger.exception("College search failed.")
+                college_search_error = (
+                    "College recommendations are temporarily unavailable."
+                )
+
+        
+        
+        if turn.college_search is None:
+            previous_colleges = []
+
+            message_lower = message.lower()
+
+
+            smallest = re.search(
+                r"\b(smallest|lowest|fewest)\b", message_lower
+            )
+
+            largest = re.search(
+                r"\b(largest|highest|most)\b", message_lower
+            )
+
+            enrollment_question = re.search(
+                r"\b(enrollment|enrollments|student population)\b",
+                message_lower,
+            )
+
+
+            ascending_order = re.search(
+                r"\b(lowest|smallest|fewest)\b.*\bto\b.*\b(highest|largest|most)\b",
+                message_lower,
+            )
+
+            descending_order = re.search(
+                r"\b(highest|largest|most)\b.*\bto\b.*\b(lowest|smallest|fewest)\b",
+                message_lower,
+            )
+
+            if ascending_order:
+                smallest = True
+                largest = False
+            elif descending_order:
+                smallest = False
+                largest = True
+
+
+
+            if enrollment_question and bool(smallest) != bool(largest):
+                previous_colleges = get_previous_college_results(messages)
+
+            if previous_colleges and enrollment_question and bool(smallest) != bool(largest):
+
+
+
+                count_match = re.search(
+                    r"\b(?:which|top|bottom|smallest|largest|lowest|highest|show me|give me)\s+(\d+)\b",
+                    message_lower,
+                )
+
+
+                if count_match is None:
+                    count_match = re.search(
+                        r"\b(\d+)\s+(?:smallest|largest|lowest|highest|colleges|schools)\b",
+                        message_lower,
+                    )
+
+                ranking_limit = 3
+
+                if count_match:
+                    ranking_limit = max(1, int(count_match.group(1)))
+                elif re.search(r"\b(?:all|every)\b", message_lower):
+                    ranking_limit = len(previous_colleges)
+
+                ranked = rank_colleges_by_enrollment(
+                    previous_colleges,
+                    largest=bool(largest),
+                    limit=ranking_limit,
+                )
+
+
+                if ranked:
+                    direction = "highest" if largest else "lowest"
+
+                    lines = [
+                        f"{index}. {college['name']} "
+                        f"({college['city']}, {college['state']}) "
+                        f"with {college['enrollment']:,} students."
+                        for index, college in enumerate(ranked, 1)
+                    ]
+
+                    ranked_reply = (
+                        f"From your previous college results, "
+                        f"the colleges with the {direction} enrollment are:\n\n"
+                        + "\n".join(lines)
+                    )
+
+                    
+                    if len(ranked) > 10:
+                        college_recommendations = ranked
+                        college_ranking_direction = direction
+
+                        college_ranking_metadata = {
+                            "direction": direction,
+                            "limit": ranking_limit,
+                        }
+
+
+                        ranked_reply = (
+                            f"Here are {len(ranked)} colleges from "
+                            f"your previous search, ranked by "
+                            f"{direction} enrollment first. "
+                            f"Use Show more colleges to view "
+                            f"the remaining results."
+                        )
+
+                    turn = turn.model_copy(
+                        update={"reply": ranked_reply}
+                    )
+        display_reply = turn.reply
+
+        if turn.college_search is not None:
+            if college_search_error:
+                search_summary = college_search_error
+
+            elif college_recommendations:
+                college_lines = []
+
+                for college in college_recommendations:
+                    college_lines.append(
+                        f"- {college['name']} "
+                        f"({college['city']}, {college['state']}) | "
+                        f"Major: {college['major']} | "
+                        f"Enrollment: {college.get('enrollment') if college.get('enrollment') is not None else 'Not reported'}"
+                    )
+
+                search_summary = (
+                    "Pathfinder database results (not ranked):\n"
+                    + "\n".join(college_lines)
+                )
+
+            else:
+                search_summary = (
+                    "No matching colleges were found in Pathfinder's database."
+                )
+
+            if college_search_error:
+                display_reply = (
+                    turn.reply + "\n\n" + college_search_error
+                )
+            elif not college_recommendations:
+                display_reply = (
+                    turn.reply
+                    + "\n\n"
+                    + search_summary
+                    + " Try expanding your search to other states "
+                    + "or removing the school size restriction."
+                )
+
+            original_reply = display_reply
+
+            metadata_text = json.dumps(college_search_metadata)
+
+            summary = (
+                "\n\nPathfinder search metadata: "
+                + metadata_text
+                + "\n\n"
+                + search_summary[:2000]
+            )
+
+            updated_reply = (
+                original_reply[:max(0, 4000 - len(summary))]
+                + summary
+            )[:4000]
+
+            turn = turn.model_copy(
+                update={"reply": updated_reply}
+            )
+
+
+        if college_ranking_metadata is not None:
+            ranking_summary = (
+                "\n\nPathfinder ranking metadata: "
+                + json.dumps(college_ranking_metadata)
+            )
+
+            updated_reply = (
+                turn.reply[:4000 - len(ranking_summary)]
+                + ranking_summary
+            )
+
+            turn = turn.model_copy(
+                update={"reply": updated_reply}
+            )
+
+
 
         if user is not None:
             major_recommendations = db_functions.save_chat_turn(
@@ -608,12 +878,24 @@ def api_chat():
                     ),
                 )
 
-        return jsonify(
-            mode=mode,
-            reply=turn.reply,
-            recommendations=major_recommendations,
+        
+        print(
+        "College search results:",
+        len(college_recommendations),
+        "Error:",
+        college_search_error,
+        flush=True,
         )
 
+        return jsonify(
+            mode=mode,
+            reply=display_reply,
+            recommendations=major_recommendations,
+            college_recommendations=college_recommendations,
+            college_ranking_direction=college_ranking_direction,
+            college_search_error=college_search_error,
+        )
+    
     except HTTPException:
         raise
 
@@ -754,6 +1036,25 @@ def auth_session_api():
 def logout():
     # Clear Flask even if Clerk is unavailable in the browser.
     session.clear()
+    return jsonify(ok=True)
+
+
+@web.delete("/api/account")
+def delete_account_api():
+    user = get_current_user()
+    if user is None or not request.headers.get("X-App-User-ID"):
+        abort(401, description="Reload your profile and sign in before deleting your account.")
+
+    # Revoke the sign-in identity before removing app records so it cannot sign in again.
+    try:
+        delete_clerk_user(user["clerk_user_id"])
+        db_functions.remove_user(user["id"])
+    except Exception:
+        current_app.logger.exception("Account deletion failed.")
+        abort(503, description="Couldn’t finish deleting your account. Please try again.")
+
+    session.clear()
+    flash("Your Pathfinder account was deleted.", "account-deleted")
     return jsonify(ok=True)
 
 

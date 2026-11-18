@@ -39,7 +39,7 @@ class ProfilePageTests(unittest.TestCase):
         nodes = [n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == 'profile']
         exec(compile(ast.Module(body=nodes, type_ignores=[]), 'routes.py', 'exec'),
              dict(web=web, render_template=render_template))
-        for endpoint in ('chat', 'home', 'explore', 'saved_majors_page', 'settings', 'favorites', 'compare', 'questionnaire'):
+        for endpoint in ('chat', 'home', 'explore', 'saved_majors_page', 'settings', 'favorites', 'compare', 'questionnaire', 'delete_account_api'):
             web.add_url_rule('/' + endpoint, endpoint, lambda: '')
         self.app.register_blueprint(web)
         auth = ast.parse((ROOT / 'degree_path/auth.py').read_text())
@@ -62,11 +62,13 @@ class ProfilePageTests(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn('You’re signed in', html)
         self.assertIn('data-clerk-user-id="user_expected"', html)
-        self.assertIn('id="profile-name-value"', html)
-        self.assertIn('id="profile-email-value"', html)
-        self.assertNotIn('bianka@example.com', html)
-        self.assertIn('Academic background', html)
-        self.assertIn('Interests &amp; goals', html)
+        self.assertIn('id="profile-name"', html)
+        self.assertNotIn('profile-email', html)
+        self.assertNotIn('Academic background', html)
+        for field in ('school', 'major', 'graduation'):
+            self.assertNotIn(f'name="{field}"', html)
+        self.assertIn('Subjects and activities you enjoy', html)
+        self.assertIn('Delete your account?', html)
         self.assertIn('id="profile-editor" hidden', html)
         self.assertIn('Not added yet', html)
         self.assertIn('href="/saved_majors_page?view=programs"', html)
@@ -79,7 +81,7 @@ class ProfilePageTests(unittest.TestCase):
         html = self.client.get('/profile').get_data(as_text=True)
         self.assertIn('You’re signed out', html)
         self.assertIn('data-auth-action="login"', html)
-        self.assertNotIn('id="profile-email-value"', html)
+        self.assertNotIn('id="profile-delete"', html)
         self.assertNotIn('data-auth-action="logout"', html)
         self.assertNotIn('id="profile-editor"', html)
         self.assertNotIn('js/profile.js', html)
