@@ -231,5 +231,6 @@ def interpret_message(
         ],
         keyword_removals=removal_ids,
         major_mentions=gemini_turn.major_mentions,
-        explore_search=gemini_turn.explore_search,
+        # A remembered search or populated filters alone do not request a card.
+        explore_search=(gemini_turn.explore_search if gemini_turn.search_requested else None),
     )

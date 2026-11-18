@@ -59,7 +59,7 @@ class ChatSearchTests(unittest.TestCase):
         client = Mock()
         client.models.generate_content.return_value = SimpleNamespace(text=json.dumps({
             'reply':'Here is your search.', 'keyword_additions':[], 'keyword_removals':[],
-            'major_mentions':[], 'explore_search':{**request,'states':['MA','NY']}}))
+            'major_mentions':[], 'search_requested':True, 'explore_search':{**request,'states':['MA','NY']}}))
         turn = interpret_message('Include New York.', [], [], [
             {'role':'assistant','content':'Here is your search.', 'metadata':metadata}],
             client=client, model='test')
@@ -137,3 +137,17 @@ class ChatSearchTests(unittest.TestCase):
         self.db.get_chat_major_matches.return_value=[{'cipcode':i,'name':f'Science {i}'} for i in range(1,31)]
         result=build_search_metadata(ExploreSearch(major_subjects=['Science']),self.db)
         self.assertEqual(len(result['explore_search']['filters']['majors']),30)
+
+    def test_search_filters_without_current_intent_do_not_produce_card(self):
+        previous = build_search_metadata(ExploreSearch(states=['CT']),self.db)
+        for requested in (False, None):
+            payload={'reply':'You are welcome.', 'keyword_additions':[], 'keyword_removals':[],
+                     'major_mentions':[], 'explore_search':{'states':['CT']}}
+            if requested is not None:
+                payload['search_requested']=requested
+            client=Mock()
+            client.models.generate_content.return_value=SimpleNamespace(text=json.dumps(payload))
+            turn=interpret_message('Thanks',[],[],[
+                {'role':'assistant','content':'Here is your search.', 'metadata':previous}],client=client,model='test')
+            self.assertIsNone(turn.explore_search)
+            self.assertEqual(build_search_metadata(turn.explore_search,self.db),{})

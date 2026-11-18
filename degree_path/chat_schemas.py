@@ -51,4 +51,5 @@ class GeminiAdvisorTurn(BaseModel):
     keyword_additions: list[GeminiKeywordAddition]
     keyword_removals: list[str]
     major_mentions: list[str]
+    search_requested: bool = False
     explore_search: ExploreSearch | None = None

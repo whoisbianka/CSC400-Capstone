@@ -102,6 +102,9 @@ def main():
     careers_df=pd.read_csv(os.path.join(DATA_DIR,"majors_careers.csv"),low_memory=False)
     careers_df=careers_df[["cipcode","career","source"]]
 
+    #Remove Trailing Period from Majors
+    majors_df["cipdesc"]=majors_df["cipdesc"].str.rstrip('.')
+
     schools_df.to_csv(os.path.join(SEED_DIR,"schools.csv"), index=False)
     program_rank_crit.to_csv(os.path.join(SEED_DIR,"program_rank_crit.csv"), index=False)
     majors_df.to_csv(os.path.join(SEED_DIR,"majors.csv"), index=False)
