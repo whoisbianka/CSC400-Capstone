@@ -1,0 +1,190 @@
+/* Charcoal Square Harmony, with gold accents and a lavender brand mark. */
+:root {
+  color-scheme: dark;
+  --pathfinder-lavender: #d1c0ff;
+  --pathfinder-lavender-ink: #38265d;
+  --charcoal-panel: #363636;
+  --charcoal-divider: #515151;
+  --primary-edge: #b29ada;
+
+  --color-surface: #1c1c1c;
+  --color-surface-container-lowest: var(--color-surface);
+  --color-surface-container-low: #222222;
+  --color-surface-container: #262626;
+  --color-surface-container-high: #414141;
+  --color-surface-container-highest: #484848;
+  --color-on-surface: #f2f2f2;
+  --color-on-surface-variant: #c4c4c4;
+  --color-outline: #989898;
+  --color-outline-variant: #454545;
+
+  --color-primary: #563e98;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #403258;
+  --color-on-primary-container: #eee4ff;
+  --color-secondary: #e4c17c;
+  --color-on-secondary: #30240e;
+  --color-secondary-container: #393126;
+  --color-on-secondary-container: #f4dfb6;
+  --color-tertiary: var(--color-secondary);
+  --color-on-tertiary: var(--color-on-secondary);
+  --color-tertiary-container: var(--color-secondary);
+  --color-on-tertiary-container: var(--color-on-secondary);
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #790e15;
+  --color-on-error-container: #ffdad6;
+  --color-inverse-surface: #f2f2f2;
+  --color-inverse-on-surface: #262626;
+  --color-inverse-primary: var(--color-primary);
+
+  --accent: var(--color-secondary);
+  --primary: var(--color-primary);
+  --primary-hover: #6249a8;
+  --navigation: var(--color-surface-container-low);
+  --overlay: rgb(0 0 0 / 48%);
+  --shadow: transparent;
+  --card-radius: 16px;
+  --button-radius: 9999px;
+}
+
+.site-navigation .site-brand,
+.site-navigation .site-brand:is(:hover, :focus),
+.site-navigation .nav-auth-button {
+  color: var(--pathfinder-lavender);
+}
+
+.site-navigation .site-brand span {
+  background: var(--pathfinder-lavender);
+  color: var(--pathfinder-lavender-ink);
+}
+
+.site-navigation .nav-auth-button {
+  background: transparent;
+  border-color: var(--color-outline);
+}
+
+.site-navigation .nav-auth-button:not(:disabled):is(:hover, :active) {
+  background: color-mix(in srgb, var(--navigation), var(--pathfinder-lavender) 12%);
+  color: var(--pathfinder-lavender);
+}
+
+.site-navigation nav a[aria-current="page"] {
+  color: var(--color-secondary);
+  box-shadow: inset 0 -2px var(--primary);
+}
+
+.explore-workspace .explore-tabs a[aria-current="page"] {
+  color: var(--color-secondary);
+  box-shadow: inset 0 -2px var(--color-secondary);
+}
+
+.feature-card,
+:is(.explore-programs-workspace, .explore-majors-workspace) :is(.program-card, .major-catalog-card),
+#guided-chat :is(.chat-container, .recommendations-sidebar) {
+  --surface: var(--charcoal-panel);
+  --border: var(--charcoal-divider);
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.guided-art .compass > circle:first-child {
+  fill: var(--color-secondary);
+}
+
+.guided-art .compass > circle:nth-child(2),
+.guided-art .compass > path {
+  stroke: var(--color-on-secondary);
+}
+
+.guided-art .compass > path {
+  fill: var(--color-on-secondary);
+}
+
+.feature-card .card-action,
+.primary-link:not(.apply-filters),
+#guided-chat .chat-input button,
+#reloadChat {
+  box-shadow: inset 0 0 0 1px var(--primary-edge);
+}
+
+#guided-chat .bot-message {
+  background: var(--color-surface-container-low);
+}
+
+/* Outlined search actions use gold. Apply filters is the tonal action. */
+.explore-sidebar .secondary-button {
+  background: transparent;
+  border: 1px solid var(--color-outline);
+  color: var(--color-secondary);
+}
+
+.explore-sidebar .secondary-button:not(:disabled):is(:hover, :active) {
+  background: var(--color-secondary-container);
+  color: var(--color-secondary);
+}
+
+.explore-sidebar .apply-filters,
+.explore-sidebar .apply-filters:not(:disabled):hover {
+  background: var(--color-primary-container);
+  border-color: transparent;
+  color: var(--color-on-primary-container);
+}
+
+.explore-sidebar .apply-filters:not(:disabled):hover {
+  background: color-mix(in srgb, var(--color-primary-container), var(--color-on-primary-container) 8%);
+}
+
+.explore-sidebar .apply-filters:focus-visible {
+  outline-color: var(--color-on-primary-container);
+}
+
+.explore-programs-workspace .program-card .program-location {
+  color: var(--color-secondary);
+}
+
+.major-catalog-footer,
+:is(.explore-programs-workspace, .explore-majors-workspace) .program-card-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--charcoal-divider);
+  color: var(--color-secondary);
+}
+
+.major-catalog-footer a,
+:is(.explore-programs-workspace, .explore-majors-workspace) .program-card-footer > a,
+:is(.explore-programs-workspace, .explore-majors-workspace) .program-card-footer .program-favorite-button {
+  color: var(--color-secondary);
+}
+
+.major-catalog-footer a:hover,
+:is(.explore-programs-workspace, .explore-majors-workspace) .program-card-footer > a:hover {
+  background: color-mix(in srgb, var(--surface), var(--color-secondary) 8%);
+  color: var(--color-secondary);
+}
+
+.skip-link:focus,
+.home-skip-link:focus {
+  color: var(--color-on-secondary);
+}
+
+:is(input, select, textarea):focus-visible:not(:user-invalid, [aria-invalid="true"]) {
+  outline-color: var(--color-secondary);
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --color-on-surface: #ffffff;
+    --color-on-surface-variant: #ededed;
+    --color-outline: #c4c4c4;
+    --color-outline-variant: #939393;
+    --charcoal-divider: var(--color-outline-variant);
+    --primary-hover: #563e98;
+    --primary-edge: #eee4ff;
+  }
+
+  .site-navigation nav a[aria-current="page"],
+  .explore-workspace .explore-tabs a[aria-current="page"] {
+    text-decoration: underline;
+    text-underline-offset: 5px;
+  }
+}
